@@ -24,7 +24,10 @@ const COMPACT_CARD_HEIGHT_PX := 570.0
 # NOTE: center is 540, not the spec's 432 — 432 shrinks the 3D dice tray enough
 # to clip the readout pips into the dice. 540 is the readable value.
 const CARD_ZONE_HEIGHT := 768.0
-const CENTER_ZONE_HEIGHT := 540.0
+# ui-fix layout rhythm: Content is 2400 - 138 * 2 = 2124 tall; less its margins
+# (28) and the two rails (792 each) leaves 512 for the centre band, so the board
+# fills Content exactly and the cards land one GAP from each bar.
+const CENTER_ZONE_HEIGHT := 512.0
 const RAIL_ROW_GAP_PX := 1.0
 const RAIL_SLOT_GAP_PX := 2.0
 
@@ -265,7 +268,12 @@ func get_combat_zone_rect() -> Rect2:
 	if width <= 2.0:
 		x = board_rect.position.x
 		width = board_rect.size.x
-	return _inset_tray_rect(Rect2(Vector2(x, top_y), Vector2(width, bottom_y - top_y)))
+	var tray := _inset_tray_rect(Rect2(Vector2(x, top_y), Vector2(width, bottom_y - top_y)))
+	# ui-fix layout rhythm: the tray sits exactly one GAP from each card row.
+	if enemy_card_rect.size != Vector2.ZERO and friendly_card_rect.size != Vector2.ZERO:
+		tray.position.y = enemy_card_rect.end.y + PixelUI.GAP
+		tray.size.y = friendly_card_rect.position.y - PixelUI.GAP - tray.position.y
+	return tray
 
 
 func layout_dice_from_combat_zone() -> void:
@@ -282,37 +290,19 @@ func layout_dice_from_combat_zone() -> void:
 		_position_zone_dividers(combat_zone)
 
 
-# Pin the header/footer divider lines exactly DIVIDER_GAP px from the card rows, so
-# the gap divider<->card equals the card<->tray gap (which the combat zone produces).
-func _position_zone_dividers(combat_zone: Rect2) -> void:
-	var enemy_card: Rect2 = get_card_group_rect(_scene.enemy_card_views)
-	var hero_card: Rect2 = get_card_group_rect(_scene.hero_card_views)
-	var gap: float = (combat_zone.position.y - enemy_card.end.y) if enemy_card.size.y > 2.0 else 15.0
-	var origin_y: float = _scene.global_position.y
-	# The header divider now lives in the PersistentHeader autoload (fixed, full-width).
-	# Only the footer divider is positioned dynamically here.
+# ui-fix layout rhythm: the footer bar is the header bar's height (its MIN_STROKE
+# divider on top, the Protocol panel below), measured up from the bottom inset.
+# The cards end one GAP above it by construction (BattleScene CONTENT offsets,
+# CENTER_ZONE_HEIGHT); layout_rhythm_test.gd checks both at 360 and 390 px.
+func _position_zone_dividers(_combat_zone: Rect2) -> void:
 	var footer_divider: Control = _scene.get_node_or_null("FooterDivider")
-	if footer_divider != null and hero_card.size.y > 2.0:
-		var ftop: float = hero_card.end.y - origin_y + gap
-		# The 6.5px footer bleed (Build #3 Phase 0): this derivation hugged the
-		# hero cards with NO regard for the footer's own minimum height. The
-		# board stack's minimums overshoot its allocation, so the cards end low
-		# enough that the remaining span (115px) is under the footer's combined
-		# minimum (128px) — and the grow-BOTH PanelContainer split the 13px
-		# overflow 6.5 above / 6.5 BELOW the screen bottom (a pixel-snap-law
-		# violation compounding with the gesture reserve). Clamp: the divider
-		# never sits lower than what leaves the footer its full minimum above
-		# the bottom inset. Read the minimum live (no one-off constant); floor
-		# to a whole design pixel (INVARIANTS #14 — err on MORE footer room).
-		if _scene.protocol_panel != null and is_instance_valid(_scene.protocol_panel):
-			var footer_min: float = _scene.protocol_panel.get_combined_minimum_size().y
-			var max_ftop: float = _scene.size.y - float(PixelUI.safe_bottom) - footer_min - 3.0
-			ftop = floorf(minf(ftop, max_ftop))
-		footer_divider.offset_top = ftop
-		footer_divider.offset_bottom = ftop + 3.0
-		# Footer panel occupies [divider, screen bottom − safe_bottom].
-		if _scene.protocol_panel != null and is_instance_valid(_scene.protocol_panel):
-			_scene.protocol_panel.offset_top = (ftop + 3.0) - _scene.size.y
+	if footer_divider == null:
+		return
+	var ftop: float = _scene.size.y - float(PixelUI.safe_bottom) - _scene.BAR_HEIGHT
+	footer_divider.offset_top = ftop
+	footer_divider.offset_bottom = ftop + PixelUI.MIN_STROKE
+	if _scene.protocol_panel != null and is_instance_valid(_scene.protocol_panel):
+		_scene.protocol_panel.offset_top = (ftop + PixelUI.MIN_STROKE) - _scene.size.y
 
 
 func get_card_group_rect(views: Array) -> Rect2:
@@ -599,7 +589,7 @@ func sync_combat_zone_frame(combat_zone: Rect2) -> void:
 	var enemy_readout_rect: Rect2 = get_enemy_result_row_rect()
 	var hero_readout_rect: Rect2 = get_friendly_result_row_rect()
 	var button_rect: Rect2 = _scene.roll_button.get_global_rect() if _scene.roll_button != null and is_instance_valid(_scene.roll_button) else Rect2()
-	var lane_gap: float = 10.0
+	var lane_gap: float = 6.0   # ui-fix: was 10 (the GAP-rhythm tray is 30 px shorter)
 	var button_center_local: float = button_rect.get_center().y - combat_zone.position.y if button_rect.size.y > 2.0 else combat_zone.size.y * 0.5
 	var enemy_readout_bottom: float = enemy_readout_rect.end.y - combat_zone.position.y if enemy_readout_rect.size.y > 2.0 else 0.0
 	var hero_readout_top: float = hero_readout_rect.position.y - combat_zone.position.y if hero_readout_rect.size.y > 2.0 else combat_zone.size.y

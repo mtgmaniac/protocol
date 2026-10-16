@@ -100,17 +100,24 @@ const MAX_PROTOCOL := 10
 # from was dead chrome (built, then unconditionally hidden by the theme pass)
 # and was deleted in Polish Build A.
 const PROTOCOL_FOOTER_SOURCE_SIZE := Vector2(1330, 265)
-const BOTTOM_BAR_BUTTON_SIZE := Vector2(112, 112)
-const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 136)
+# ui-fix layout rhythm: the footer bar (144, as the header) less its divider and
+# a GAP above and below: 144 - 4 - 16 * 2 = 108, square.
+const BOTTOM_BAR_BUTTON_SIZE := Vector2(108, 108)
+# ui-fix: 136 -> 128 with the GAP-rhythm tray (30 px shorter), so the dice keep
+# the roll clearance floor (roll_button_clearance_test, 40 px).
+const CENTER_ACTION_BUTTON_SIZE := Vector2(640, 128)
 const CENTER_ACTION_BUTTON_FONT_SIZE := 48
-const PROTOCOL_LABEL_FONT_SIZE := 48   # SMALL (ui-unify; was 70)
+const PROTOCOL_LABEL_FONT_SIZE := 64   # LABEL (ui-fix; ui-unify had SMALL 48)
 const PROTOCOL_VALUE_FONT_SIZE := 48
 # Footer protocol stack (Kev 2026-07-10) — the label sits directly on top of
 # the pip bar (bottom-anchored; the overlap eats m5x7's below-baseline pad).
 # Batch 3: label sized up 52→60; it grows UPWARD into the footer's free band
 # (bottom-anchored box raised to match) so the pips below never move.
-const PROTOCOL_STACK_LABEL_FONT := 48   # SMALL (ui-unify; was 60)
-const PROTOCOL_LABEL_BOX_H := 96.0
+const PROTOCOL_STACK_LABEL_FONT := 64   # LABEL (ui-fix; ui-unify had SMALL 48)
+const PROTOCOL_LABEL_BOX_H := 64.0   # ui-fix: one LABEL line
+# Design px between the m5x7 line top and its caps at LABEL 64 (measured on a
+# capture; the label is raised by it so the caps meet the block's top).
+const PROTOCOL_LABEL_CAP_PAD := 16.0   # 4 m5x7 px at x4
 const PROTOCOL_LABEL_PIP_OVERLAP := -2.0
 const PROTOCOL_PIP_BAR_H := 52.0
 
@@ -2448,12 +2455,19 @@ var _protocol_pips: Control = null
 # Horizontal inset matching the dice-tray edge (Content margin + tray gutter), so the
 # header/footer content lines up with the tray instead of running to the screen edge.
 const TRAY_EDGE_INSET := 16
-# Content's authored offsets (mirror the .tscn: top 170 = 144 header band + 26
-# gap; bottom 144 = the footer band). _apply_safe_area() re-derives the offsets,
-# so the authored values must be named here or a zero inset (every desktop run)
-# would erase them.
-const CONTENT_TOP_OFFSET := 170.0
-const CONTENT_BOTTOM_OFFSET := 144.0
+# Content's authored offsets (mirror the .tscn). ui-fix layout rhythm: the cards
+# sit one PixelUI.GAP from each bar, and a card's edge is CARD_EDGE_INSET inside
+# Content (Content margin 14 + rail margin 4 + slot inset 4), so each offset is
+# bar 144 + GAP 16 - 22 = 138 (the footer bar is the header's height). With the
+# board's minimums (rails 792 each, the centre band BattleLayout.CENTER_ZONE_HEIGHT)
+# the board fills Content exactly at 2400. _apply_safe_area() re-derives the
+# offsets, so the authored values must be named here or a zero inset (every
+# desktop run) would erase them.
+const CARD_EDGE_INSET := 22.0
+const HEADER_SCRIPT := preload("res://scripts/autoloads/PersistentHeader.gd")
+const BAR_HEIGHT: float = HEADER_SCRIPT.HEADER_HEIGHT
+const CONTENT_TOP_OFFSET: float = BAR_HEIGHT + PixelUI.GAP - CARD_EDGE_INSET
+const CONTENT_BOTTOM_OFFSET: float = BAR_HEIGHT + PixelUI.GAP - CARD_EDGE_INSET
 
 
 # Safe area — Build #2 RULING: the DICE FIELD absorbs the ENTIRE inset budget.
@@ -2467,7 +2481,10 @@ const CONTENT_BOTTOM_OFFSET := 144.0
 # grown band clipping the enemy name plates on device — is what this fixes.
 func _apply_safe_area() -> void:
 	var content: MarginContainer = get_node_or_null("Content") as MarginContainer
-	if content != null:
+	# Portrait offsets only: the (parked) landscape layout owns Content's offsets
+	# and sizes its cards from them (ui-fix: writing these over them grew the
+	# landscape cards past their footer).
+	if content != null and not (_layout != null and _layout.is_landscape):
 		content.offset_top = CONTENT_TOP_OFFSET + float(PixelUI.safe_top)
 		content.offset_bottom = -(CONTENT_BOTTOM_OFFSET + float(PixelUI.safe_bottom))
 	if protocol_panel != null and is_instance_valid(protocol_panel):
@@ -2501,7 +2518,7 @@ func _ensure_zone_divider(node_name: String, at_footer: bool) -> void:
 	divider.offset_left = 0.0
 	divider.offset_right = 0.0
 	divider.offset_top = (960.0 if at_footer else 144.0)
-	divider.offset_bottom = divider.offset_top + 3.0
+	divider.offset_bottom = divider.offset_top + PixelUI.MIN_STROKE
 	add_child(divider)
 
 
@@ -2528,6 +2545,8 @@ func _ensure_protocol_stack_layout() -> void:
 	stack.add_child(protocol_bar)
 	row.add_child(stack)
 	row.move_child(stack, 0)
+	# ui-fix layout rhythm: GAP between the Protocol block and every button.
+	row.add_theme_constant_override("separation", PixelUI.GAP)
 	# Buttons take only their fixed size; the stack absorbs ALL remaining width.
 	for sibling in row.get_children():
 		if sibling is Button:
@@ -2537,14 +2556,18 @@ func _ensure_protocol_stack_layout() -> void:
 	if spacer != null:
 		spacer.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		spacer.custom_minimum_size = Vector2.ZERO
+		spacer.visible = false   # ui-fix: a hidden spacer adds no second separation
 	# Label sits RIGHT on top of the pips (Kev 2026-07-10: anchoring it to the
 	# stack top clipped the glyphs under the panel above). Bottom-anchored just
 	# above the pip bar; the overlap eats m5x7's below-baseline padding.
-	protocol_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	protocol_label.offset_bottom = -PROTOCOL_PIP_BAR_H + PROTOCOL_LABEL_PIP_OVERLAP
-	protocol_label.offset_top = protocol_label.offset_bottom - PROTOCOL_LABEL_BOX_H
+	# ui-fix layout rhythm: the label's visible caps sit at the block's top (the
+	# m5x7 line pads above its caps, PROTOCOL_LABEL_CAP_PAD), the cells at its
+	# bottom, so the whole block is one GAP from each bar edge.
+	protocol_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	protocol_label.offset_top = -PROTOCOL_LABEL_CAP_PAD
+	protocol_label.offset_bottom = protocol_label.offset_top + PROTOCOL_LABEL_BOX_H
 	protocol_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	protocol_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	protocol_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	protocol_label.add_theme_font_size_override("font_size", PROTOCOL_STACK_LABEL_FONT)
 	protocol_bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	protocol_bar.offset_top = -PROTOCOL_PIP_BAR_H
@@ -3528,7 +3551,7 @@ func _apply_battle_theme() -> void:
 	protocol_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	protocol_label.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
 	protocol_label.add_theme_constant_override("outline_size", 2)
-	PixelUI.apply_type(protocol_label, PixelUI.TYPE_SMALL, PixelUI.BATTLE_TEXT)
+	PixelUI.apply_type(protocol_label, PixelUI.TYPE_LABEL, PixelUI.BATTLE_TEXT)   # ui-fix: LABEL
 	PixelUI.apply_pixel_font(protocol_value_label)
 	protocol_value_label.add_theme_font_size_override("font_size", PROTOCOL_VALUE_FONT_SIZE)
 	protocol_value_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
@@ -3553,6 +3576,10 @@ func _apply_battle_theme() -> void:
 		if pm != null:
 			pm.add_theme_constant_override("margin_left", TRAY_EDGE_INSET)
 			pm.add_theme_constant_override("margin_right", TRAY_EDGE_INSET)
+			# ui-fix layout rhythm: the footer row sits one GAP from both bar edges
+			# (less the panel's own 4 px content margin).
+			pm.add_theme_constant_override("margin_top", PixelUI.GAP - 4)
+			pm.add_theme_constant_override("margin_bottom", PixelUI.GAP - 4)
 	_ensure_protocol_stack_layout()
 	PixelUI.style_progress_bar(protocol_bar, PixelUI.PROTOCOL_ACCENT, PixelUI.BATTLE_PROTO_EMPTY, PixelUI.LINE_DIM)
 	_update_protocol_bar()

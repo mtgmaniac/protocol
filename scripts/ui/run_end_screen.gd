@@ -141,7 +141,7 @@ func _apply_visual_theme(victory: bool) -> void:
 	# Center the title/panel/buttons block vertically instead of pinning it to the top.
 	var vbox := $Content/VBox as VBoxContainer
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_theme_constant_override("separation", 40)
+	vbox.add_theme_constant_override("separation", PixelUI.GAP)
 	button_row.add_theme_constant_override("separation", 28)
 
 	# Framed transmission window (result-tinted border + corner brackets).

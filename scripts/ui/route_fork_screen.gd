@@ -66,7 +66,7 @@ func _ready() -> void:
 	margin.add_theme_constant_override("margin_right", side)
 	# Safe area: +insets so the window clears the grown header band and the
 	# gesture bar on cutout devices (0 on desktop — no-op).
-	margin.add_theme_constant_override("margin_top", 150 + PixelUI.safe_top)
+	margin.add_theme_constant_override("margin_top", int(PersistentHeader.HEADER_HEIGHT) + PixelUI.GAP + PixelUI.safe_top)
 	margin.add_theme_constant_override("margin_bottom", WINDOW_MARGIN_BOTTOM + PixelUI.safe_bottom)
 	add_child(margin)
 	_margin = margin
@@ -123,11 +123,6 @@ func _ready() -> void:
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	PixelUI.style_label(blurb, BODY_FONT, PixelUI.CHROME, 1)
 	column.add_child(blurb)
-
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 12)
-	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(gap)
 
 	# The NEXT battle's comp (we haven't advanced yet): 0-based index equals
 	# the 1-based current battle number.

@@ -709,6 +709,11 @@ static var _pip_texture_cache: Dictionary = {}
 # through. Every StyleBoxFlat border in the game must flow through this (via
 # make_panel_style / make_hard_style or directly).
 const MIN_STROKE := 4
+## ui-fix layout rhythm (2026-10-16): the ONE gap, in design px (a multiple of
+## 4), between a bar (header, footer) and the cards, and between stacked blocks
+## on every screen that shares the header. The header and footer bars are the
+## same height (PersistentHeader.HEADER_HEIGHT), each with a MIN_STROKE divider.
+const GAP := 16
 
 static func min_stroke(width: int) -> int:
 	if width <= 0:

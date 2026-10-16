@@ -217,7 +217,7 @@ func _build_help_overlay() -> void:
 	panel.add_child(margin)
 
 	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 14)
+	content.add_theme_constant_override("separation", PixelUI.GAP)
 	margin.add_child(content)
 
 	var title := _make_label("REWARD HELP", 42, PixelUI.TEXT_PRIMARY, 3)
@@ -282,12 +282,12 @@ func _update_reward_layout() -> void:
 	reward_content.alignment = BoxContainer.ALIGNMENT_BEGIN
 	reward_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	reward_content.add_theme_constant_override("separation", 18)
-	reward_cards.add_theme_constant_override("separation", 18)
+	reward_content.add_theme_constant_override("separation", PixelUI.GAP)
+	reward_cards.add_theme_constant_override("separation", PixelUI.GAP)
 	reward_list_margin.add_theme_constant_override("margin_left", 0)
 	reward_list_margin.add_theme_constant_override("margin_right", 0)
 	reward_list_margin.add_theme_constant_override("margin_top", 0)
-	reward_list_margin.add_theme_constant_override("margin_bottom", 24)
+	reward_list_margin.add_theme_constant_override("margin_bottom", PixelUI.GAP)
 	if reward_top_spacer != null:
 		reward_top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
 	# The paired spacers still EXPAND equally — the choice group stays centred in
@@ -839,7 +839,7 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 	panel.add_child(margin)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 22)
+	vbox.add_theme_constant_override("separation", PixelUI.GAP)
 	margin.add_child(vbox)
 
 	var title := _make_label("EQUIP %s TO" % item.display_name.to_upper(), GEAR_TARGET_TITLE_FONT, _get_item_accent(item), 2)
@@ -1022,7 +1022,7 @@ func _apply_visual_theme() -> void:
 		pattern.visible = false
 	content_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
-	content_vbox.add_theme_constant_override("separation", 8)
+	content_vbox.add_theme_constant_override("separation", PixelUI.GAP)
 	reward_list_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward_cards.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1070,8 +1070,8 @@ func _apply_visual_theme() -> void:
 	PixelUI.style_label(summary_label, 32, PixelUI.UI_TEXT, 0)
 	PixelUI.style_label(inventory_label, 28, PixelUI.UI_TEXT_DIM, 0)
 	PixelUI.style_label(footer_label, FOOTER_FONT, PixelUI.UI_TEXT, 0)
-	reward_content.add_theme_constant_override("separation", 18)
-	reward_cards.add_theme_constant_override("separation", 18)
+	reward_content.add_theme_constant_override("separation", PixelUI.GAP)
+	reward_cards.add_theme_constant_override("separation", PixelUI.GAP)
 	reward_scroll.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 
 

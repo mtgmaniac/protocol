@@ -567,8 +567,8 @@ func _update_choice_layout() -> void:
 	choice_content.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	choice_cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	choice_cards.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	choice_content.add_theme_constant_override("separation", 20)
-	choice_cards.add_theme_constant_override("separation", 20)
+	choice_content.add_theme_constant_override("separation", PixelUI.GAP)
+	choice_cards.add_theme_constant_override("separation", PixelUI.GAP)
 	top_spacer.custom_minimum_size = Vector2(0, CARD_TOP_SPACER_HEIGHT)
 	for child in choice_cards.get_children():
 		var panel: PanelContainer = child as PanelContainer
@@ -600,7 +600,7 @@ func _apply_visual_theme() -> void:
 		pattern.visible = false
 	content_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content_vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
-	content_vbox.add_theme_constant_override("separation", 8)
+	content_vbox.add_theme_constant_override("separation", PixelUI.GAP)
 	footer_label.visible = false
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	summary_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

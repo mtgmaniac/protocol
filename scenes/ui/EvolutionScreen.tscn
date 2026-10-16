@@ -36,9 +36,9 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 12.0
-offset_top = 156.0
+offset_top = 160.0
 offset_right = -12.0
-offset_bottom = -12.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -46,7 +46,7 @@ grow_vertical = 2
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 
 
 [node name="Title" type="Label" parent="Content/VBox"]
@@ -70,7 +70,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
-theme_override_constants/separation = 18
+theme_override_constants/separation = 16
 
 [node name="TopSpacer" type="Control" parent="Content/VBox/ChoiceArea/ChoiceContent"]
 unique_name_in_owner = true
@@ -82,7 +82,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
-theme_override_constants/separation = 18
+theme_override_constants/separation = 16
 
 [node name="FooterLabel" type="Label" parent="Content/VBox"]
 unique_name_in_owner = true

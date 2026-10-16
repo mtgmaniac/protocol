@@ -33,7 +33,12 @@ func refresh() -> void:
 	var content: Control = _scene.get_node("Content")
 	content.offset_top = _scene.get_node("/root/PersistentHeader").band_height() + STYLE.content_top_gap
 	content.offset_bottom = -(STYLE.footer_height + float(PixelUI.safe_bottom))
-	var height: float = maxf(_scene.board.size.y - STYLE.board_height_padding, 1.0)
+	# The height Content is GIVEN (ui-fix): reading the board's current size locked
+	# the cards to whatever the first pass measured, so a taller portrait Content
+	# grew them past the footer.
+	var content_margin: float = float((content as MarginContainer).get_theme_constant("margin_top") + (content as MarginContainer).get_theme_constant("margin_bottom")) if content is MarginContainer else 0.0
+	var given: float = _scene.size.y - content.offset_top + content.offset_bottom - content_margin
+	var height: float = maxf(given - STYLE.board_height_padding, 1.0)
 	var count: int = maxi(3, maxi(_scene.hero_card_views.size(), _scene.enemy_card_views.size()))
 	# Ratio-derived dimensions are whole physical pixels, including web stretch.
 	var pixel_scale: Vector2 = PixelUI.physical_transform(_scene.board).get_scale()

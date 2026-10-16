@@ -31,6 +31,10 @@ func _run_capture() -> void:
 	print("[BATTLE_UI_CAPTURE] Saved screenshot to: %s" % absolute_output)
 	if bool(config.get("card_fit", false)):
 		_print_card_fit(current_scene)
+	if bool(config.get("layout_report", false)):
+		_print_layout_report(current_scene)
+	if bool(config.get("hover_probe", false)):
+		await _print_hover_probe()
 	var depth: Script = load("res://scripts/ui/battle_depth.gd")
 	for step: Array in [["depth_perspective_output", "perspective_on", true], ["depth_plates_output", "plates_on", true], ["depth_flat_output", "backdrop_on", false]]:
 		if not config.has(step[0]):
@@ -96,6 +100,12 @@ func _parse_args() -> Dictionary:
 		elif arg == "--capture-force-auto":
 			config["force_auto"] = true
 			config["rolled"] = true
+		elif arg == "--capture-hover-probe":
+			# ui-fix: which control stops a tap at a few empty-looking points.
+			config["hover_probe"] = true
+		elif arg == "--capture-layout-report":
+			# ui-fix: every band's rect in design px, one JSON line (layout rhythm).
+			config["layout_report"] = true
 		elif arg == "--capture-card-fit":
 			# ui-cleanup: print each card's name / HP label width and text width.
 			config["card_fit"] = true
@@ -935,6 +945,53 @@ func _save_manager() -> Node:
 
 # ui-cleanup: the CARD type role's fit check. Widths in design px; "fits" when
 # the text is no wider than its label.
+func _print_hover_probe() -> void:
+	var size: Vector2 = root.get_visible_rect().size
+	for at: Vector2 in [Vector2(size.x * 0.05, size.y * 0.05), Vector2(size.x * 0.5, size.y * 0.05), Vector2(size.x * 0.05, size.y * 0.075), Vector2(size.x * 0.02, size.y * 0.5), Vector2(size.x * 0.5, size.y * 0.97)]:
+		var motion := InputEventMouseMotion.new()
+		motion.position = root.get_final_transform() * at
+		motion.global_position = motion.position
+		root.push_input(motion)
+		await process_frame
+		var chain: PackedStringArray = []
+		var node: Node = root.gui_get_hovered_control()
+		while node is Control:
+			chain.append("%s[%d]" % [node.name, (node as Control).mouse_filter])
+			node = node.get_parent()
+		print("[HOVER_PROBE] %s: %s" % [at, " < ".join(chain)])
+
+
+func _print_layout_report(scene: Node) -> void:
+	var rects := {}
+	var add := func(key: String, control: Variant) -> void:
+		if control is Control and is_instance_valid(control) and (control as Control).is_visible_in_tree():
+			var r: Rect2 = (control as Control).get_global_rect()
+			rects[key] = [r.position.x, r.position.y, r.size.x, r.size.y]
+	var header: Node = root.get_node("PersistentHeader")
+	rects["header_band"] = [0.0, 0.0, 1080.0, float(header.call("band_height"))]
+	add.call("header_divider", header.get_node_or_null("HeaderBand/Divider"))
+	var layout: Object = scene.get("_layout")
+	var group := func(views: Array) -> Array:
+		var r: Rect2 = layout.call("get_card_group_rect", views)
+		return [r.position.x, r.position.y, r.size.x, r.size.y]
+	rects["enemy_cards"] = group.call(scene.get("enemy_card_views"))
+	rects["hero_cards"] = group.call(scene.get("hero_card_views"))
+	var zone: Rect2 = layout.call("get_combat_zone_rect")
+	rects["tray"] = [zone.position.x, zone.position.y, zone.size.x, zone.size.y]
+	for key in ["board", "enemy_panel", "center_panel", "hero_panel", "enemy_readouts", "hero_readouts", "enemy_dice_row", "hero_dice_row", "protocol_panel", "protocol_label", "protocol_bar", "roll_button"]:
+		add.call(key, scene.get(key))
+	add.call("footer_divider", scene.get_node_or_null("FooterDivider"))
+	add.call("content", scene.get_node_or_null("Content"))
+	var stack: Node = scene.get("protocol_bar").get_parent()
+	add.call("protocol_stack", stack)
+	var protocol: Object = scene.get("_protocol")
+	add.call("btn_nudge", protocol.get("nudge_button"))
+	add.call("btn_reroll", scene.get("protocol_spend_button"))
+	add.call("btn_set", protocol.get("set_button"))
+	add.call("btn_item", protocol.get("item_button"))
+	print("[LAYOUT_REPORT] %s" % JSON.stringify(rects))
+
+
 func _print_card_fit(node: Node) -> void:
 	for card: Node in node.find_children("*", "CompactUnitCard", true, false):
 		for key: String in ["_name_label", "_hp_label"]:

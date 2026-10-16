@@ -56,7 +56,7 @@ digits only). Sizes are whole multiples of the native size only
 |---|---|---|---|---|
 | DISPLAY | Battle Block | 96, drawn pixel-exact (below) | screen titles, battle header | caps |
 | CARD | Battle Block | 64 to 96, drawn pixel-exact (below) | battle card unit names and HP numbers | caps |
-| LABEL | m5x7 | 64 (full-width primaries up to 112) | buttons, tabs, section headers, unit names off the battle card | caps |
+| LABEL | m5x7 | 64 (full-width primaries up to 112) | buttons, tabs, section headers, unit names off the battle card, the footer PROTOCOL label | caps |
 | BODY | m5x7 | 64, line spacing 10 | descriptions, help, battle log | sentence |
 | SMALL | m5x7 | 48 | rarity, version tag, cost labels, eyebrows | as written (metadata caps per the caps law) |
 | NUMERAL | m5x7 | 64 (die tags 80) | intent and pip numbers, HP off the battle card | n/a |
@@ -121,6 +121,22 @@ whole button at `UNAFFORDABLE_ALPHA` 0.45.
 
 ## Spacing and the pixel grid
 
+- **One GAP: `PixelUI.GAP` = 16 design px.** It is the space between a bar and
+  the cards, and between stacked blocks on every screen: header -> enemy cards,
+  enemy cards -> tray, tray -> hero cards, hero cards -> footer (mirrored, all
+  16), the footer row's padding above and below, the space between footer
+  buttons, a run-flow screen's content below the header, and every screen-level
+  column's separation. No spacer controls add a second gap. Line spacing inside
+  a card or row is not a GAP.
+- **Header and footer bars are the same height**: 144 design px
+  (`PersistentHeader.HEADER_HEIGHT`), each with a `MIN_STROKE` divider (the
+  header's along its bottom, the footer's along its top). Footer: the Protocol
+  block (LABEL caps on top, the cells at the bottom) and the four action buttons
+  (108 px squares, GAP apart) sit GAP from both bar edges.
+- Gate: `layout rhythm` (`scripts/debug/layout_rhythm_test.gd`, windowed at 360
+  and 390 px). Measure a capture with `battle_ui_capture.gd
+  --capture-layout-report` and `scripts/checks/annotate_layout.py`; run-flow
+  screens with `scripts/debug/screen_rhythm_probe.gd`.
 - Spacing in multiples of 4 design px (one art pixel).
 - Pixel art and pixel fonts draw NEAREST; item art at integer multiples
   (`make_integer_icon`); portraits only through `make_portrait_frame`.

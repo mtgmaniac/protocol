@@ -190,6 +190,12 @@ GATES = [
     # forced-landscape scene geometry, shared input and spawn regression. Keeps
     # the parked path compiling and correct so re-enabling is a flag flip.
     ("battle layout", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/battle_layout_test.gd"], "[BATTLE_LAYOUT] PASS", False),
+    # Layout rhythm (ui-fix 2026-10-16): header and footer bars the same height,
+    # one GAP from each bar to the cards and between cards and tray, the footer
+    # row GAP from both bar edges with equal square buttons GAP apart, the
+    # Protocol label at LABEL. Windowed at 360 and 390 px (headless has no real
+    # window size).
+    ("layout rhythm", [GODOT, "--path", str(ROOT), "-s", "scripts/debug/layout_rhythm_test.gd"], "[LAYOUT_RHYTHM] PASS", False),
     # Android Build #1: safe-area insets (cutout/gesture bar) — header grows,
     # protocol row lifts, desktop reads all-zero (no-regression guarantee).
     ("safe area", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/safe_area_test.gd"], "[SAFE_AREA] PASS", False),

@@ -68,7 +68,7 @@ func _ready() -> void:
 	margin.add_theme_constant_override("margin_right", side)
 	# Safe area: +insets so the window clears the grown header band and the
 	# gesture bar on cutout devices (0 on desktop — no-op).
-	margin.add_theme_constant_override("margin_top", 150 + PixelUI.safe_top)
+	margin.add_theme_constant_override("margin_top", int(PersistentHeader.HEADER_HEIGHT) + PixelUI.GAP + PixelUI.safe_top)
 	margin.add_theme_constant_override("margin_bottom", 80 + PixelUI.safe_bottom)
 	add_child(margin)
 
@@ -112,13 +112,6 @@ func _clear_stage() -> void:
 	_button_box = null
 
 
-func _add_gap(height: int) -> void:
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, height)
-	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_stage_box.add_child(gap)
-
-
 func _add_label(text: String, font_size: int, color: Color, outline: int = 1) -> Label:
 	var label := Label.new()
 	label.text = text
@@ -144,7 +137,6 @@ func _add_event_banner(card_id: String) -> void:
 	var max_w: float = float(ProjectSettings.get_setting("display/window/size/viewport_width", 1080)) - 2.0 * side - 2.0 * 36.0
 	var frame := PixelUI.make_scene_banner(tex, max_w, float(BANNER_MAX_H), PixelUI.UI_PANEL_EDGE)
 	_stage_box.add_child(frame)
-	_add_gap(12)
 
 
 # A choice that arms a battle modifier names it in ALL CAPS ("next battle is
@@ -171,10 +163,9 @@ func _modifier_note(choice: Dictionary) -> String:
 func _add_choice_button(text: String, callback: Callable, enabled: bool = true, note: String = "") -> void:
 	# Choice buttons live in their own box: 24px padding above the group, 12px between.
 	if _button_box == null:
-		_add_gap(24)
 		_button_box = VBoxContainer.new()
 		_button_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_button_box.add_theme_constant_override("separation", 12)
+		_button_box.add_theme_constant_override("separation", PixelUI.GAP)
 		_stage_box.add_child(_button_box)
 	var button := Button.new()
 	button.focus_mode = Control.FOCUS_NONE
@@ -203,7 +194,6 @@ func _add_choice_button(text: String, callback: Callable, enabled: bool = true, 
 # two buttons and it read as belonging to either.
 func _add_option_box(text: String, callback: Callable, enabled: bool, description: String) -> void:
 	if _button_box == null:
-		_add_gap(24)
 		_button_box = VBoxContainer.new()
 		_button_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_button_box.add_theme_constant_override("separation", 16)
@@ -254,7 +244,6 @@ func _show_card_stage() -> void:
 	_add_event_banner(_card_id)
 	PixelUI.apply_type(_add_label("INTERCEPT", TYPE_FONT, PixelUI.CHROME_DIM, 2), PixelUI.TYPE_SMALL)
 	PixelUI.apply_type(_add_label(str(_card.get("name", "")), TITLE_FONT, PixelUI.CHROME, 3), PixelUI.TYPE_DISPLAY)
-	_add_gap(8)
 	_add_label(str(_card.get("desc", "")), BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
 	_enabled_choice_count = 0
 	for choice_variant in _card.get("choices", []):
