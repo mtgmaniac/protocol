@@ -415,13 +415,16 @@ static var DT_BOSS_HEADER := Color("d18a4a")
 static var DT_BOSS_INK := Color("160f0b")
 # Hero (navy/cyan) card tokens
 static var DT_HERO_BG := Color("0a141c")
-static var DT_HERO_BORDER := Color("235461")
+static var DT_HERO_BORDER := PLAYER_ACCENT_DIM   # ui-unify: the player owns cobalt (was cyan 235461)
 static var DT_HERO_HEADER := Color("0d2029")
-static var DT_HERO_NAME := Color("56c7d9")
+static var DT_HERO_NAME := PLAYER_ACCENT_LIGHT   # ui-unify (was cyan 56c7d9)
 static var DT_HERO_TRACK := Color("0a1218")
 static var DT_HERO_DITHER := Color("5ac8dc")
-static var DT_CYAN := Color("3fd0e2")
-static var DT_CYAN_BRIGHT := Color("6fe0ef")
+# ui-unify: the legacy "player / primary" cyan now IS the player cobalt, so the
+# screens that still read these names follow the direction (was 3fd0e2 / 6fe0ef).
+# DT_HERO_DITHER / DT_ENEMY_DITHER stay: the dice renderer reads them.
+static var DT_CYAN := PLAYER_ACCENT
+static var DT_CYAN_BRIGHT := PLAYER_ACCENT_LIGHT
 static var DT_RUST := Color("c25d3f")
 static var DT_RUST_BRIGHT := Color("f0a585")
 # Commit (ROLL) green bevel — DEPRECATED for buttons. Green is reserved for HP bars
@@ -440,9 +443,9 @@ static var DT_ROLL_TEXT := Color("e3ffe4")
 static var BTN_PRIMARY_BG := Color("0a141c")        # dark navy (matches DT_HERO_BG panels)
 static var BTN_PRIMARY_BG_HOVER := Color("0f1f2a")
 static var BTN_PRIMARY_INK := Color("07090b")       # near-black inverted (pressed) text
-static var BTN_TEAL_BORDER := Color("3fd0e2")       # = DT_CYAN
-static var BTN_TEAL_TEXT := Color("5fd8ea")
-static var BTN_TEAL_TEXT_BRIGHT := Color("9df0fb")
+static var BTN_TEAL_BORDER := PLAYER_ACCENT          # = DT_CYAN (ui-unify: cobalt)
+static var BTN_TEAL_TEXT := PLAYER_ACCENT_LIGHT
+static var BTN_TEAL_TEXT_BRIGHT := PLAYER_ACCENT_LIGHT.lightened(0.25)
 static var BTN_AMBER_BORDER := Color("cf9a36")      # = DT_AMBER
 static var BTN_AMBER_TEXT := Color("e6bd68")
 static var BTN_AMBER_TEXT_BRIGHT := Color("f7dc9a")
@@ -573,15 +576,13 @@ static func min_stroke(width: int) -> int:
 	return maxi(width + (width & 1), MIN_STROKE)
 
 
-static func make_panel_style(bg: Color = BG_PANEL, border: Color = LINE_DIM, border_width: int = 2, corner: int = 4) -> StyleBoxFlat:
+## ui-unify: one corner treatment, square. `corner` is kept for callers and
+## ignored; every panel is square-cornered.
+static func make_panel_style(bg: Color = BG_PANEL, border: Color = LINE_DIM, border_width: int = 2, _corner: int = 0) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = bg
 	style.border_color = border
 	style.set_border_width_all(min_stroke(border_width))
-	style.corner_radius_top_left = corner
-	style.corner_radius_top_right = corner
-	style.corner_radius_bottom_left = corner
-	style.corner_radius_bottom_right = corner
 	style.shadow_color = BLACK_EDGE
 	style.shadow_size = 0
 	style.shadow_offset = Vector2.ZERO
@@ -1766,8 +1767,9 @@ static func make_scene_banner(tex: Texture2D, max_w: float, max_h: float, border
 ## Frames a PanelContainer as a "transmission window": very dark fill, 2px teal border,
 ## teal corner brackets — the same language as the battle panels. Used by the event /
 ## route-fork / run-failed screens so loose text reads as a contained transmission.
-static func style_transmission_panel(panel: PanelContainer, border: Color = Color("2f6b7a")) -> void:
-	panel.add_theme_stylebox_override("panel", make_hard_style(DT_PANEL_BG, border, 2))
+static func style_transmission_panel(panel: PanelContainer, border: Color = UI_PANEL_EDGE) -> void:
+	# ui-unify: a plain CHROME section panel (was teal 2f6b7a with cyan brackets).
+	panel.add_theme_stylebox_override("panel", make_hard_style(UI_PANEL, border, MIN_STROKE))
 	_refresh_corner_brackets(panel, DT_CYAN, 26.0, 3.0, 8.0)
 
 
@@ -1869,16 +1871,17 @@ static func component_style(kind: String, accent: Color = Color.TRANSPARENT, her
 	match kind:
 		COMPONENT_NORMAL:
 			if hero_tint:
-				return make_hard_style(DT_HERO_BG, DT_HERO_BORDER, COMPONENT_FRAME_WIDTH)
-			return make_hard_style(DT_PANEL_BG, DT_FIELD_BORDER, COMPONENT_FRAME_WIDTH)
+				return make_hard_style(DT_HERO_BG, PLAYER_ACCENT_DIM, COMPONENT_FRAME_WIDTH)
+			return make_hard_style(UI_PANEL, UI_PANEL_EDGE, COMPONENT_FRAME_WIDTH)
 		COMPONENT_SELECTED:
-			# Strong cyan — selection only. Accent overrides are IGNORED here on
-			# purpose: selection strength has one source.
-			return make_hard_style(DT_HERO_BG, DT_CYAN, COMPONENT_FRAME_WIDTH)
+			# ui-unify: selection is the player's: PLAYER_ACCENT. Accent overrides
+			# are ignored on purpose: selection strength has one source.
+			return make_hard_style(DT_HERO_BG, PLAYER_ACCENT, COMPONENT_FRAME_WIDTH)
 		COMPONENT_ENEMY:
-			return make_hard_style(DT_ENEMY_BG, DT_ENEMY_BORDER, COMPONENT_FRAME_WIDTH)
+			# ui-unify: the enemy side is the current ENCOUNTER_ACCENT.
+			return make_hard_style(DT_ENEMY_BG, ENCOUNTER_ACCENT.darkened(0.3), COMPONENT_FRAME_WIDTH)
 		COMPONENT_REWARD:
-			return make_hard_style(DT_PANEL_BG, accent if has_accent else DT_AMBER, COMPONENT_FRAME_WIDTH)
+			return make_hard_style(UI_PANEL, accent if has_accent else CHROME_DIM, COMPONENT_FRAME_WIDTH)
 		COMPONENT_MODAL:
 			return make_hard_style(INSPECT_BG, accent if has_accent else INSPECT_BORDER, COMPONENT_FRAME_WIDTH)
 		COMPONENT_MAJOR:
@@ -1912,16 +1915,16 @@ static func component_header_style(kind: String, hero_tint: bool = false) -> Sty
 static func component_line_color(kind: String, hero_tint: bool = false) -> Color:
 	match kind:
 		COMPONENT_SELECTED:
-			return DT_CYAN
+			return PLAYER_ACCENT
 		COMPONENT_ENEMY:
-			return DT_ENEMY_BORDER
+			return ENCOUNTER_ACCENT.darkened(0.3)
 		COMPONENT_REWARD:
-			return DT_AMBER
+			return CHROME_DIM
 		COMPONENT_MODAL:
 			return INSPECT_BORDER
 		COMPONENT_MAJOR:
 			return GOLD_ACCENT
-	return DT_HERO_BORDER if hero_tint else DT_FIELD_BORDER
+	return PLAYER_ACCENT_DIM if hero_tint else UI_PANEL_EDGE
 
 
 ## Filled cyan badge plate (pick-order number on a selected tile) — the
@@ -2200,11 +2203,14 @@ static func _primary_btn_disabled_style() -> StyleBoxFlat:
 ## Draws (or refreshes) eight thin corner-bracket arms as children of `target`, anchored
 ## to its four corners so they track any resize — the same accent-bracket motif as the
 ## panels. Pass Color.TRANSPARENT to remove existing brackets.
+## ui-unify: no four-corner notches or brackets anywhere (one corner treatment:
+## square). Every call now only clears brackets a node already had.
+const CORNER_BRACKETS_ENABLED := false
 static func _refresh_corner_brackets(target: Control, color: Color, arm: float = 16.0, thick: float = 3.0, inset: float = 4.0) -> void:
 	var existing: Node = target.get_node_or_null("CornerBrackets")
 	if existing != null:
 		existing.queue_free()
-	if color.a <= 0.0:
+	if color.a <= 0.0 or not CORNER_BRACKETS_ENABLED:
 		return
 	var holder: CornerBracketLayer = CornerBracketLayer.new()
 	holder.name = "CornerBrackets"

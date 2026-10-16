@@ -788,3 +788,53 @@ applied; converting the description labels to BBCode is a follow-up.
   for when descriptions move to BBCode.
 - The hidden legacy Protocol progress bar (`protocol_bar`, kept for layout
   code) fills PROTOCOL_ACCENT on a BATTLE_PROTO_EMPTY track (Phase 3).
+
+## Phase 5: components
+
+All in `pixel_ui.gd`; screens get them through the shared helpers.
+
+- **Buttons:** primary `style_ui_primary_button` (PLAYER border and text, the
+  notch), secondary `style_ui_secondary_button` (CHROME), disabled (dimmed
+  secondary), destructive `style_ui_destructive_button` (WARNING, hazard
+  stripes, no notch). Focus on any of them: the PLAYER outline outside the
+  button. Labels are the LABEL role.
+- **Pop-ups:** a pop-up's main confirm is its primary (the notch sits inside the
+  pop-up); a destructive confirm uses the destructive style. Applied on the
+  title: the first-run pop-up's RUN TUTORIAL is its primary, the abandon pop-up's
+  ABANDON RUN is destructive (flat pixel B had made both secondary). The other
+  pop-ups follow in Phases 6 and 7.
+- **One border weight:** MIN_STROKE (4 design px), already enforced by
+  `min_stroke` for every factory border.
+- **One corner treatment, square:** `make_panel_style` ignores its `corner`
+  argument (it defaulted to 4 px rounded corners for `style_panel` and
+  `style_button` callers). **No four-corner brackets:** `_refresh_corner_brackets`
+  only clears (`CORNER_BRACKETS_ENABLED = false`), which removes them from the
+  old bracketed primary buttons, the transmission panels, the scene banners,
+  route fork and run end. `style_transmission_panel` is a plain CHROME section
+  panel now (`UI_PANEL` fill, `UI_PANEL_EDGE` border; was teal `2f6b7a` with cyan
+  brackets).
+- **Spacing grid:** multiples of 4 design px for new and restyled layout. The
+  audit gained a spacing scan (`ui_audit.py --section spacing`): 74 literal
+  spacing constants were off the grid at this point; the restyled screens are
+  fixed in their phases and the rest in the sweep.
+- **Panels, tabs, toggles, sliders, selectable cards, badges:** the restyle A /
+  flat pixel B components (`make_ui_section`, `make_ui_row`, `style_ui_tab`,
+  `style_ui_toggle`, `style_ui_slider`, `ui_card_style`, `selection_badge_style`).
+- **The six components** (`component_style`) follow the ownership rules:
+  SELECTED is PLAYER_ACCENT (was cyan); NORMAL hero-tinted is PLAYER_ACCENT_DIM;
+  NORMAL plain is the CHROME panel; ENEMY is the current ENCOUNTER_ACCENT
+  darkened (was rust); REWARD's default is CHROME_DIM (was amber); MODAL and the
+  gold MAJOR tier unchanged.
+- **Legacy names follow the direction:** `DT_CYAN`, `DT_CYAN_BRIGHT`,
+  `BTN_TEAL_*`, `DT_HERO_BORDER` and `DT_HERO_NAME` now hold the PLAYER family
+  (cobalt, not cyan), so the screens that still read them change with no edit.
+  `DT_HERO_DITHER` / `DT_ENEMY_DITHER` are untouched (the dice renderer reads
+  them). The theme mirror (`theme_overload.tres`) took the same values for its
+  Button text and its selected / primary styles.
+- **Squad select's encounter panel** previews the enemy side: the boss portrait
+  frame, the LV pips and the THREATS label take the selected operation's
+  ENCOUNTER_ACCENT (they were rust / CHROME). The site line and the banner frame
+  stay CHROME. Empty LV pips are `BATTLE_PROTO_EMPTY`.
+
+Checks: `component_contract.py` PASS, `framing_sites.py` PASS, MainMenu /
+UnitSelect / BattleScene load headless clean.

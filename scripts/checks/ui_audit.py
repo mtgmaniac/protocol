@@ -170,6 +170,24 @@ def colors(summary):
     return total
 
 
+SPACING = re.compile(r'add_theme_constant_override\(\s*"(separation|margin_\w+|h_separation|v_separation)"\s*,\s*(\d+)\s*\)')
+
+
+def spacing(summary):
+    hits = []
+    for p in files(SCRIPT_DIRS, ".gd"):
+        for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
+            if not is_code_line(line):
+                continue
+            for m in SPACING.finditer(line):
+                if int(m.group(2)) % 4 != 0:
+                    hits.append((rel(p), n, f"{m.group(1)} {m.group(2)}"))
+    print(f"Literal spacing constants off the 4 px grid: **{len(hits)}**.\n")
+    if not summary:
+        for f, n, k in hits:
+            print(f"- `{f}:{n}` {k}")
+
+
 def textures(summary):
     hits = []
     for p in files(SCRIPT_DIRS, ".gd"):
@@ -215,6 +233,10 @@ if __name__ == "__main__":
     if section in ("colors", "all"):
         print("## Hardcoded colors\n")
         colors(summary)
+        print()
+    if section in ("spacing", "all"):
+        print("## Spacing grid (multiples of 4 design px)\n")
+        spacing(summary)
         print()
     if section in ("textures", "all"):
         print("## Textures and icons (filtering, scaling)\n")

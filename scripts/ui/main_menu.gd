@@ -359,7 +359,7 @@ func _show_first_run_prompt() -> void:
 	run.text = "RUN TUTORIAL"
 	run.custom_minimum_size = PROMPT_BUTTON_SIZE
 	run.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_ui_secondary_button(run, PROMPT_BUTTON_FONT)
+	PixelUI.style_ui_primary_button(run, PROMPT_BUTTON_FONT)   # the pop-up's primary
 	run.pressed.connect(_on_first_run_tutorial_pressed)
 	box.add_child(run)
 
@@ -512,7 +512,7 @@ func _show_abandon_confirm() -> void:
 	confirm.text = "ABANDON RUN"
 	confirm.custom_minimum_size = PROMPT_BUTTON_SIZE
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_ui_secondary_button(confirm, PROMPT_BUTTON_FONT)
+	PixelUI.style_ui_destructive_button(confirm, PROMPT_BUTTON_FONT)   # destructive confirm
 	confirm.pressed.connect(_on_abandon_confirmed.bind(scrim, panel))
 	box.add_child(confirm)
 

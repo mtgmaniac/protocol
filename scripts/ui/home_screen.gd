@@ -108,8 +108,11 @@ const DOT_GAP := 18
 const DIVIDER_THICK := 2
 
 # Threat pips / level color
-const THREAT_FILL := Color("c25d3f")           # DT rust
-const THREAT_EMPTY := Color(0.10, 0.11, 0.07, 1.0)
+# ui-unify: the encounter panel previews the enemy side, so its portrait frame,
+# LV pips and THREATS label take that operation's ENCOUNTER accent.
+const THREAT_EMPTY := PixelUI.BATTLE_PROTO_EMPTY
+const DEPTH := preload("res://scripts/ui/battle_depth.gd")
+var _enc_thumb_frame: PanelContainer = null
 
 # Deploy button states
 const DEPLOY_IDLE_BG := PixelUI.UI_BUTTON
@@ -318,6 +321,7 @@ func _build_encounter_section() -> Control:
 	thumb_style.set_content_margin_all(float(PANEL_BORDER))
 	var thumb: Dictionary = PixelUI.make_portrait_frame(null, ENC_PORTRAIT_W, thumb_style)
 	var thumb_frame: PanelContainer = thumb["frame"]
+	_enc_thumb_frame = thumb_frame
 	var thumb_holder: Control = thumb["crop"]
 	_enc_thumb_holder = thumb_holder
 	_enc_portrait = thumb["tex"]
@@ -459,7 +463,11 @@ func _refresh_encounter() -> void:
 	var level: int = _threat_level(_operation_index)
 	_enc_level_label.text = "LV %d" % level
 	for i in _threat_pips.size():
-		_threat_pips[i].color = THREAT_FILL if i < level else THREAT_EMPTY
+		_threat_pips[i].color = _encounter_accent() if i < level else THREAT_EMPTY
+	if _enc_thumb_frame != null:
+		var frame_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_ENEMY_BG, _encounter_accent().darkened(0.3), PANEL_BORDER)
+		frame_style.set_content_margin_all(float(PANEL_BORDER))
+		_enc_thumb_frame.add_theme_stylebox_override("panel", frame_style)
 
 	# Clearance line (one metadata-tier line, Build B) + the lore slot (empty
 	# until Build C authors operation lore).
@@ -903,6 +911,12 @@ func _on_back_to_title() -> void:
 	SceneManager.go_to_main_menu()
 
 
+# The selected operation's ENCOUNTER accent (data), for the enemy-side preview.
+func _encounter_accent() -> Color:
+	var accent: Color = DEPTH.encounter_accent(_selected_operation_id)
+	return accent if accent.a > 0.0 else PixelUI.DT_ENEMY_BORDER
+
+
 # The detail box shows ENCOUNTER info only (B3): the story and THREATS, or on a
 # locked encounter the lock info and "THREATS: ???". It is always present at
 # one height; unit info lives on the unit tile's long-press.
@@ -917,7 +931,7 @@ func _refresh_detail() -> void:
 	var threat_color: Color = PixelUI.CHROME_DIM
 	if accent is Color and not _current_op_locked:
 		threat_color = accent as Color
-	_detail_threat_label.add_theme_color_override("font_color", threat_color)
+	_detail_threat_label.add_theme_color_override("font_color", _encounter_accent() if not _current_op_locked else threat_color)
 	_detail_threats.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	if _current_op_locked:
 		_detail_desc.text = locked_story_text(_selected_operation_id)
