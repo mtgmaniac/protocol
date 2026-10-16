@@ -552,3 +552,34 @@ PASS. MainMenu, BattleScene, UnitSelect, RewardScreen load headless clean.
 - **Rust panel** (`title_backdrop.gd`): moved 65% toward the gray of the same
   luminance and darkened 45% (its lit edge 22%), so it is a muted warm gray
   instead of the brightest saturated shape on the title. Stencils follow it.
+
+## B Phase 6: dice legibility
+
+- Render scale stays **1/3**.
+- **Heavier numerals:** the main numeral (`FaceNumber<n>`) is thickened by an
+  outline in its OWN color, `DICE_NUMERAL_BOLD` = 3 font px each side (the m5x7
+  stroke is 8 font px, so it becomes 14: about 2.6 dice px at 1/3 instead of
+  1.8, which broke into single pixels). Its dark edge moved to the shadow layer
+  just beneath it (outline 3 + 8, dark). Highlight and well layers unchanged.
+  Reprints keep the bold outline in the numeral's color, and the result-face
+  dimming fades outlines with the face (before, the dark outline stayed opaque on
+  dimmed faces).
+- **Fonts compared** (`--dice-numeral-font=m5x7|battle`, `--dice-numeral-bold=N`,
+  360 px captures): m5x7 plain (before), m5x7 bold 3, Battle Block plain, Battle
+  Block bold 2. Battle Block's glyphs are twice as wide, so two-digit side faces
+  crowd and smear; m5x7 bold 3 gave the clearest side faces. **Chosen: m5x7 bold
+  3.** `PixelUI.get_battle_font()` now exists (style_battle_text uses it) for the
+  comparison.
+- **Front-face check, every value 1-20, both colors, at 360 and 390 px**
+  (`scripts/debug/dice_numeral_capture.gd`: places dice with chosen values in a
+  battle-sized tray over the neutral floor, no throw, crops each die): **all pass.**
+  8 against 0 reads in 8, 10, 18 and 20 (the 8 is pinched, the 0 open). **No
+  overlay was needed**, so none was added.
+- **6/9 marks: there are none.** The faces print plain numerals. The FRONT face is
+  always upright after the snap (Dice rule 4), so 6 and 9 read by orientation
+  there, and both passed. On side faces a 6 and a 9 are still ambiguous. Adding
+  marks was not done: the dice gates read the `FaceNumber<n>` labels' text, and a
+  mark needs its own node and its own handling in reprints and dimming. Reported
+  for a ruling.
+- No change to physics, faces, landing, snap, Freeze, Set or recorded throws:
+  only label outline sizes and colors moved. Checked in B Phase 7.

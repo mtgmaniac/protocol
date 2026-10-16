@@ -1470,6 +1470,7 @@ func _highlight_top_face(die: RigidBody3D, result: int, side: String, zone: Stri
 			var c: Color = label.modulate
 			c.a = alpha
 			label.modulate = c
+			label.outline_modulate.a = alpha   # bold and dark edges fade with the face
 
 
 func _get_zone_face_style(zone_key: String) -> Dictionary:
@@ -1546,7 +1547,7 @@ func _print_faces(die: RigidBody3D, entry: Dictionary) -> void:
 # Set the engraved numeral (all four stacked labels) on one face, restoring their engrave colours.
 func _apply_face_number(die: RigidBody3D, face_value: int, display_value: int, base: Color) -> void:
 	var value_text: String = "%d" % clampi(display_value, 1, 20)
-	var font_size: int = 128 if value_text.length() == 1 else 108
+	var font_size: int = _numeral_font_size(value_text)
 	_set_label(die, "FaceNumberWell%d" % face_value, value_text, font_size + 14, _number_well_color_for(base))
 	_set_label(die, "FaceNumberShadow%d" % face_value, value_text, font_size, _number_shadow_color_for(base))
 	_set_label(die, "FaceNumberHighlight%d" % face_value, value_text, font_size, _number_highlight_color_for(base))
@@ -1560,6 +1561,8 @@ func _set_label(die: RigidBody3D, node_name: String, value_text: String, font_si
 	label.text = value_text
 	label.font_size = font_size
 	label.modulate = color
+	if node_name.begins_with("FaceNumber") and node_name.trim_prefix("FaceNumber").is_valid_int():
+		label.outline_modulate = color   # the bold main numeral's outline follows it
 
 
 func _get_die_for_entry(side: String, unit_id: String) -> RigidBody3D:
@@ -2526,6 +2529,28 @@ const _ENGRAVE_OFFSET_PX := 2.4   # groove rim spread, in label pixels
 # printed on the face instead of floating above it (the old 0.055 visibly parallaxed while rolling).
 const _NUMBER_NORMAL_OFFSET := 0.019
 const _NUMBER_OUTLINE_SIZE := 8   # thin dark outline on the main numeral for legibility
+# Flat pixel B: heavier numerals for the 1/3 render. The main numeral is thickened
+# by an outline in its OWN color (DICE_NUMERAL_BOLD font px each side), and its
+# dark edge moves to the shadow layer just beneath it, so side-face numbers keep
+# a stroke of 2+ dice pixels instead of breaking into single pixels.
+# `--dice-numeral-bold=N` and `--dice-numeral-font=m5x7|battle` override them for
+# comparison captures. Choice: docs/FLAT_PIXEL_PROTOTYPE.md, B Phase 6.
+const DICE_NUMERAL_BOLD := 3
+const DICE_NUMERAL_FONT := "m5x7"
+static var numeral_bold: int = DICE_NUMERAL_BOLD
+static var numeral_font: String = DICE_NUMERAL_FONT
+static var _numeral_args_read := false
+
+
+static func _read_numeral_args() -> void:
+	if _numeral_args_read:
+		return
+	_numeral_args_read = true
+	for arg: String in OS.get_cmdline_args() + OS.get_cmdline_user_args():
+		if arg.begins_with("--dice-numeral-bold="):
+			numeral_bold = clampi(int(arg.trim_prefix("--dice-numeral-bold=")), 0, 12)
+		elif arg.begins_with("--dice-numeral-font="):
+			numeral_font = arg.trim_prefix("--dice-numeral-font=")
 
 func _add_face_labels(die: RigidBody3D) -> void:
 	var base: Color = _die_base_color(die)
@@ -2546,10 +2571,11 @@ func _add_face_labels(die: RigidBody3D) -> void:
 		var down_right: Vector3 = face_basis.x * spread - face_basis.y * spread
 		var up_left: Vector3 = -face_basis.x * spread + face_basis.y * spread
 		_make_face_label(die, "FaceNumberWell%d" % value, value, face_basis, center_pos, _number_well_color_for(base), 5, 0, base, 14)
-		_make_face_label(die, "FaceNumberShadow%d" % value, value, face_basis, center_pos + up_left, _number_shadow_color_for(base), 6, 0, base)
+		# The shadow carries the dark edge around the (thickened) main numeral.
+		_make_face_label(die, "FaceNumberShadow%d" % value, value, face_basis, center_pos + up_left, _number_shadow_color_for(base), 6, numeral_bold + _NUMBER_OUTLINE_SIZE, base)
 		_make_face_label(die, "FaceNumberHighlight%d" % value, value, face_basis, center_pos + down_right, _number_highlight_color_for(base), 7, 0, base)
-		# Main numeral carries a thin dark outline that keeps it legible against the face.
-		_make_face_label(die, "FaceNumber%d" % value, value, face_basis, center_pos, _number_main_color_for(base), 8, _NUMBER_OUTLINE_SIZE, base)
+		# Main numeral: thickened by an outline in its own color (flat pixel B).
+		_make_face_label(die, "FaceNumber%d" % value, value, face_basis, center_pos, _number_main_color_for(base), 8, numeral_bold, base)
 
 
 func _make_face_label(die: RigidBody3D, node_name: String, value: int, face_basis: Basis, pos: Vector3, color: Color, priority: int, outline_size: int, base: Color, font_size_delta: int = 0) -> void:
@@ -2558,13 +2584,14 @@ func _make_face_label(die: RigidBody3D, node_name: String, value: int, face_basi
 	label.name = node_name
 	label.text = value_text
 	label.font = _get_dice_number_font()
-	label.font_size = (128 if value_text.length() == 1 else 108) + font_size_delta
+	label.font_size = _numeral_font_size(value_text) + font_size_delta
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.modulate = color
 	label.outline_size = outline_size
 	if outline_size > 0:
-		label.outline_modulate = _number_outline_color_for(base)
+		# The main numeral's outline is its own color (bold); the shadow's is dark.
+		label.outline_modulate = color if node_name == "FaceNumber%d" % value else _number_outline_color_for(base)
 	label.pixel_size = 0.0060
 	label.no_depth_test = false
 	label.render_priority = priority
@@ -2583,8 +2610,18 @@ func _get_dice_number_font() -> Font:
 	# dice were never wrong, their labels were). PixelUI.get_pixel_font() loads
 	# the imported resource via ResourceLoader and fails LOUDLY if it can't.
 	if _dice_number_font == null:
-		_dice_number_font = PixelUI.get_pixel_font()
+		_read_numeral_args()
+		_dice_number_font = PixelUI.get_battle_font() if numeral_font == "battle" else PixelUI.get_pixel_font()
 	return _dice_number_font
+
+
+# Numeral size in font px: m5x7 128 / 108 (one / two digits); Battle Block is a
+# 32 px bitmap, so whole multiples (4x / 3x) keep its pixels square.
+func _numeral_font_size(value_text: String) -> int:
+	_read_numeral_args()
+	if numeral_font == "battle":
+		return 128 if value_text.length() == 1 else 96
+	return 128 if value_text.length() == 1 else 108
 
 
 func _basis_for_triangle_face(a: Vector3, b: Vector3, c: Vector3, normal: Vector3) -> Basis:

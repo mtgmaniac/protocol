@@ -2194,8 +2194,8 @@ static func style_hp_number(label: Label, font_size: int) -> void:
 	label.add_theme_constant_override("outline_size", HP_NUMBER_OUTLINE_PX)
 
 
-## Battle-only bitmap lettering. Other screens retain the original font.
-static func style_battle_text(label: Control, ink: Color = BATTLE_TEXT, hp: bool = false) -> void:
+## The Battle Block bitmap font (falls back to the pixel font, loudly).
+static func get_battle_font() -> Font:
 	if _battle_pixel_font == null:
 		_battle_pixel_font = load("res://assets/fonts/battle_block.fnt") as Font
 		if _battle_pixel_font == null:
@@ -2203,7 +2203,12 @@ static func style_battle_text(label: Control, ink: Color = BATTLE_TEXT, hp: bool
 			_battle_pixel_font = get_pixel_font()
 		else:
 			_battle_pixel_font.fallbacks = [get_pixel_font()]
-	label.add_theme_font_override("font", _battle_pixel_font)
+	return _battle_pixel_font
+
+
+## Battle-only bitmap lettering. Other screens retain the original font.
+static func style_battle_text(label: Control, ink: Color = BATTLE_TEXT, hp: bool = false) -> void:
+	label.add_theme_font_override("font", get_battle_font())
 	label.add_theme_color_override("font_color", ink)
 	label.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
 	label.add_theme_color_override("font_outline_color", BLACK_EDGE)
