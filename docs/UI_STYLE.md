@@ -54,19 +54,31 @@ digits only). Sizes are whole multiples of the native size only
 
 | Role | Font | Size | Use | Case |
 |---|---|---|---|---|
-| DISPLAY | Battle Block | 96 | screen titles, battle header | caps |
-| CARD | Battle Block | 64 (x2) | battle card unit names and HP numbers | caps |
+| DISPLAY | Battle Block | 96, drawn pixel-exact (below) | screen titles, battle header | caps |
+| CARD | Battle Block | 64 to 96, drawn pixel-exact (below) | battle card unit names and HP numbers | caps |
 | LABEL | m5x7 | 64 (full-width primaries up to 112) | buttons, tabs, section headers, unit names off the battle card | caps |
 | BODY | m5x7 | 64, line spacing 10 | descriptions, help, battle log | sentence |
 | SMALL | m5x7 | 48 | rarity, version tag, cost labels, eyebrows | as written (metadata caps per the caps law) |
 | NUMERAL | m5x7 | 64 (die tags 80) | intent and pip numbers, HP off the battle card | n/a |
 
-CARD is the largest Battle Block multiple that fits the card at 360 px: the
-longest name (AVALANCHE) and a three-digit HP ("140 / 140") are 216 px in a
-332 px label and its 64 px line sits in the 80 px name row. x3 (96) is 324 px
-wide, touches the frame, and its 96 px line overruns the row into the BOSS /
-trait tag. Landscape (dev) cards scale the role and step down its lattice to
-fit. Check with `battle_ui_capture.gd --capture-card-fit`.
+**Battle Block draws pixel-exact.** A bitmap font keeps every stroke the same
+width only when one font pixel is a whole number of screen pixels, and the
+stretch scale differs per device (360 px wide: 1/3; 390: 0.361; the 540 preview:
+1/2). A fixed 64 put one font pixel on 1.33 screen px at 360 and 1.44 at 390,
+so strokes drew 1 and 2 px wide in the same numeral. Every Battle Block label
+(`apply_type` with DISPLAY or CARD, `style_battle_text`) is laid out at its
+role's cap and drawn with a scale of at most 1 (`PixelUI.bind_block_snap`) that
+puts one font pixel on exactly k screen px: the smallest k at or above the
+role's size, or the largest under the cap when that is over. Font pixel = size
+/ 16 design px. CARD 4 to 6 (64 to 96): 96 at 360, 88.6 at 390, 64 at 540.
+DISPLAY 6 (96): 96 at 360, 88.6 at 390, 96 at 540. Never set a Battle Block
+label's font size directly; check with `scripts/checks/stroke_runs.py` on a
+capture (every ink run a multiple of k).
+
+The CARD cap (96, x3) fits the card: the longest name (AVALANCHE) and a
+three-digit HP ("140 / 140") are 324 px in the 332 px label. Landscape (dev)
+cards step the role down to fit and keep the same draw rule. Check widths with
+`battle_ui_capture.gd --capture-card-fit`.
 
 No extra letter spacing on any role. Text floor 48 (`TEXT_MIN_PX`); the pip
 duration superscript is the one smaller exception. The dice faces keep their own

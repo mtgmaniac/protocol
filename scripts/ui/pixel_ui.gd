@@ -131,8 +131,8 @@ static func text_px(font_size: int) -> int:
 # Battle Block (bitmap, native 32, capitals and digits only) is the DISPLAY face
 # and, from ui-cleanup, the CARD face (battle card names and HP numbers).
 # Pixel fonts render only at whole multiples of their native size: m5x7 at
-# 48 / 64 / 80 / 96 (x3..x6), Battle Block at 64 (x2, CARD) and 96 (x3, DISPLAY). At 360 px wide both land
-# one font pixel on one screen pixel at x3. No extra letter spacing on any role
+# 48 / 64 / 80 / 96 (x3..x6). Battle Block (DISPLAY, CARD) is drawn pixel-exact
+# per device instead (BLOCK_FONT_PX, bind_block_snap). No extra letter spacing on any role
 # (the fonts' own advance); capitals only on DISPLAY and LABEL (and, by the
 # 2026-07-14 capitalization law, on SMALL metadata copy that is already caps).
 const FONT_NATIVE_M5X7 := 16
@@ -142,9 +142,9 @@ const TYPE_LABEL := "label"       # buttons, tabs, section headers, unit names
 const TYPE_BODY := "body"         # descriptions, help text, the battle log
 const TYPE_SMALL := "small"       # rarity labels, version tag, cost labels
 const TYPE_NUMERAL := "numeral"   # HP, intent and pip numbers
-## ui-cleanup: battle card unit names and HP numbers. Battle Block x2: the largest
-## multiple where AVALANCHE (216) and a three-digit HP (216) fit the card's 332 px
-## label and the 80 px name row; x3 needs 324 px wide and a 96 px line.
+## ui-cleanup: battle card unit names and HP numbers, Battle Block. ui-fix: 64 is
+## its least size; it is laid out at x3 (AVALANCHE and a three-digit HP are 324 px
+## in the card's 332 px label) and drawn pixel-exact (BLOCK_FONT_PX).
 const TYPE_CARD := "card"
 const TYPE_ROLES := {
 	TYPE_DISPLAY: {"family": "block", "size": 96},
@@ -189,6 +189,123 @@ static func apply_type(control: Control, role: String, ink: Variant = null, scal
 	if str(TYPE_ROLES[role]["family"]) == "block":
 		control.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
 		control.add_theme_color_override("font_outline_color", BLACK_EDGE)
+		var px: Vector2 = BLOCK_FONT_PX[role]
+		bind_block_snap(control, px.x * scale, px.y * scale)
+
+
+# ── Pixel-exact Battle Block (ui-fix, 2026-10-16) ──
+# A bitmap font draws every stroke the same width only when one font pixel
+# covers a WHOLE number of screen pixels. The stretch scale is per device
+# (360 px wide: 1/3, 390 px: 0.361, the 540 preview: 1/2), so no fixed font
+# size does it everywhere: at the old fixed 64 one font pixel was 1.33 screen
+# px at 360 and 1.44 at 390, and nearest sampling drew strokes 1 and 2 px wide
+# in the same numeral (HP looked thin along the bottom). So a Battle Block label
+# is laid out at its role's LARGEST size and drawn with a scale (<= 1) that puts
+# one font pixel on exactly k screen px: the smallest k at or above the role's
+# size, or, when that passes the cap, the largest k under it. Battle Block's
+# font pixel is font size / 16 design px. Min / max per role:
+#   CARD    4..6 (64..96): 360 -> 96 (k 2), 390 -> 88.6 (k 2), 540 -> 64 (k 2)
+#   DISPLAY 6..6 (96):     360 -> 96 (k 2), 390 -> 88.6 (k 2), 540 -> 96 (k 3)
+const BLOCK_FONT_PX := {
+	TYPE_CARD: Vector2(4.0, 6.0),
+	TYPE_DISPLAY: Vector2(6.0, 6.0),
+}
+
+
+## The Battle Block font pixel, in design px, for a role's [min_px, max_px] at a
+## screen scale (screen px per design px): a whole number of screen px.
+static func block_pixel_px(min_px: float, max_px: float, screen_scale: float) -> float:
+	if screen_scale <= 0.0:
+		return max_px
+	var k: int = maxi(1, ceili(min_px * screen_scale - 0.001))
+	if float(k) / screen_scale > max_px + 0.001:
+		k = maxi(1, floori(max_px * screen_scale + 0.001))
+	return float(k) / screen_scale
+
+
+## Lays a Battle Block label out at max_px (font size max_px x 16) and keeps its
+## draw scale pixel-exact across resizes, container sorts and window changes.
+static func bind_block_snap(label: Control, min_px: float, max_px: float) -> void:
+	label.add_theme_font_size_override("font_size", roundi(max_px * float(FONT_NATIVE_BLOCK) * 0.5))
+	label.set_meta("block_px", Vector2(min_px, max_px))
+	if not label.has_meta("block_snap_bound"):
+		label.set_meta("block_snap_bound", true)
+		label.resized.connect(_queue_block_snap.bind(label))
+		label.tree_entered.connect(_hook_block_snap.bind(label))
+		if label.is_inside_tree():
+			_hook_block_snap(label)
+	_queue_block_snap(label)
+
+
+static func _hook_block_snap(label: Control) -> void:
+	# One lambda per label: a signal treats two binds of the same method as one
+	# callable, so a second label in the same container could not connect.
+	if not label.has_meta("block_snap_redo"):
+		var redo := func() -> void: _queue_block_snap(label)
+		label.set_meta("block_snap_redo", redo)
+		label.tree_exiting.connect(_unhook_block_snap.bind(label))
+	var redo: Callable = label.get_meta("block_snap_redo")
+	var viewport: Viewport = label.get_viewport()
+	if viewport != null and not viewport.size_changed.is_connected(redo):
+		viewport.size_changed.connect(redo)
+	# A Container resets its children's scale when it sorts them.
+	var parent := label.get_parent() as Container
+	if parent != null and not parent.sort_children.is_connected(redo):
+		parent.sort_children.connect(redo)
+	_queue_block_snap(label)
+
+
+## Drops the label's hooks on the long-lived viewport and its container.
+static func _unhook_block_snap(label: Control) -> void:
+	var redo: Callable = label.get_meta("block_snap_redo", Callable())
+	if not redo.is_valid():
+		return
+	var viewport: Viewport = label.get_viewport()
+	if viewport != null and viewport.size_changed.is_connected(redo):
+		viewport.size_changed.disconnect(redo)
+	var parent := label.get_parent() as Container
+	if parent != null and parent.sort_children.is_connected(redo):
+		parent.sort_children.disconnect(redo)
+
+
+static func _queue_block_snap(label: Variant) -> void:
+	_apply_block_snap.call_deferred(label)
+
+
+## The screen px per design px at a node (stretch, canvas layer, parents).
+static func screen_scale_at(node: CanvasItem) -> float:
+	if node == null or not node.is_inside_tree():
+		return 0.0
+	var xf: Transform2D = node.get_viewport().get_final_transform() * node.get_global_transform_with_canvas()
+	return xf.get_scale().x
+
+
+static func _apply_block_snap(label_ref: Variant) -> void:
+	# Deferred: the label may have been freed in between.
+	if not is_instance_valid(label_ref) or not (label_ref is Control):
+		return
+	var label := label_ref as Control
+	if not label.is_inside_tree() or not label.has_meta("block_px"):
+		return
+	var px: Vector2 = label.get_meta("block_px")
+	var parent := label.get_parent() as CanvasItem
+	var at_scale: float = screen_scale_at(parent) if parent != null else 0.0
+	var f: float = block_pixel_px(px.x, px.y, at_scale) / px.y
+	# Scale about the text's anchor so alignment holds: left, centre or right.
+	var pivot := Vector2(label.size.x * 0.5, label.size.y * 0.5)
+	if label is Label:
+		match (label as Label).horizontal_alignment:
+			HORIZONTAL_ALIGNMENT_LEFT:
+				pivot.x = 0.0
+			HORIZONTAL_ALIGNMENT_RIGHT:
+				pivot.x = label.size.x
+		match (label as Label).vertical_alignment:
+			VERTICAL_ALIGNMENT_TOP:
+				pivot.y = 0.0
+			VERTICAL_ALIGNMENT_BOTTOM:
+				pivot.y = label.size.y
+	label.pivot_offset = pivot
+	label.scale = Vector2(f, f)
 
 
 ## Snap a layout length or coordinate to a whole, EVEN design px (text
@@ -2367,7 +2484,8 @@ static func get_battle_font() -> Font:
 ## lattice (multiples of 32) so its bitmap pixels stay square.
 static func style_battle_text(label: Control, ink: Color = BATTLE_TEXT, hp: bool = false) -> void:
 	label.add_theme_font_override("font", get_battle_font())
-	label.add_theme_font_size_override("font_size", lattice_px(label.get_theme_font_size("font_size"), "block"))
+	var block_px: float = float(lattice_px(label.get_theme_font_size("font_size"), "block")) / 16.0
+	bind_block_snap(label, block_px, block_px)
 	label.add_theme_color_override("font_color", ink)
 	label.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
 	label.add_theme_color_override("font_outline_color", BLACK_EDGE)
