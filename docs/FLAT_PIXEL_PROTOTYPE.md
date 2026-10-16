@@ -72,3 +72,68 @@ All in `scripts/ui/pixel_ui.gd` ("Color roles" block):
 
 Checks: MainMenu and BattleScene load headless with no script errors;
 `component_contract.py` PASS.
+
+**Correction (found in Phase 2):** the Phase 1 boot check above did not run. The
+Downloads folder holds only the 4.6.2 console wrapper, which exits with "Main
+executable not found", and the grep hid it. Re-run in Phase 2 with the 4.6.2 pair
+in an earlier session's scratchpad (`.../2c274bf6-.../scratchpad/godot/`):
+MainMenu and BattleScene load headless with no script errors.
+
+## Phase 2: the system color
+
+Four candidates in `PixelUI.SYSTEM_ACCENT_CANDIDATES` (accent / dim / ink):
+
+| id | accent | dim | ink |
+|---|---|---|---|
+| bone | `e6dec8` | `837d6e` | `15130e` |
+| phosphor | `8fd16a` | `4c7338` | `0c1409` |
+| cyan | `3fd0e2` (= DT_CYAN) | `1f6f7a` | `061217` |
+| amber | `edb03e` (= restyle A's UI_ACCENT) | `8a6526` | `17120a` |
+
+- **F10** (debug builds, any screen) cycles them: `PersistentHeader` calls
+  `PixelUI.set_system_accent`, restyles the header, then calls the current
+  screen's `restyle_system_accent()` if it has one (the battle screen, so a fight
+  is not lost) or reloads the screen otherwise.
+- **`--system-accent=<id>`** on the command line starts on a candidate (captures).
+- Scored from title captures at 390x867, all four side by side
+  (`debug_artifacts/flat_pixel_a/title_*.png` are the final versions).
+
+Scores, 1 (bad) to 5 (good):
+
+| | a. not generic sci-fi | b. no meaning collision | c. legibility at 390 | d. pixel / Slice & Dice fit | e. distinct from encounters | total |
+|---|---|---|---|---|---|---|
+| **BONE** | 5 | 4 | 5 | 5 | 4 | **23** |
+| PHOSPHOR | 3 | 1 | 4 | 3 | 5 | 16 |
+| CYAN | 1 | 1 | 4 | 2 | 5 | 13 |
+| AMBER | 2 | 1 | 4 | 3 | 1 | 11 |
+
+Why:
+
+- **a.** Cyan on navy and amber on black are the stock "AI sci-fi" palettes.
+  Phosphor green is the retro-terminal trope, less generic but still a trope.
+  Bone reads as paper / parchment / tabletop.
+- **b.** PHOSPHOR is green: it collides with the HP bars, the heal icon and the
+  ROLL button, and INVARIANTS #7 forbids any other green ("nothing else is ever
+  green"). CYAN is DT_CYAN exactly: hero coding (names, borders, hero dice) and the
+  `selected_card` component. AMBER is restyle A's accent, the same hex as
+  legendary gold (`edb03e`), within a few degrees of the Facility encounter amber
+  and the Protocol cost badges (DT_AMBER), and next to the warning rust. BONE has
+  no hue meaning anywhere; its one collision is with body text (below).
+- **c.** All four read at 390 px. Bone is the brightest, and the selected state
+  (a bone fill with dark ink) has the most contrast of the four.
+- **d.** Slice & Dice-style pixel UIs carry warm off-white chrome over dark
+  fields and leave saturated color to the dice and units. Bone does exactly that
+  and lets the hero cyan and enemy rust keep the color meaning.
+- **e.** Encounters are amber, red, violet, magenta and ochre. Bone is low
+  saturation, so it sits apart from all five; ochre (Mantle) is its nearest
+  neighbour by hue but far more saturated. Amber collides with Facility and
+  Mantle.
+
+**Default: BONE** (`SYSTEM_ACCENT_DEFAULT = 0`). All four stay on F10.
+
+**Collision reported, not fixed:** bone is close to `UI_TEXT` (`e8e6df`, warm
+white). A primary button's label is now about the same color as a secondary
+button's label; the primary still reads by its bone border, thick left edge and
+tab. A cooler neutral `UI_TEXT` would separate them, but it is the body text color
+on every restyled screen, so it was left for a ruling. No HP, heal or hero color
+was changed to make any candidate work.

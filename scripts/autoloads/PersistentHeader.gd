@@ -78,6 +78,7 @@ func _ready() -> void:
 	# Sharp (NEAREST) sampling for every pixel-font node, game-wide. This
 	# always-alive autoload is the one installer; PixelUI owns the rule.
 	PixelUI.install_text_filter(get_tree())
+	_apply_system_accent_arg()
 	_fit_desktop_window()
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8
@@ -358,6 +359,8 @@ var _dev_last_tap_ms := -2000
 var _dev_tap_sources: Array = []  # WeakRefs to extra tap targets
 
 func _input(event: InputEvent) -> void:
+	if _handle_system_accent_key(event):
+		return
 	var press := false
 	var pos := Vector2.ZERO
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -368,6 +371,36 @@ func _input(event: InputEvent) -> void:
 		pos = event.position
 	if press and not _summary_label.get_global_rect().has_point(pos) and not _on_extra_tap_source(pos):
 		_dev_tap_count = 0
+
+
+## Flat pixel A, debug builds: F10 cycles the SYSTEM_ACCENT candidates. The
+## header restyles itself; a screen with `restyle_system_accent()` (the battle
+## screen) restyles in place; any other screen is reloaded so it rebuilds in the
+## new color. Returns true when it used the key.
+func _handle_system_accent_key(event: InputEvent) -> bool:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo or key.keycode != KEY_F10 or not OS.is_debug_build():
+		return false
+	get_viewport().set_input_as_handled()
+	var id: String = PixelUI.set_system_accent(PixelUI.system_accent_index + 1)
+	print("[SYSTEM_ACCENT] %s" % id)
+	_style()
+	var scene: Node = get_tree().current_scene
+	if scene != null and scene.has_method("restyle_system_accent"):
+		scene.call("restyle_system_accent")
+	elif scene != null:
+		get_tree().reload_current_scene()
+	return true
+
+
+## `--system-accent=<id>` (bone / phosphor / cyan / amber) starts on that
+## candidate, for captures. Read from both the engine and the user arguments.
+func _apply_system_accent_arg() -> void:
+	for arg: String in OS.get_cmdline_args() + OS.get_cmdline_user_args():
+		if arg.begins_with("--system-accent="):
+			var index: int = PixelUI.system_accent_index_of(arg.trim_prefix("--system-accent="))
+			if index >= 0:
+				PixelUI.set_system_accent(index)
 
 
 ## Another control that counts toward the seven-tap unlock: the title screen's

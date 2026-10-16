@@ -138,10 +138,42 @@ const BODY_LINE_SPACING := 10
 # select, primary and selected states, the Protocol meter, the battle header's
 # ? and back icons, the footer icons. SYSTEM_ACCENT_DIM is its darker variant for
 # borders and inactive states; SYSTEM_ACCENT_INK is dark text on an accent fill.
-# They are vars: the debug key F10 swaps them (see set_system_accent).
-static var SYSTEM_ACCENT := Color("edb03e")
-static var SYSTEM_ACCENT_DIM := Color("8a6526")
-static var SYSTEM_ACCENT_INK := Color("17120a")
+# They are vars: the debug key F10 cycles the candidates (set_system_accent).
+# Scores and the reason for the default: docs/FLAT_PIXEL_PROTOTYPE.md, Phase 2.
+const SYSTEM_ACCENT_CANDIDATES := [
+	{"id": "bone", "accent": Color("e6dec8"), "dim": Color("837d6e"), "ink": Color("15130e")},
+	{"id": "phosphor", "accent": Color("8fd16a"), "dim": Color("4c7338"), "ink": Color("0c1409")},
+	{"id": "cyan", "accent": Color("3fd0e2"), "dim": Color("1f6f7a"), "ink": Color("061217")},
+	{"id": "amber", "accent": Color("edb03e"), "dim": Color("8a6526"), "ink": Color("17120a")},
+]
+const SYSTEM_ACCENT_DEFAULT := 0
+static var system_accent_index: int = SYSTEM_ACCENT_DEFAULT
+static var SYSTEM_ACCENT: Color = SYSTEM_ACCENT_CANDIDATES[SYSTEM_ACCENT_DEFAULT]["accent"]
+static var SYSTEM_ACCENT_DIM: Color = SYSTEM_ACCENT_CANDIDATES[SYSTEM_ACCENT_DEFAULT]["dim"]
+static var SYSTEM_ACCENT_INK: Color = SYSTEM_ACCENT_CANDIDATES[SYSTEM_ACCENT_DEFAULT]["ink"]
+
+
+## Switches the system color to candidate `index` (wraps). Styles built before
+## the call keep the old color: the caller rebuilds them (PersistentHeader's F10
+## reloads the screen). Returns the candidate's id.
+static func set_system_accent(index: int) -> String:
+	system_accent_index = posmod(index, SYSTEM_ACCENT_CANDIDATES.size())
+	var candidate: Dictionary = SYSTEM_ACCENT_CANDIDATES[system_accent_index]
+	SYSTEM_ACCENT = candidate["accent"]
+	SYSTEM_ACCENT_DIM = candidate["dim"]
+	SYSTEM_ACCENT_INK = candidate["ink"]
+	_ui_thumb = null
+	for material: ShaderMaterial in _accent_materials.values():
+		material.set_shader_parameter("accent", SYSTEM_ACCENT)
+	return str(candidate["id"])
+
+
+## The candidate index for an id ("bone", "phosphor", "cyan", "amber"); -1 if none.
+static func system_accent_index_of(id: String) -> int:
+	for i in range(SYSTEM_ACCENT_CANDIDATES.size()):
+		if str(SYSTEM_ACCENT_CANDIDATES[i]["id"]) == id:
+			return i
+	return -1
 #
 # ENCOUNTER: one per operation, named by token in data/raw/battle-tray-scenes.json
 # (`accent`), read through battle_depth.gd `encounter_accent`. In battle it drives
