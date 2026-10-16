@@ -1071,6 +1071,7 @@ func _apply_visual_theme() -> void:
 	footer_label.custom_minimum_size = Vector2(0, FOOTER_RESERVED_HEIGHT)
 	PixelUI.style_label(title_label, 44, PixelUI.CHROME, 0)
 	PixelUI.style_label(reward_title_label, 72, PixelUI.CHROME, 0)
+	PixelUI.apply_type(reward_title_label, PixelUI.TYPE_DISPLAY)   # ui-unify: screen title
 	PixelUI.style_label(summary_label, 32, PixelUI.UI_TEXT, 0)
 	PixelUI.style_label(inventory_label, 28, PixelUI.UI_TEXT_DIM, 0)
 	PixelUI.style_label(footer_label, FOOTER_FONT, PixelUI.UI_TEXT, 0)

@@ -3540,7 +3540,7 @@ func _apply_battle_theme() -> void:
 	protocol_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
 	protocol_label.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.05, 0.98))
 	protocol_label.add_theme_constant_override("outline_size", 2)
-	PixelUI.style_battle_text(protocol_label)
+	PixelUI.apply_type(protocol_label, PixelUI.TYPE_SMALL, PixelUI.BATTLE_TEXT)
 	PixelUI.apply_pixel_font(protocol_value_label)
 	protocol_value_label.add_theme_font_size_override("font_size", PROTOCOL_VALUE_FONT_SIZE)
 	protocol_value_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)

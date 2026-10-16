@@ -150,7 +150,7 @@ func apply_battle_presentation(text_scale: float) -> void:
 	if is_equal_approx(_battle_text_scale, text_scale):
 		return
 	_battle_text_scale = text_scale
-	_name_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(CARD_NAME_FONT_SIZE * text_scale)))
+	_name_label.add_theme_font_size_override("font_size", PixelUI.type_px(PixelUI.TYPE_LABEL, text_scale))
 	_boss_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
 	_trait_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
 	_name_label.get_parent().custom_minimum_size.y = NAME_ROW_HEIGHT * text_scale
@@ -158,7 +158,7 @@ func apply_battle_presentation(text_scale: float) -> void:
 	_boss_label.offset_bottom = -28.0 * text_scale
 	_trait_label.offset_top = -28.0 * text_scale
 	_trait_label.offset_bottom = -28.0 * text_scale
-	_hp_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(CARD_HP_FONT_SIZE * text_scale)))
+	_hp_label.add_theme_font_size_override("font_size", PixelUI.type_px(PixelUI.TYPE_NUMERAL, text_scale))
 	_hp_back.custom_minimum_size.y = HP_BAR_HEIGHT * text_scale
 	_hp_fill.offset_bottom = HP_FILL_HEIGHT * text_scale
 	_hp_chip.offset_bottom = HP_FILL_HEIGHT * text_scale
@@ -433,8 +433,8 @@ func _build() -> void:
 	_hp_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	PixelUI.style_hp_number(_hp_label, CARD_HP_FONT_SIZE)
-	PixelUI.style_battle_text(_hp_label, PixelUI.BATTLE_HP_INK, true)
+	PixelUI.style_hp_number(_hp_label, PixelUI.type_px(PixelUI.TYPE_NUMERAL))
+	_hp_label.add_theme_color_override("font_color", PixelUI.BATTLE_HP_INK)
 	_hp_back.add_child(_hp_label)
 
 	_action_panel = PanelContainer.new()
@@ -567,7 +567,7 @@ func _refresh() -> void:
 		_update_portrait_size()
 
 	_name_label.text = unit_name.to_upper()
-	PixelUI.style_battle_text(_name_label, _name_font_color(is_hero))
+	PixelUI.apply_type(_name_label, PixelUI.TYPE_LABEL, _name_font_color(is_hero), _battle_text_scale)
 	_boss_label.visible = is_boss
 	var has_trait_marker: bool = trait_marker != "" and not is_boss
 	_trait_label.visible = has_trait_marker

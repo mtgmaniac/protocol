@@ -123,7 +123,62 @@ const TEXT_MIN_PX := 48
 
 
 static func text_px(font_size: int) -> int:
-	return maxi(font_size, TEXT_MIN_PX)
+	return lattice_px(maxi(font_size, TEXT_MIN_PX))
+
+
+# ── Type system (ui-unify, docs/UI_UNIFY.md + docs/UI_STYLE.md) ──
+# Two families. m5x7 (native em 16, full ASCII) carries every reading role;
+# Battle Block (bitmap, native 32, capitals and digits only) is the DISPLAY face.
+# Pixel fonts render only at whole multiples of their native size: m5x7 at
+# 48 / 64 / 80 / 96 (x3..x6), Battle Block at 96 (x3). At 360 px wide both land
+# one font pixel on one screen pixel at x3. No extra letter spacing on any role
+# (the fonts' own advance); capitals only on DISPLAY and LABEL (and, by the
+# 2026-07-14 capitalization law, on SMALL metadata copy that is already caps).
+const FONT_NATIVE_M5X7 := 16
+const FONT_NATIVE_BLOCK := 32
+const TYPE_DISPLAY := "display"   # screen titles, the battle header
+const TYPE_LABEL := "label"       # buttons, tabs, section headers, unit names
+const TYPE_BODY := "body"         # descriptions, help text, the battle log
+const TYPE_SMALL := "small"       # rarity labels, version tag, cost labels
+const TYPE_NUMERAL := "numeral"   # HP, intent and pip numbers
+const TYPE_ROLES := {
+	TYPE_DISPLAY: {"family": "block", "size": 96},
+	TYPE_LABEL: {"family": "m5x7", "size": 64},   # primary buttons step up the lattice
+	TYPE_BODY: {"family": "m5x7", "size": 64},
+	TYPE_SMALL: {"family": "m5x7", "size": 48},
+	TYPE_NUMERAL: {"family": "m5x7", "size": 64},
+}
+
+
+## A font size snapped to the nearest whole multiple of the family's native
+## size, never below `floor_px` (m5x7: TEXT_MIN_PX; Battle Block: x2).
+static func lattice_px(size: int, family: String = "m5x7", floor_px: int = -1) -> int:
+	var native: int = FONT_NATIVE_BLOCK if family == "block" else FONT_NATIVE_M5X7
+	var least: int = floor_px if floor_px > 0 else (native * 2 if family == "block" else TEXT_MIN_PX)
+	return maxi(least, roundi(float(size) / float(native)) * native)
+
+
+static func type_font(role: String) -> Font:
+	return get_battle_font() if str(TYPE_ROLES[role]["family"]) == "block" else get_pixel_font()
+
+
+## The role's size in design px, times `scale` (landscape presentation), kept
+## on the family's lattice.
+static func type_px(role: String, scale: float = 1.0) -> int:
+	var spec: Dictionary = TYPE_ROLES[role]
+	return lattice_px(int(round(float(spec["size"]) * scale)), str(spec["family"]))
+
+
+## Applies a type role: family, size and (optionally) ink. DISPLAY also gets the
+## Battle Block treatment (no shadow, dark edge).
+static func apply_type(control: Control, role: String, ink: Variant = null, scale: float = 1.0) -> void:
+	control.add_theme_font_override("font", type_font(role))
+	control.add_theme_font_size_override("font_size", type_px(role, scale))
+	if ink is Color:
+		control.add_theme_color_override("font_color", ink)
+	if str(TYPE_ROLES[role]["family"]) == "block":
+		control.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
+		control.add_theme_color_override("font_outline_color", BLACK_EDGE)
 
 
 ## Snap a layout length or coordinate to a whole, EVEN design px (text
@@ -1539,7 +1594,8 @@ static func scale_font_size(font_size: int) -> int:
 	for stepped_size in UI_FONT_STEPS:
 		if scaled_size <= int(stepped_size):
 			return int(stepped_size)
-	return scaled_size
+	# ui-unify: above the ladder, still a whole multiple of m5x7's native 16.
+	return lattice_px(scaled_size)
 
 
 static func effect_color(kind: String) -> Color:
@@ -2207,8 +2263,11 @@ static func get_battle_font() -> Font:
 
 
 ## Battle-only bitmap lettering. Other screens retain the original font.
+## ui-unify: Battle Block is the DISPLAY face only; its size snaps to its own
+## lattice (multiples of 32) so its bitmap pixels stay square.
 static func style_battle_text(label: Control, ink: Color = BATTLE_TEXT, hp: bool = false) -> void:
 	label.add_theme_font_override("font", get_battle_font())
+	label.add_theme_font_size_override("font_size", lattice_px(label.get_theme_font_size("font_size"), "block"))
 	label.add_theme_color_override("font_color", ink)
 	label.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
 	label.add_theme_color_override("font_outline_color", BLACK_EDGE)
@@ -2537,8 +2596,11 @@ static func ui_secondary_style(fill: Color, border: Color, bar: Color) -> StyleB
 static func _ui_button_fonts(button: Button, font_size: int, normal: Color, hover: Color, pressed: Color, disabled: Color) -> void:
 	# Screens that add their own hover pass skip buttons carrying this mark.
 	button.set_meta("ui_styled", true)
-	apply_pixel_font(button)
-	button.add_theme_font_size_override("font_size", scale_font_size(font_size))
+	# ui-unify: every restyled button and tab is the LABEL role (m5x7, caps). Its
+	# size is the caller's step on the m5x7 lattice: 64 for ordinary buttons and
+	# tabs, larger whole multiples for a full-width primary (DEPLOY, CONFIRM).
+	apply_type(button, TYPE_LABEL)
+	button.add_theme_font_size_override("font_size", maxi(type_px(TYPE_LABEL), lattice_px(scale_font_size(font_size))))
 	button.add_theme_color_override("font_color", normal)
 	button.add_theme_color_override("font_hover_color", hover)
 	button.add_theme_color_override("font_focus_color", hover)

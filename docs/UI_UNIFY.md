@@ -664,3 +664,55 @@ Total: **43** sites (project default canvas filter: see project.godot).
 | Help: Settings tab | `help_menu.gd` | restyled |
 | Help: Basics, Units, Battle Log, icon guide, bestiary | `help_menu.gd` | partly (tabs restyled, page bodies old) |
 | Tutorial: spotlight, coach, training prompts | `spotlight_layer.gd`, `training_prompt.gd`, `tutorial_controller.gd` | old |
+
+## Phase 2: type system
+
+**Families (two):**
+
+- **m5x7** (`m5x7.ttf`, native em 16): LABEL, BODY, SMALL, NUMERAL. It is the
+  only face with lowercase (BODY is sentence case), every reading role already
+  uses it, and at x3 (48 design px) one font pixel is exactly one screen pixel
+  on a 360 px wide phone: the crispest small text the project can draw there.
+  The HP and pip widths in the code are measured with its advance.
+- **Battle Block** (`battle_block.fnt`, native 32): DISPLAY only. Its 2 px
+  chunky capitals read best as headlines, but it has no lowercase (60 glyphs),
+  so it cannot carry reading text. At x3 (96) it is also one bitmap pixel per
+  screen pixel at 360 px.
+- The dice faces keep their font (m5x7, flat pixel B bold numerals): untouched.
+
+**Roles** (`PixelUI.TYPE_ROLES`, applied with `PixelUI.apply_type(control, role)`):
+
+| Role | Family | Size (design px) | Use | Caps |
+|---|---|---|---|---|
+| DISPLAY | Battle Block | 96 (x3) | screen titles, the battle header | yes |
+| LABEL | m5x7 | 64 (x4); full-width primaries step up the lattice (112 = x7 for DEPLOY / CONFIRM) | buttons, tabs, section headers, unit names | yes |
+| BODY | m5x7 | 64 (x4), line spacing 10 | descriptions, help text, the battle log | no |
+| SMALL | m5x7 | 48 (x3) | rarity labels, version tag, cost labels, the Protocol label | metadata copy that is already caps (see below) |
+| NUMERAL | m5x7 | 64 (x4) on cards; die tags use the x5 rung (80) | HP, intent and pip numbers | n/a |
+
+**Integer multiples only.** `PixelUI.lattice_px(size, family)` snaps a size to
+the nearest whole multiple of the family's native size (m5x7 floor 48, Battle
+Block floor 64). Every choke point routes through it: `text_px` (was: floor 48,
+otherwise raw), `scale_font_size` above its 48/64/80 ladder (was raw x1.35, e.g.
+113), `style_battle_text` (Battle Block now snaps to multiples of 32; the header
+went 112 -> 96), and the restyled button / tab helper. The EffectPip duration
+superscript (its smaller size is its meaning, the text-legibility exemption)
+snaps to the lattice with a 32 floor instead of a raw 29.
+
+**Letter spacing:** one rule for every role, the fonts' own advance (no extra
+tracking). Glyph spacing in a pixel font must also be whole font pixels; zero is
+the only value that is identical on every role and size.
+
+**Applied in this phase:** the battle header and count (DISPLAY, Battle Block
+96); battle card names (LABEL, m5x7 64; they were Battle Block 72); battle HP
+numbers (NUMERAL, m5x7 64; were Battle Block 72); the footer PROTOCOL label
+(SMALL, m5x7 48; was Battle Block 70); every restyled button, tab and toggle
+(LABEL); the reward title CHOOSE REWARD (DISPLAY). The other screens take their
+roles in Phases 5 to 8; the sizes they pass already land on the lattice through
+the choke points.
+
+**Conflict logged:** "caps only for DISPLAY and LABEL" meets the capitalization
+law (INVARIANTS #7, Kev 2026-07-14), which puts small metadata labels in ALL
+CAPS ("LEGENDARY CONSUMABLE", "ROLL: 1 - 4"). Copy is unchanged and the law is a
+ruling, so SMALL keeps caps where the copy is caps; nothing is upper-cased by
+the type system except DISPLAY and LABEL helpers.

@@ -25,7 +25,7 @@ const HEADER_HEIGHT := 144.0
 ## _apply_safe_area() re-derives the offsets, so the pad must be named here or
 ## the safe-area pass would silently erase it.
 const BAR_PAD_X := 16.0
-const SUMMARY_FONT_SIZE := 112
+const SUMMARY_FONT_SIZE := 96   # ui-unify: the DISPLAY role (Battle Block x3)
 const BUTTON_SIZE := Vector2(112, 112)
 const LANDSCAPE_STYLE := preload("res://scripts/battle/landscape_battle_style.gd").VALUES
 var _battle_landscape := false
