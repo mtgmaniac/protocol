@@ -1245,3 +1245,15 @@ broken under `--script` (superseded by `overlay_capture.gd`).
 
 Checks: `component_contract`, `caps_law`, `framing_sites`, `panel_count_test`,
 `help_polish_test` PASS. `battle_scene.gd` 3,627 lines.
+
+## Cleanup phase 7: copy vs data report
+
+`docs/COPY_DATA_MISMATCHES.md` (report only, nothing changed). Effect strings,
+relic / item / gear descriptions and the keyword glossary match the data and
+engine. Eight copy mismatches listed with file and line (reward help "cyan",
+Hive THREATS "SIPHON", Pulse / Scrap Drone / Bloodmite overclaims, Accrete vs the
+Tyrant's cadence, a stale relic name in the log, "Synod"). **The Scrapmaster
+heal-per-drone mechanic is not in the game on any branch**: ASSEMBLY LINE (50%
+rebuild every 2nd enemy phase) is live, so the Scrapmaster copy matches today.
+The trailing "ACTIVE" is appended by code at
+`operation_briefing_overlay.gd:128`.
