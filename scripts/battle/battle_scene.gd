@@ -2786,7 +2786,7 @@ func _style_roll_button_for_phase() -> void:
 			# Active primary action: ready to roll — player-color primary button.
 			roll_button.icon = null
 			roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
-			PixelUI.style_primary_button(roll_button, action_font, false, false)
+			PixelUI.style_ui_primary_button(roll_button, action_font)
 		PHASE_TARGETING:
 			# Hidden: targetable cards use team border color (see CompactUnitCard).
 			pass
@@ -2794,7 +2794,7 @@ func _style_roll_button_for_phase() -> void:
 			# END TURN: the battle's primary action, in the player color (flat pixel B).
 			roll_button.icon = null
 			roll_button.custom_minimum_size = CENTER_ACTION_BUTTON_SIZE
-			PixelUI.style_primary_button(roll_button, action_font, false, false)
+			PixelUI.style_ui_primary_button(roll_button, action_font)
 		_:
 			# Item-pick / fallback states are also hidden; the affordance
 			# is the highlighted card the player must tap.

@@ -504,3 +504,30 @@ PASS. MainMenu, BattleScene, UnitSelect, RewardScreen load headless clean.
   lossless, path convention, and the JSON to register it.
 - Observed: in battle the backdrop is mostly covered by design. With two enemies
   it shows between and beside the enemy cards; with three, only slivers.
+
+## B Phase 4: notch rule
+
+- The notched button (`style_ui_primary_button`: PLAYER_ACCENT border and left
+  edge, PLAYER_ACCENT_LIGHT text, the one top-left notch) is now used ONLY by:
+  title CONTINUE (BEGIN when no run is saved; the existing rule), reward CONFIRM,
+  DEPLOY SQUAD (was the bracketed teal-style primary), and the battle's centre
+  action button, END TURN.
+- **Choice: ROLL gets the notch too.** ROLL and END TURN are the same button
+  (`roll_button`) in two phases, the battle's one primary action; giving one
+  phase the notch and the other a secondary style would make the same control
+  change shape mid-turn. Easy to flip in `_style_roll_button_for_phase`.
+- **Lost the notch (now secondary CHROME):** Help's SEND FEEDBACK and the dev
+  RESET SAVE PROFILE button (Help has no screen primary), the title's first-run
+  RUN TUTORIAL and the abandon modal's ABANDON RUN (modal buttons, not the
+  screen's primary).
+- Secondary buttons are CHROME (neutral border, steel left bar, light text);
+  disabled is the dimmed secondary. Unchanged.
+- **Focus:** the title's menu buttons take keyboard focus in the desktop build
+  (default focus mode); most other buttons are `FOCUS_NONE`. Primary and
+  secondary buttons now draw focus as a PLAYER_ACCENT outline 8 design px
+  outside the button (`_ui_focus_style`, drawn over the normal style), so the
+  notch never moves. It was an empty style before (no visible focus).
+- Old screens keep `style_primary_button` (player colors, corner brackets, no
+  notch): evolution, route fork, run end, unlock, state code panel, training
+  prompt, the battle's stay / cancel / Set confirm buttons. Listed under "still
+  on old styling".

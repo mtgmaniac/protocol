@@ -904,19 +904,16 @@ func _on_toggle_safe_area_overlay(pressed: bool) -> void:
 		overlay.refresh_from_settings()
 
 
-func _make_dev_button(text: String, amber: bool) -> Button:
+func _make_dev_button(text: String, _amber: bool) -> Button:
 	var btn := Button.new()
 	btn.text = text
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.custom_minimum_size = Vector2(0, 110)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	# Kev 2026-07-10: settings buttons + text sized up for phone hands. UI
-	# restyle A: the accent variant is the primary component, the rest secondary.
-	if amber:
-		PixelUI.style_ui_primary_button(btn, 44)
-	else:
-		PixelUI.style_ui_secondary_button(btn, 44)
+	# Kev 2026-07-10: settings buttons + text sized up for phone hands. Flat pixel
+	# B notch rule: Help has no screen primary, so every button here is secondary.
+	PixelUI.style_ui_secondary_button(btn, 44)
 	return btn
 
 
@@ -934,7 +931,7 @@ func _on_dev_reset_profile() -> void:
 	if not _reset_armed:
 		_reset_armed = true
 		_reset_dev_button.text = "SELECT AGAIN TO CONFIRM"
-		PixelUI.style_ui_primary_button(_reset_dev_button, BODY_FONT)
+		PixelUI.style_ui_secondary_button(_reset_dev_button, BODY_FONT)
 		_disarm_reset_after_delay()
 		return
 	var sm: Variant = _save_manager()
@@ -952,7 +949,7 @@ func _disarm_reset_after_delay() -> void:
 	if _reset_armed and is_instance_valid(_reset_dev_button):
 		_reset_armed = false
 		_reset_dev_button.text = "RESET SAVE PROFILE (DEV)"
-		PixelUI.style_ui_primary_button(_reset_dev_button, BODY_FONT)
+		PixelUI.style_ui_secondary_button(_reset_dev_button, BODY_FONT)
 
 
 # Live AudioManager node (Variant) so this compiles even when the autoload is absent

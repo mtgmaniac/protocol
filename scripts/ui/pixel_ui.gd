@@ -2544,6 +2544,12 @@ static func _ui_button_fonts(button: Button, font_size: int, normal: Color, hove
 	_refresh_corner_brackets(button, Color.TRANSPARENT)
 
 
+## The NOTCH RULE (flat pixel B): this notched PLAYER button is used ONLY for a
+## screen's one primary action: the title's CONTINUE (BEGIN with no saved run),
+## reward CONFIRM, DEPLOY SQUAD, and the battle's centre action (END TURN, and
+## ROLL, the same button's other phase). Every other button is secondary
+## (CHROME) or disabled (dimmed CHROME). Keyboard focus is a PLAYER outline
+## around the button (_ui_focus_style), never a moved notch.
 static func style_ui_primary_button(button: Button, font_size: int = 48) -> void:
 	if button == null:
 		return
@@ -2551,7 +2557,7 @@ static func style_ui_primary_button(button: Button, font_size: int = 48) -> void
 	_ui_button_fonts(button, font_size, PLAYER_ACCENT_LIGHT, PLAYER_ACCENT_LIGHT.lightened(0.25), PLAYER_ACCENT_INK, UI_TEXT_OFF)
 	button.add_theme_stylebox_override("normal", ui_primary_style(UI_BUTTON, PLAYER_ACCENT))
 	button.add_theme_stylebox_override("hover", ui_primary_style(UI_BUTTON.lightened(0.05), PLAYER_ACCENT.lightened(0.15)))
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("focus", _ui_focus_style())
 	button.add_theme_stylebox_override("pressed", ui_primary_style(PLAYER_ACCENT, PLAYER_ACCENT))
 	button.add_theme_stylebox_override("disabled", _ui_disabled_style())
 
@@ -2563,9 +2569,20 @@ static func style_ui_secondary_button(button: Button, font_size: int = 44) -> vo
 	_ui_button_fonts(button, font_size, UI_TEXT, UI_TEXT, CHROME_INK, UI_TEXT_OFF)
 	button.add_theme_stylebox_override("normal", ui_secondary_style(UI_BUTTON, UI_LINE, UI_BAR))
 	button.add_theme_stylebox_override("hover", ui_secondary_style(UI_BUTTON.lightened(0.05), UI_LINE.lightened(0.15), UI_BAR.lightened(0.15)))
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("focus", _ui_focus_style())
 	button.add_theme_stylebox_override("pressed", ui_secondary_style(UI_BAR, UI_BAR, UI_BAR))
 	button.add_theme_stylebox_override("disabled", _ui_disabled_style())
+
+
+## Keyboard focus: a PLAYER_ACCENT outline just outside the button, drawn over
+## its normal style. The button's own shape (and a primary's notch) never moves.
+static func _ui_focus_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.draw_center = false
+	style.border_color = PLAYER_ACCENT
+	style.set_border_width_all(MIN_STROKE)
+	style.set_expand_margin_all(float(MIN_STROKE * 2))
+	return style
 
 
 ## Disabled = the secondary shape, its border, bar and text dimmed.

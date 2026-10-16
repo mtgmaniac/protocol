@@ -981,7 +981,7 @@ func _refresh_deploy() -> void:
 	if ready:
 		# Requirement met → actionable teal primary button.
 		_deploy_button.text = "DEPLOY SQUAD"
-		PixelUI.style_primary_button(_deploy_button, DEPLOY_FONT)
+		PixelUI.style_ui_primary_button(_deploy_button, DEPLOY_FONT)
 		_deploy_button.disabled = false
 		_deploy_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:
