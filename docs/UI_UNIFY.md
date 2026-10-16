@@ -954,7 +954,7 @@ the battle starfield are scaled the same way, by design.
 
 - **Hardcoded colors: 1 real left**, `DataManager.gd:991`, a black / transparent
   image fill used to build placeholder art (data, not a UI color; it stays).
-  The allowed classes: opacity 38, dice 38. Fixed in this phase: the five
+  The allowed classes: opacity 37, dice 38. Fixed in this phase: the five
   scenes' Background / Divider `.tscn` color values (their scripts already set
   them from tokens in `_ready`, so the values were dead and are removed) and
   the pattern background's blue grid defaults (now `PATTERN_GRID`,
@@ -975,3 +975,9 @@ the battle starfield are scaled the same way, by design.
 
 Checks: `text_legibility_test` PASS (232 text nodes), `reward_model_test` PASS,
 `panel_count_test` PASS; the touched scenes load headless clean.
+
+## Phase 10: style doc
+
+`docs/UI_STYLE.md`: the reference for future UI work. Ownership rules, the color
+token table with hex and role, the type roles, the components, the notch rule,
+the Protocol color rule, the spacing grid and pixel-grid rules, keyword colors.
