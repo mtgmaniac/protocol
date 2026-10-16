@@ -583,3 +583,86 @@ PASS. MainMenu, BattleScene, UnitSelect, RewardScreen load headless clean.
   for a ruling.
 - No change to physics, faces, landing, snap, Freeze, Set or recorded throws:
   only label outline sizes and colors moved. Checked in B Phase 7.
+
+## B Phase 7: verify
+
+- **Boot / smoke:** every deliverable capture ran with no script errors: title
+  (saved run and fresh profile), squad select, Help › Settings, reward, battle
+  Facility and Hive, the tumble, Facility at 360 px, the numeral grid. Headless
+  loads of MainMenu, BattleScene, UnitSelect and RewardScreen were clean in
+  Phase 1.
+- **`dice face` gate at 390x867, once: PASS**, 0 failures on all twelve criteria
+  ((a) 9,949, (b) 94,108, (c) 94,019, (d) 197, (e) 8, (f) 1,598, (g) 210,
+  (h) 12, (i) containment 94,646, (j) 88,974, (k) hop / tip-over hulls
+  1,093,454, (l) 8 checks), every path including the tutorial recorded rounds,
+  Freeze, Set and both reroll stress passes. Log:
+  `debug_artifacts/flat_pixel_b/dice_face_gate_390.log`.
+- **20 throws + 20 consecutive rerolls** (`debug_artifacts/flat_pixel_b/flat_probe.gd`,
+  the flat-pixel-a probe re-run at 390x867): **PASS, 0 failures** (1,452 throw
+  frames, 1,104 hop frames): every die inside the tray (closest 4.5 px inside),
+  no face label changed while moving, every die upright with the landed face as
+  the roll, no other die moved during a hop, no flash, drop shadows present, 1/3
+  render, F6 / F7 / F9 toggle. Log: `flat_probe.log`.
+- Not run, as asked: `verify_gate.py`, any build or itch package.
+- Recurred, still not fixed: the mid-roll capture segfaults at exit after saving
+  (flat pixel A, Phase 6 found it independent of shadows and render scale).
+- Capture note: the fresh-profile title must use its own empty `APPDATA`; with
+  the shared scratch profile the previous capture's run save made it show
+  CONTINUE.
+
+## B final report
+
+**Deliverables** (`debug_artifacts/flat_pixel_b/`, gitignored): `title_continue.png`,
+`title_fresh.png`, `battle_facility.png`, `battle_hive.png` (END TURN up, all
+targets locked), `battle_tumble.png`, `squad_select.png`, `help_settings.png`,
+`reward.png` (390 px); `battle_facility_360.png` and `dice_numerals_360.png`
+(360 px; rows: blue 1-10, 11-20, red 1-10, 11-20).
+
+**Elements recolored:** see B Phase 1 (PLAYER: friendly cards, selection, squad
+picks and badges, footer icons and costs, Protocol cells, END TURN / ROLL, every
+primary, tabs, toggles, sliders, the selected reward card, ENGAGE, the hold
+banner, the logo core; ENCOUNTER: enemy cards, header count and rule; CHROME:
+squad site / THREATS / LV lines, banner, arrows, lock icons, unpicked names,
+briefing SITE, resume callout, status cue, dev notice), B Phase 2 (the tray:
+floor, rim, decal now CHROME-derived), B Phase 5 (PROTOCOL and underline CHROME,
+the rust panel muted). END TURN no longer renders amber in Hive.
+
+**BACKDROP_SPEC.md summary:** 270 x 600 px PNG at 1 px = 4 design px (optional
+bleed to 270 x 660, drawn centred); safe zones measured at 1080 x 2400 (header
+0-144, enemy row 158-726 = the visible area, tray 742-1690, hero row 1704-2272,
+footer 2256-2400 design px; per enemy count where the backdrop shows); values
+mostly 8-28 luminance, highlights at most 48, saturation at most ~35%, no strong
+player cobalt, encounter hue or green; lossless import; path
+`assets/battle_backdrops/<op>_backdrop_<NN>.png` and `_boss.png`; registered in
+`battle-tray-scenes.json` as `backdrops`, `boss_backdrop`,
+`boss_backdrop_battles` (default `[10]`, add `5`).
+
+**Dice legibility:** heavier numerals (m5x7, thickened 3 font px in their own
+color, dark edge on the shadow layer). Every front face 1-20 reads at 360 and 390
+px in both colors, 8 vs 0 included. **No overlay used.**
+
+**Gate and rerolls:** dice face gate at 390 px PASS; 20 throws + 20 rerolls PASS.
+
+**Could not do / choices to review:**
+
+- **6/9 marks do not exist** on the faces. The front face is always upright, so
+  6 and 9 read there; on side faces they stay ambiguous. Adding marks touches the
+  label structure the dice gates read; left for a ruling.
+- **ROLL also carries the notch** (it is END TURN's button in its other phase).
+- **Modal and Help buttons lost primary styling** (SEND FEEDBACK, RUN TUTORIAL,
+  ABANDON RUN, dev reset): strict reading of the notch rule.
+- **Unpicked squad tiles are neutral**, not PLAYER_DIM, so picks stand out.
+- **The encounter color left squad select and the briefing**: the brief limits
+  it to the header and the enemy cards.
+- The backdrop is mostly covered in battle by design: it shows in the enemy row's
+  gaps (wide with one or two enemies, slivers with three).
+- PLAYER_ACCENT_LIGHT sits near the shield icon blue and the uncommon steel blue.
+- The mid-roll capture's exit segfault (pre-existing, see above).
+
+**Screens still on old styling:** Route Fork, Intercept, Evolution, Unlock, Run
+End (their primaries are now PLAYER-colored with corner brackets, no notch); the
+battle's loadout menu, inspect popups, keyword primers, training prompts and
+tutorial, the briefing overlay frame, the state code panel, the discard picker,
+the Starting Directive picker on squad select (still cyan); Help's non-settings
+pages (cyan chips, connectors and the replay button). The v3 perspective path
+(F9) keeps its encounter-colored walls on purpose.
