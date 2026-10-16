@@ -122,9 +122,13 @@ func _check_settings_rows() -> void:
 		var reduced_row: Button = null
 		for node in help._active.find_children("*", "Button", true, false):
 			var parent: Node = (node as Button).get_parent()
-			if (node as Button).toggle_mode and parent != null and parent.get_child_count() > 0 \
-					and parent.get_child(0) is Label and (parent.get_child(0) as Label).text == "Reduced motion":
-				reduced_row = node
+			if not (node as Button).toggle_mode or parent == null:
+				continue
+			# The row's title is a Label anywhere in the row (ui-unify nests it in a
+			# text column beside the toggle).
+			for label in parent.find_children("*", "Label", true, false):
+				if (label as Label).text == "Reduced motion":
+					reduced_row = node
 		_expect(reduced_row != null and not reduced_row.button_pressed, "the Reduced motion row still reads off")
 		var again: Button = _toggle_of(help, "NoAnimationsToggleRow")
 		_expect(again != null and again.button_pressed, "the No animations row reads on after a rebuild")

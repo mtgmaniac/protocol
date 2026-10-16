@@ -219,7 +219,11 @@ static func block_pixel_px(min_px: float, max_px: float, screen_scale: float) ->
 		return max_px
 	var k: int = maxi(1, ceili(min_px * screen_scale - 0.001))
 	if float(k) / screen_scale > max_px + 0.001:
-		k = maxi(1, floori(max_px * screen_scale + 0.001))
+		k = floori(max_px * screen_scale + 0.001)
+		# Under one screen px per font pixel at the cap (a tiny or headless
+		# window): no whole k fits, so draw at the cap, never above it.
+		if k < 1:
+			return max_px
 	return float(k) / screen_scale
 
 

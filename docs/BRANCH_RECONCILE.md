@@ -117,3 +117,42 @@ the UI stack touched the display.
 
 The three "not found" items appear to be pending design ideas, not recorded
 rulings. Per the working rules they are not implemented from chat memory.
+
+## Phase 1: the merge
+
+`integration/ui-merge` was cut from `proto/ui-cleanup` (`82faed9`) and the
+Phase 0 doc committed on it (`23fcc2d`). `git merge main` answered "Already up
+to date": main (`3d095d2`) is an ancestor, so git makes no merge commit and there
+were **no conflicts to resolve**. No other branch was merged.
+
+Branches holding work that is in neither main nor the UI stack, for Kev's
+decision: `codex/godot-telemetry` (unfinished telemetry client with draft
+TRUTH/DECISIONS text). Everything else listed in section 3 is superseded, doc-only
+or marked not-for-merge.
+
+## Phase 2: post-merge behavior
+
+**Traits on the merged code.** A hero card shows a trait line only once the hero
+holds a trait, which happens only at the 250 XP prestige pick
+(`UnitTraits.PRESTIGE_XP`); before that the card shows the callsign alone. An enemy
+card shows its trait (elites, every non-boss Mantle Hunt beast) only when
+`SaveManager.enemy_traits_enabled()` is true, i.e. after the profile's first run
+ended in a victory or defeat. On a first run every enemy is fielded as a trait-less
+copy (`DataManager.enemy_for_battle`), so no enemy trait line and no trigger: the
+first-run rule holds. Bosses never show a trait. The UI stack changes only the
+trait line's styling and position. Gates on `integration/ui-merge`: `first run`,
+`traits`, `trait preview`, `validate-data` PASS.
+
+**Rulings table.** Unchanged from section 4 (the merge changed no file).
+
+**What the UI stack broke or hid that main had working.** Found by running the
+42 UI-facing gates on the merged branch:
+
+| Gate | Cause | Fix |
+|---|---|---|
+| `boss nameplate` | Script error, then a 90 s hang: the test read `border_color` / `bg_color` off the card's panel styles, which the battle card skin (2026-10-12 component review) made `StyleBoxEmpty`; the skin paints the frame and title strip. Behavior intact. | Test reads the skin's palette (`_skin_front.border`, `_skin_back.title_fill`). |
+| `no animations` | The restyled settings row nests its label in a text column; the test looked for the label as the row's first child. The Reduced motion row still shows its own setting. | Test finds the row's label anywhere in the row. |
+| `web loader palette` | `web/shell.html` (the web loader) still painted the retired cyan (`#6fe0ef`, `#3fd0e2`), which no PixelUI token holds any more: the loader no longer matched the game it hands off to. | Loader recolored to the current tokens: text `UI_TEXT`, accent and bar `PLAYER_ACCENT`, the reload button primary, the logo glow `PROTOCOL_ACCENT`. |
+| `boss relics` | Caused by this pass's Phase 3 snap, not the UI stack: in a window too small for one screen px per font pixel the snap scaled Battle Block labels above their cap, so the header label covered the screen and swallowed the "tap empty space cancels" test tap. | `block_pixel_px` never returns more than the cap. |
+
+All other 38 gates in the set passed. No gameplay, data or save behavior changed.

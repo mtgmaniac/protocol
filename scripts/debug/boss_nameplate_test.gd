@@ -44,11 +44,13 @@ func _run() -> void:
 			check(card.get("_hp_back").get_global_rect() == hp_rect, "Rank does not move HP")
 			check(card.get("_name_strip").get_global_rect() == strip_rect, "Rank does not resize strip")
 			card.configure({"boss": true, "selected": true})
-			check(card.get_theme_stylebox("panel").border_color == PixelUI.DT_CYAN, "Selection retains cyan border")
-			check(card.get("_name_strip").get_theme_stylebox("panel").bg_color == PixelUI.DT_BOSS_HEADER, "Selected boss retains rank fill")
+			# The battle card skin paints the frame and the title strip (component
+			# review, 2026-10-12): read its palette, not the empty panel styles.
+			check(card.get("_skin_front").border == card.SELECT_LINE, "Selection retains the selection border")
+			check(card.get("_skin_back").title_fill == PixelUI.DT_BOSS_HEADER, "Selected boss retains rank fill")
 			card.configure({"selected": false, "dead": true})
 			check(card.get("_boss_label").visible, "Dead boss retains identity")
-			check(card.get("_name_strip").get_theme_stylebox("panel").bg_color != PixelUI.DT_BOSS_HEADER, "Dead boss fill dims")
+			check(card.get("_skin_back").title_fill != PixelUI.DT_BOSS_HEADER, "Dead boss fill dims")
 			card.configure({"dead": false})
 		check(bosses == 1, "%s: exactly one boss" % operation)
 		for view in current_scene.get("hero_card_views"):

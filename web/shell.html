@@ -50,7 +50,7 @@ body {
 	justify-content: center;
 	gap: clamp(8px, 2.2vmin, 18px);
 	background-color: #07090b;
-	color: #6fe0ef;
+	color: #e8e6df;   /* PixelUI.UI_TEXT */
 	font-family: 'm5x7-loader', 'Consolas', 'Menlo', monospace;
 	text-align: center;
 	opacity: 1;
@@ -83,7 +83,7 @@ body {
    1.25 s (asymmetric on purpose - synced/symmetric pulses read mechanical). */
 #op-core {
 	opacity: 0.35;
-	filter: drop-shadow(0 0 clamp(4px, 1.4vmin, 12px) rgba(63, 208, 226, 0.55));
+	filter: drop-shadow(0 0 clamp(4px, 1.4vmin, 12px) rgba(102, 224, 255, 0.55));
 	animation: op-pulse 2.1s ease-in-out infinite;
 }
 
@@ -105,7 +105,7 @@ body {
 	line-height: 0.8;
 	letter-spacing: 0.55em;
 	margin-right: -0.55em;  /* letter-spacing trails the last glyph */
-	color: #3fd0e2;
+	color: #2a6ae6;   /* PixelUI.PLAYER_ACCENT */
 }
 
 #op-status {
@@ -113,7 +113,7 @@ body {
 	font-size: clamp(18px, 4.4vmin, 34px);
 	line-height: 1;
 	letter-spacing: 0.12em;
-	color: #6fe0ef;
+	color: #e8e6df;   /* PixelUI.UI_TEXT */
 }
 
 #op-bar {
@@ -127,7 +127,7 @@ body {
 #op-bar-fill {
 	width: 0%;
 	height: 100%;
-	background-color: #3fd0e2;
+	background-color: #2a6ae6;   /* PixelUI.PLAYER_ACCENT */
 	transition: width 160ms linear;
 }
 
@@ -169,7 +169,7 @@ body {
 	gap: clamp(10px, 3vmin, 24px);
 	padding: 0 6vw;
 	background-color: #07090b;
-	color: #6fe0ef;
+	color: #e8e6df;   /* PixelUI.UI_TEXT */
 	font-family: 'm5x7-loader', 'Consolas', 'Menlo', monospace;
 	text-align: center;
 	user-select: none;
@@ -185,7 +185,7 @@ body {
 	font-size: clamp(28px, 8vmin, 64px);
 	line-height: 1;
 	letter-spacing: 0.12em;
-	color: #6fe0ef;
+	color: #e8e6df;   /* PixelUI.UI_TEXT */
 }
 
 #op-lost-line {
@@ -199,9 +199,9 @@ body {
 	display: none;
 	margin-top: clamp(8px, 2.4vmin, 20px);
 	padding: clamp(10px, 2.6vmin, 20px) clamp(28px, 8vmin, 64px);
-	border: 2px solid #3fd0e2;
+	border: 2px solid #2a6ae6;   /* PixelUI.PLAYER_ACCENT (primary) */
 	background-color: #07090b;
-	color: #6fe0ef;
+	color: #9cbcff;   /* PixelUI.PLAYER_ACCENT_LIGHT (primary text) */
 	font-family: inherit;
 	font-size: clamp(22px, 5.4vmin, 44px);
 	line-height: 1;
