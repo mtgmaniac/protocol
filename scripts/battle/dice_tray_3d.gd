@@ -1692,7 +1692,9 @@ func _build_ui() -> void:
 	_viewport_container.stretch = true
 	_viewport_container.stretch_shrink = render_shrink
 	_viewport_container.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_viewport_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Sized explicitly to the tray by _sync_viewport_size (top-left anchors: a
+	# full-rect anchored control warns when its size is set before ready).
+	_viewport_container.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_viewport_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_viewport_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(_viewport_container)

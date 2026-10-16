@@ -272,3 +272,96 @@ cards, the old teal `style_primary_button` on screens not in this batch.
 - **Behaviour unchanged by construction:** nothing in physics, face printing,
   landing, the upright snap, Freeze, Set, hops or recorded throws reads the render
   resolution. Checked in Phase 6.
+
+## Phase 6: verify
+
+- **Boot / smoke:** every deliverable capture ran with no script errors (title in
+  all four candidates, squad select, Help › Settings, reward, three battle
+  captures and the tumble), plus headless loads of MainMenu, UnitSelect and
+  BattleScene.
+- **`dice face` gate at 390x867** (`dice_face_gate.gd -- --size=390x867`, once):
+  **PASS**, 0 failures on all twelve criteria: (a) 10,207, (b) 93,919,
+  (c) 94,394, (d) 197, (e) 8, (f) 1,604, (g) 210, (h) 12, (i) containment 94,457,
+  (j) 88,783, (k) hop/tip-over hulls 1,076,024, (l) 8 checks. It ran every path:
+  live throws, tutorial recorded rounds 1-2 plus a free round, hero rerolls (40 +
+  60-on-six-dice stress), enemy item rerolls, Set, Nudge, reprint, hijack,
+  Freeze, Firewall Hack, Heretic Signal. Log:
+  `debug_artifacts/flat_pixel_a/dice_face_gate_390.log`.
+- **20 throws + 20 consecutive rerolls** (`debug_artifacts/flat_pixel_a/flat_probe.gd`,
+  scratch probe adapted from the v2 depth probe; 390x867 window, battle-sized
+  tray, every drawn frame): **PASS, 0 failures** (1,452 throw frames, 1,095 hop
+  frames). Every die's drawn hull stayed inside the tray / floor (closest
+  approach 4.5 px inside); no die or drop shadow disappeared for a frame (no
+  flash); no face label changed while a die moved; every die ended flat with its
+  numeral upright and the landed face was the roll; no other die moved during a
+  hop; every die drawn at its settle scale only (0.95 at rest, 1.0 moving: no
+  depth scaling); the dice viewport was 344x312 for the 1032x938 tray (1/3);
+  F6 / F7 / F9 each toggle and toggle back. Log: `flat_probe.log`.
+- **Fixed during verification:** the synchronous container resize in Phase 5
+  warned ("non-equal opposite anchors ... overridden after _ready()") because the
+  container was anchored full-rect. It now has top-left anchors and is sized
+  explicitly by `_sync_viewport_size` (called on every tray resize). No warning in
+  later runs.
+- **Found, not fixed:** `battle_ui_capture.gd --capture-mid-roll-ms` segfaults
+  at exit, after it has saved the PNG, when it quits with dice in the air. It
+  happens with the drop shadows disabled and at full render resolution
+  (`--dice-render-shrink=1`) too, and a settled capture exits cleanly, so it is
+  not caused by the shadows or the render scale. Not checked against v3.
+- Not run, as asked: `verify_gate.py`, any build or itch package.
+  `component_contract.py` PASS; `battle_scene.gd` 3,639 lines (watermark 3,640).
+  The growth hook warns that `protocol_actions.gd` is 1,231 lines against a
+  971 high-water mark: it was already 1,223 before this task (+8 here: the cost
+  badge color and its F10 refresh). Warning only.
+
+## Final report
+
+**Deliverables** (390 px wide, `debug_artifacts/flat_pixel_a/`, gitignored like
+every capture folder): `title_bone.png`, `title_phosphor.png`, `title_cyan.png`,
+`title_amber.png`; `battle_facility_flat.png`, `battle_hive_flat.png`,
+`battle_facility_perspective.png` (the same frame with F9), `battle_tumble_flat.png`
+(380 ms into a throw); `reward.png`, `help_settings.png`, `squad_select.png` (BONE);
+`dice_scales.png` (1/1, 1/2, 1/3, 1/4, 1/6, each its own roll).
+
+**Winning system color: BONE** (`e6dec8`), 23 / 25: not generic 5, no meaning
+collision 4, legibility 5, pixel / Slice & Dice fit 5, distinct from encounters
+4. Phosphor 16, Cyan 13, Amber 11. All four stay on F10.
+
+**Color collisions found:**
+
+- PHOSPHOR is green: HP bars, heal icon, ROLL button, and INVARIANTS #7.
+- CYAN is DT_CYAN: hero coding and the `selected_card` component.
+- AMBER is the legendary gold hex (`edb03e`), next to the Facility encounter
+  amber, the Mantle ochre, the old Protocol amber and the warning rust.
+- BONE sits close to `UI_TEXT`, so primary and secondary button labels are about
+  the same color (the primary still reads by its border and tab). On Settings,
+  ON (bone outline and text) against OFF (gray) has less contrast than it had in
+  amber.
+- Encounter colors against unchanged meanings: Hive red against enemy coding
+  (rust / red) and the warning rust; Veil violet against rare / epic purple and
+  the debuff icon purple; Signal magenta against Veil violet (both purple-family);
+  Mantle ochre against Facility amber.
+
+**Dice render scale chosen: 1/3** (the lowest that keeps side-face numerals
+readable at 390 px; 1/4 matches the scene's 4 px art grid but breaks them).
+Flat face tones on (no specular).
+
+**Gate and reroll results:** dice face gate at 390x867 PASS (0 failures); 20
+throws + 20 consecutive rerolls PASS (0 failures). Details above.
+
+**Could not do / deviations:**
+
+- Drop shadow offset is 12 design px (3 art px), not 1-2 design px: below 3 art
+  px it cannot be seen at 390 px (see Phase 4).
+- The Hive capture shows the END TURN prompt over the tray: that is the game's
+  state in that battle, not something this task added.
+- Veil, Signal and Mantle have no flat floor texture yet (plain floor, their
+  accent on rim and decal).
+- F9 and F10 are keyboard only (debug builds); there is no touch path.
+- The mid-roll capture's exit segfault (above) is reported, not fixed.
+
+**Screens still on old styling:** Route Fork, Intercept, Evolution, Unlock, Run
+End; the battle screen's cards (including the cyan battle selection), loadout
+menu, inspect popups, keyword primers, training prompts and tutorial, operation
+briefing overlay frame, state code panel, discard picker; the squad-select
+encounter carousel frame and arrows (cyan hero chrome) and the old teal primary
+buttons on screens outside this batch; Help's non-settings page bodies.
