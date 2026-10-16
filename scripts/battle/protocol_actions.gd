@@ -787,7 +787,7 @@ func _open_set_value_popup() -> void:
 	cancel_btn.text = "CANCEL"
 	cancel_btn.custom_minimum_size = Vector2(0.0, 100.0)
 	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	PixelUI.style_button(cancel_btn, PixelUI.DT_BTN_BG, PixelUI.DT_BTN_BORDER, 38)
+	PixelUI.style_ui_secondary_button(cancel_btn, 38)
 	cancel_btn.pressed.connect(_cancel_set_value_popup)
 	row.add_child(cancel_btn)
 

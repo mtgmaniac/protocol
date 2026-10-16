@@ -276,7 +276,7 @@ func _build_basics_page(host: VBoxContainer) -> void:
 		var back := Button.new()
 		back.text = "BACK TO BASICS"
 		back.custom_minimum_size.y = 100
-		PixelUI.style_button(back, PixelUI.BG_PANEL_ALT, PixelUI.LINE_DIM, TAB_FONT)
+		PixelUI.style_ui_secondary_button(back, TAB_FONT)
 		back.pressed.connect(_with_click(_select_tab.bind("basics")))
 		host.add_child(back)
 		match _reference_section:
@@ -385,7 +385,7 @@ func _build_basics(host: VBoxContainer) -> void:
 	reference.text = "KEYWORDS / ICON GUIDE"
 	reference.custom_minimum_size = Vector2(0, 100)
 	reference.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_button(reference, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, TAB_FONT)
+	PixelUI.style_ui_secondary_button(reference, TAB_FONT)
 	reference.pressed.connect(_with_click(_select_tab.bind("reference")))
 	host.add_child(reference)
 
@@ -442,7 +442,7 @@ func _select_icon_guide_section(effects: bool, host: VBoxContainer, buttons: Arr
 		var more := Button.new()
 		more.text = "MORE EFFECTS"
 		more.custom_minimum_size = Vector2(0, 112)
-		PixelUI.style_button(more, PixelUI.BG_PANEL_ALT, PixelUI.LINE_BRIGHT, TAB_FONT)
+		PixelUI.style_ui_secondary_button(more, TAB_FONT)
 		more.pressed.connect(_with_click(_select_tab.bind("keywords")))
 		host.add_child(more)
 	else:

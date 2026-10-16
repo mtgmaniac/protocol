@@ -1037,9 +1037,10 @@ opacity-only modulates, 38 dice materials. No off-system fonts.
 
 **Still off-style:** Help's bestiary enemy rows keep the enemy rust (no
 encounter context in Help); squad select's DEPLOY sits in a panel whose default
-theme border draws a thin dark ring; the old `style_button` and
-`style_primary_button` helpers still exist for a few remaining callers (Help's
-reference / more buttons and the round-complete layout) with token colors but
-the legacy shape; the F9 v3 perspective path keeps its encounter-colored walls
+theme border draws a thin dark ring; the old `style_button` helper still serves two
+callers (the Starting Directive relic rows, which carry an icon layout, and
+the battle scene's minimal action buttons) with token colors but the legacy
+shape (Help's BACK / reference / MORE and the Set-die CANCEL were moved to
+secondary in the last commit); the F9 v3 perspective path keeps its encounter-colored walls
 by design; float text and battle FX keep their pre-existing palette (now
 tokens, not re-designed).
