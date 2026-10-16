@@ -1760,24 +1760,49 @@ static func add_corner_brackets(target: Control, color: Color, arm: float = 16.0
 ## within that range and it centers horizontally in its parent. Pixel art stays
 ## nearest-filtered. Returns the frame (already carries border + corner brackets).
 static func make_scene_banner(tex: Texture2D, max_w: float, max_h: float, border: Color) -> PanelContainer:
-	var iw: float = maxf(1.0, float(tex.get_width()))
-	var ih: float = maxf(1.0, float(tex.get_height()))
-	var scale: float = minf(max_w / iw, max_h / ih)
 	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(round(iw * scale), round(ih * scale))
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	frame.clip_contents = true
 	frame.add_theme_stylebox_override("panel", make_hard_style(DT_PANEL_BG, border, 2))
+	# ui-cleanup: a whole multiple of the art's own pixels (was a fractional fit).
+	frame.add_child(make_integer_art(tex, Vector2(max_w, max_h)))
+	add_corner_brackets(frame, border, 24.0, 3.0, 8.0)
+	return frame
+
+
+## ui-cleanup (art scaling): pixel-art illustrations draw at a WHOLE multiple of
+## their own pixels, NEAREST: the largest multiple that fits `max_size`, never
+## below x1. Only when x1 itself is larger than the box does the box crop it,
+## centred. The art sits on whole, even design px. Returns the clipping box;
+## refit it with fit_integer_art when the space is known only after layout.
+static func make_integer_art(tex: Texture2D, max_size: Vector2) -> Control:
+	var box := Control.new()
+	box.name = "IntegerArtBox"
+	box.clip_contents = true
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var art := TextureRect.new()
+	art.name = "IntegerArt"
 	art.texture = tex
 	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED  # frame == image aspect, so no crop
+	art.stretch_mode = TextureRect.STRETCH_SCALE
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	frame.add_child(art)
-	add_corner_brackets(frame, border, 24.0, 3.0, 8.0)
-	return frame
+	box.add_child(art)
+	fit_integer_art(box, max_size)
+	return box
+
+
+static func fit_integer_art(box: Control, max_size: Vector2) -> void:
+	var art := box.get_node("IntegerArt") as TextureRect
+	var native := Vector2(maxf(1.0, float(art.texture.get_width())), maxf(1.0, float(art.texture.get_height())))
+	var room := Vector2(floorf(max_size.x), floorf(max_size.y))
+	var k: int = maxi(1, int(floorf(minf(room.x / native.x, room.y / native.y))))
+	var drawn: Vector2 = native * float(k)
+	var shown := Vector2(minf(drawn.x, room.x), minf(drawn.y, room.y))
+	box.custom_minimum_size = shown
+	art.size = drawn
+	art.position = Vector2(even_px((shown.x - drawn.x) * 0.5), even_px((shown.y - drawn.y) * 0.5))
 
 
 ## Frames a PanelContainer as a "transmission window": very dark fill, 2px teal border,

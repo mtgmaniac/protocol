@@ -1172,3 +1172,42 @@ name row, and on a boss the name runs into the BOSS tag
   and had been failing 89 checks since ui-unify; it now reads the roles:
   **PASS (1179 checks)**. `text_legibility_test` PASS (239), traits gate PASS,
   `component_contract` and `caps_law` PASS.
+
+## Cleanup phase 5: art scaling
+
+New probe `scripts/debug/art_scale_probe.gd` (windowed) loads every in-run
+screen with a live run and prints each visible texture: source size, drawn size
+in design px, the factor, the effective filter and any sub-pixel origin. All the
+illustrations are native 1:1 pixel art (no internal upscale; run-length check
+on every file), so the factor is the art's real density. The scene grid is
+**x4** (1 art px = 4 design px: the battle backdrop 270x600 and the tray decal
+draw at x4, NEAREST, snapped).
+
+**Fixed (scaling and offsets only, no art touched):** a shared
+`PixelUI.make_integer_art(tex, max_size)` / `fit_integer_art` draws art at the
+largest whole multiple that fits, never below x1 (only then the box crops,
+centred), on whole even design px, NEAREST. `make_scene_banner` (Intercept, Run
+End) and Route Fork's hallway banner use it.
+
+| Screen | Asset | Source | Drawn before | Drawn now | Factor now | Density vs scene grid (x4) |
+|---|---|---|---|---|---|---|
+| Route Fork | `events/hallway_1..5.png` | 366-371 x 208 | 900x506 (x2.43, sub-px) | 740x416 | **x2** | half: **flag** |
+| Intercept | `events/<card>.png` (e.g. `firingSolution`) | 294-369 x 326-434 | 561x660 (x1.52, sub-px) | 369x434 | **x1** | a quarter: **flag** |
+| Run End | `events/victory.png`, `defeat.png` | 712x1024 | 681x980 (x0.957, sub-px) | 712x980 window (x1, 22 px cropped top and bottom) | **x1** | a quarter: **flag** |
+| Reward | item art (`make_integer_icon`) | 128x128 (one 66x95) | x2 | unchanged | x2 | half |
+| Unlock | item / relic art | 128x128 | x1 | unchanged | x1 | a quarter |
+| Starting Directive | relic art (`make_integer_icon`) | 128x128 | integer | unchanged | integer | |
+| Evolution | branch portraits (`make_portrait_frame`) | 592x880 | x0.36-0.37, sub-px | unchanged (ruled frame) | non-integer | about 1/11: **flag** |
+| Battle | hero portraits | 592x880 | x0.68-0.73, sub-px | unchanged (the battle card is the portrait reference) | non-integer | about 1/6: **flag** |
+| Battle | enemy portraits (atlas) | 573-599 x 665-705 | x0.56-0.59, sub-px | unchanged | non-integer | about 1/7: **flag** |
+| Battle | backdrop, tray decal | 270x600, 112x112 | x4 | unchanged | x4 | the grid |
+| Squad select (not in-run) | UI icons | 128x128 | x0.44-0.5 (`KEEP_ASPECT_CENTERED`) | unchanged | non-integer | (ui-unify: needs 32 / 64 px variants) |
+
+**For your decision (density):** every illustration and portrait is finer than
+the x4 scene grid. Intercept art went from x1.52 to x1: at x2 it would lose a
+quarter of its height to the crop, so x1 keeps the whole picture, smaller.
+Portraits are 592x880 paintings cover-fit into the shared portrait frame (a
+ruled system: anchors, `portrait frame` gate), drawn at x0.33-0.73 with sub-px
+origins; making them integer means either x0.5 nearest (every other pixel) or
+new art at the grid, both your call. All filters were already NEAREST except the
+screen vignette (a gradient, LINEAR on purpose).

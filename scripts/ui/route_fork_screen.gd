@@ -18,8 +18,8 @@ const BUTTON_FONT := 38
 # deterministically by battle number so successive forks show different corridors.
 const HALLWAY_ART := "res://assets/ui/events/hallway_%d.png"
 const HALLWAY_COUNT := 5
-# The frame is full column width at the image's own aspect (about 16:9): no
-# crop, no letterbox (UI batch B4). The old frame was 420 px tall with the art
+# The frame holds the art at the largest whole multiple that fits the column
+# (ui-cleanup), at the image's own aspect: no crop, no letterbox (UI batch B4). The old frame was 420 px tall with the art
 # pillarboxed inside; the height it gains over that is taken from the empty
 # space above the window, so the route cards stay where they were.
 const HALLWAY_OLD_BANNER_H := 420.0
@@ -29,7 +29,7 @@ var _margin: MarginContainer
 var _scroll: ScrollContainer
 var _window: PanelContainer
 var _banner: PanelContainer
-var _banner_aspect: float = 0.0  # height / width of the hallway art
+var _banner_art: Control
 
 var _modifier_id: String = ""
 
@@ -164,37 +164,26 @@ func _add_hallway_banner(column: VBoxContainer) -> void:
 	if tex == null:
 		return
 	var frame := PanelContainer.new()
-	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	frame.custom_minimum_size = Vector2(0, HALLWAY_OLD_BANNER_H)
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	frame.clip_contents = true
 	# Component: Normal card (a decorative banner is not a selection — the old
 	# strong-cyan frame was border noise).
 	frame.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL))
-	var art := TextureRect.new()
-	art.texture = tex
-	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	# The frame's content rect is sized to the art's aspect (to the pixel), so
-	# SCALE fills it exactly; any rounding is under half a pixel.
-	art.stretch_mode = TextureRect.STRETCH_SCALE
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	frame.add_child(art)
+	# ui-cleanup: the art draws at a whole multiple of its pixels (x2 in the
+	# portrait column; it was stretched to the column width, x2.43), centred.
+	_banner_art = PixelUI.make_integer_art(tex, Vector2.ONE)
+	frame.add_child(_banner_art)
 	column.add_child(frame)
 	_banner = frame
-	_banner_aspect = float(tex.get_height()) / maxf(1.0, float(tex.get_width()))
-	# Height follows width, which only layout knows. Changing the height never
-	# changes the width, so this settles in one pass.
-	frame.resized.connect(_fit_hallway_banner)
+	# The multiple follows the column width, which only layout knows. The
+	# column's width never depends on the banner, so this settles in one pass.
+	column.resized.connect(_fit_hallway_banner.bind(column))
 
 
-func _fit_hallway_banner() -> void:
+func _fit_hallway_banner(column: Control) -> void:
 	var sb: StyleBox = _banner.get_theme_stylebox("panel")
-	var inner_w: float = _banner.size.x - sb.get_margin(SIDE_LEFT) - sb.get_margin(SIDE_RIGHT)
-	var extra_h: float = sb.get_margin(SIDE_TOP) + sb.get_margin(SIDE_BOTTOM)
-	var target_h: float = round(inner_w * _banner_aspect) + extra_h
-	if absf(_banner.custom_minimum_size.y - target_h) >= 0.5:
-		_banner.custom_minimum_size.y = target_h
+	var inner_w: float = column.size.x - sb.get_margin(SIDE_LEFT) - sb.get_margin(SIDE_RIGHT)
+	PixelUI.fit_integer_art(_banner_art, Vector2(inner_w, INF))
 	_shift_window_up.call_deferred()
 
 
