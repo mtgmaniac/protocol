@@ -1257,3 +1257,53 @@ heal-per-drone mechanic is not in the game on any branch**: ASSEMBLY LINE (50%
 rebuild every 2nd enemy phase) is live, so the Scrapmaster copy matches today.
 The trailing "ACTIVE" is appended by code at
 `operation_briefing_overlay.gd:128`.
+
+## Cleanup phase 8: verify
+
+- **Boot:** MainMenu, UnitSelect, BattleScene, RouteFork, Intercept, Reward,
+  Evolution, Unlock and RunEnd load headless with no script errors (Godot
+  4.6.2, version checked first). The only engine errors are pre-existing ones
+  on direct entry with no run (Intercept's `remove_child` while busy, run end's
+  "resources still in use" at exit, the evolution choice guard), the same
+  before this branch.
+- **Captures:** all 13 deliverable captures (plus the overlay harness) ran with
+  no script errors.
+- **Gates run (related only):** `battle_layout_test` PASS (1179; was failing 89
+  since ui-unify), `text_legibility_test` PASS (239), traits gate PASS,
+  `panel_count_test`, `help_polish_test`, `dev_unlock_test`, `component_contract`,
+  `caps_law`, `framing_sites` PASS.
+- Dice rendering and physics untouched: no dice gates, no `verify_gate.py`, no
+  itch build. No Godot 4.7 changes appeared.
+
+## Cleanup final report
+
+Deliverables (`debug_artifacts/ui_cleanup/`, 390 px wide, gitignored):
+`route_fork`, `intercept`, `reward`, `evolution`, `run_end`, `directive_picker`
+(shared header on each; also `unlock`), `battle_facility`, `battle_hive`,
+`battle_360` (360x800, AVALANCHE / ENGINEER / MASTER), `battle_360_x3_rejected`,
+`protocol_candidates`, `squad_select`, `help_bestiary`.
+
+- **Screens changed:** header on Route Fork, Intercept, Reward, Evolution,
+  Unlock, Run End and the Starting Directive picker; text roles on 20 sites
+  across battle, boss relic pop-ups, evolution, feedback, help, squad select,
+  intercept, item cards, briefing, reward, run end and the coach; battle cards
+  (CARD type); Route Fork, Intercept and Run End art; squad select (DEPLOY,
+  directive rows); Help bestiary.
+- **Protocol color:** `66e0ff`, an electric cyan-blue. It moves Protocol off
+  the near-white axis that read as bone, stays far from cobalt and the PLAYER
+  light icons, sits further from the shield blue than the more saturated
+  `5fd8ff`, and keeps 11:1 contrast for the small cost numbers.
+- **Card font:** Battle Block 64 (x2). x3 (96) passes the bare width test by 8
+  px but touches the frame, overruns the 80 px name row and collides with the
+  BOSS tag.
+- **Art scaling:** table in Cleanup phase 5. Route Fork x2.43 -> x2, Intercept
+  x1.52 -> x1, Run End x0.957 -> x1 (22 px cropped top and bottom), all on whole
+  px; item art already integer; portraits left on the ruled cover-fit.
+  Density flags for decision: every illustration is x1-x2 against the x4 scene
+  grid, portraits about 1/6 to 1/11.
+- **Leftovers fixed:** DEPLOY ring, directive rows (shared secondary, and they
+  grow to fit), the dead battle minimal-button helper and the legacy
+  `style_button`, ENEMY_DEFAULT on the bestiary. **Remaining:** keyword colors
+  (BBCode), icon variants, the 34 measured-layout spacing constants, FX palette,
+  `TEXT_MUTED` metadata, `operation_briefing_capture.gd`.
+- **Copy vs data:** `docs/COPY_DATA_MISMATCHES.md`, summarized in phase 7.
