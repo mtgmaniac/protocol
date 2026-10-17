@@ -163,7 +163,6 @@
         "pickerCategory": { "$ref": "#/$defs/heroPickerCategory" },
         "pickerBlurb": { "type": "string", "minLength": 1 },
         "blurb": { "type": "string", "minLength": 1, "maxLength": 60 },
-        "blurbStatus": { "enum": ["draft", "approved"] },
         "hp": { "type": "integer", "minimum": 1 },
         "sk": { "$ref": "#/$defs/heroId" },
         "portraitPath": { "type": "string" },

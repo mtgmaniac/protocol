@@ -2191,8 +2191,11 @@ static func selection_badge_style() -> StyleBoxFlat:
 ## A squad tile frame (flat pixel B): PLAYER_ACCENT when picked; at rest the
 ## neutral card line (an unpicked hero is not the squad yet, so picks stand out). Same fill, width and geometry as COMPONENT_SELECTED (which stays cyan
 ## for the screens not moved yet: evolution, discard picker).
-static func player_tile_style(picked: bool) -> StyleBoxFlat:
-	return make_hard_style(DT_HERO_BG, PLAYER_ACCENT if picked else UI_CARD_LINE, COMPONENT_FRAME_WIDTH)
+## `viewing`: the unit squad select's info bar shows; its border is bone
+## (CHROME), over a pick's cobalt.
+static func player_tile_style(picked: bool, viewing: bool = false) -> StyleBoxFlat:
+	var border: Color = CHROME if viewing else (PLAYER_ACCENT if picked else UI_CARD_LINE)
+	return make_hard_style(DT_HERO_BG, border, COMPONENT_FRAME_WIDTH)
 
 
 ## A one-hue icon (the cyan header / footer art) recolored into `tint`. Each

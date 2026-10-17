@@ -10,7 +10,7 @@ extends Resource
 @export var picker_category: String = ""
 @export_multiline var picker_blurb: String = ""
 ## One line, role plus signature effect, for squad select's unit info bar
-## (UI batch A5). Data `blurb`; `blurbStatus` "draft" until Kev approves it.
+## (UI batch A5). Data `blurb` (copy approved by Kev, 2026-10-17).
 @export var blurb: String = ""
 @export var max_hp: int = 0
 @export var source_key: String = ""

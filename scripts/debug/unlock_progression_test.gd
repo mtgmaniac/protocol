@@ -238,10 +238,10 @@ func _test_first_profile_progression_and_presentation() -> void:
 		var op: OperationData = _data_manager().call("get_operation", op_id) as OperationData
 		var name_label: Label = home.get("_enc_name_label") as Label
 		var lock_label: Label = home.get("_enc_status_label") as Label
-		var tags_row: Control = home.get("_enc_tags_row") as Control
+		var threats_label: Control = home.get("_enc_threats_label") as Control
 		var deploy: Button = home.get("_deploy_button") as Button
 		_check(bool(home.get("_current_op_locked")) and name_label.text == op.display_name.to_upper() and lock_label.text == "LOCKED", "%s remains visibly locked with its real name" % op_id)
-		_check(not tags_row.visible and deploy.disabled, "%s locked card hides its threats and cannot deploy" % op_id)
+		_check(not threats_label.visible and deploy.disabled, "%s locked card hides its threats and cannot deploy" % op_id)
 
 	# UI batch 2026-09-27, B3 (supersedes G-16's transparent locked dossier):
 	# fixed slots. Switching between ANY encounters, locked or not, moves
@@ -399,7 +399,7 @@ func _check_encounter_slots(home: Node, op_order: Array, tiles: Dictionary) -> v
 	_check(((home.get("_enc_thumb_frame") as Control).size).is_equal_approx(((tiles["combat"] as Dictionary)["frame"] as Control).size),
 		"the boss portrait is the roster tiles' size")
 	var unlock_label: Label = home.get("_enc_unlock_label") as Label
-	var tags_row: HBoxContainer = home.get("_enc_tags_row") as HBoxContainer
+	var threats_label: Label = home.get("_enc_threats_label") as Label
 	var reference: Dictionary = {}
 	for pass_index in 2:
 		for index in range(op_order.size()):
@@ -432,13 +432,19 @@ func _check_encounter_slots(home: Node, op_order: Array, tiles: Dictionary) -> v
 				var prev_op: OperationData = _data_manager().call("get_operation", prev_id) as OperationData
 				var want_condition: String = "Clear %s to unlock" % prev_op.display_name
 				_check(unlock_label.visible and unlock_label.text == want_condition, "%s tags slot shows the unlock condition (saw '%s')" % [op_id, unlock_label.text])
-				_check((home.get("_enc_status_label") as Label).text == "LOCKED", "%s shows its LOCKED tag" % op_id)
+				_check((home.get("_enc_status_label") as Label).text == "LOCKED", "%s shows LOCKED" % op_id)
 				var font: Font = unlock_label.get_theme_font("font")
 				var w: float = font.get_string_size(unlock_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, unlock_label.get_theme_font_size("font_size")).x
 				_check(w <= tags_slot.size.x, "%s unlock condition fits unclipped (%.0f <= %.0f px)" % [op_id, w, tags_slot.size.x])
+				# Its threats line, once unlocked, fits the same slot.
+				var locked_threats: String = " · ".join(home.call("threat_tags", op_id))
+				var locked_threats_w: float = font.get_string_size(locked_threats, HORIZONTAL_ALIGNMENT_LEFT, -1, unlock_label.get_theme_font_size("font_size")).x
+				_check(locked_threats_w <= tags_slot.size.x, "%s threats fit one line once unlocked (%.0f <= %.0f px)" % [op_id, locked_threats_w, tags_slot.size.x])
 			else:
-				_check(tags_row.visible and tags_row.get_child_count() > 0, "%s shows its threat tags" % op_id)
-				_check(tags_row.get_combined_minimum_size().x <= tags_slot.size.x, "%s threat tags fit one row (%.0f <= %.0f px)" % [op_id, tags_row.get_combined_minimum_size().x, tags_slot.size.x])
+				_check(threats_label.visible and threats_label.text != "", "%s shows its threats as one plain line (saw '%s')" % [op_id, threats_label.text])
+				var threats_font: Font = threats_label.get_theme_font("font")
+				var threats_w: float = threats_font.get_string_size(threats_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, threats_label.get_theme_font_size("font_size")).x
+				_check(threats_w <= tags_slot.size.x, "%s threats fit one line (%.0f <= %.0f px)" % [op_id, threats_w, tags_slot.size.x])
 	# A tap shows the unit in the info bar and toggles it; nothing moves.
 	home.set("_operation_index", 0)
 	home.set("_selected_operation_id", str(op_order[0]))
