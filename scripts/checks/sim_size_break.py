@@ -13,8 +13,8 @@ the gate. Then five in-memory breaks, each of which must make Part A fail:
     stale_stamp     Part B's stamp never sees a change (it would never rerun)
 
 Part B, a REAL change run through the real size check: enemy damage in the
-Hive raised by ci_smoke.SIZE_BREAK_TUNING (+8%), which costs about 10 points
-of Hive clear rate (-9.8 / -8.9 / -10.3 on three seed sets, G-58). The
+Hive raised by ci_smoke.SIZE_BREAK_TUNING (+16%). The original +8% fixture moves only -7.9 points against G-74,
+so it no longer crosses the unchanged 8-point line. The
 1,500-run size check must flag the Hive. It is compared against the size pin when the tree
 still reproduces the l1 tripwire, and against a fresh clean batch when it does
 not (a change in progress must not mask or fake the break).

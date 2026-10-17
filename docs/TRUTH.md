@@ -1,5 +1,13 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**v0.4 gate debt cleared (2026-10-17):** title/unlock starts with a clean dev
+run save; framing previews use `HOME.TILE_PORTRAIT_W`. The sim break fixture
+uses +16% Hive damage in memory: G-74 made the old +8% fixture only -7.9 points,
+below the unchanged 8-point threshold. The real +16% arm moves Hive
+24.13% -> 9.52% (-14.6 points) and writes the new stamp. Live data and both
+baseline pins are unchanged. Title/unlock, framing editor (34), framing sheet
+(25), and the sim break self-test pass.
+
 **Wide windows (Kev, 2026-10-17):** squad select, title, Help, battle, rewards,
 and victory/defeat use a centered column capped at 1080 design px, including
 the shared header. Existing edge padding and vertical rhythm stay inside the

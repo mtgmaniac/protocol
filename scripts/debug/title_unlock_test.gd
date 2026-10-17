@@ -30,6 +30,9 @@ func run() -> void:
 	root.get_node("AudioManager").set_suppressed(true)
 	var sm = root.get_node("SaveManager")
 	var gs = root.get_node("GameState")
+	# Earlier gates may leave dev_run.json. This case explicitly tests a first
+	# launch; G-80 correctly asks KEEP RUN / START NEW when a saved run exists.
+	sm.clear_run_save()
 	sm.set("data", sm.default_data())
 	sm.set_setting("reduced_motion", true)
 	# Old cadence settings must not resurrect the removed nudge.

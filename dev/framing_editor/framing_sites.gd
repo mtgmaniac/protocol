@@ -30,7 +30,7 @@ static func all_sites() -> Array[Dictionary]:
 	var sites: Array[Dictionary] = [
 		_site("battle_card", "Battle card", PORTRAIT, PixelUI.HERO_PORTRAIT_REGION, "", ["heroes", "enemies", "bosses"]),
 		_site("squad_tile", "Squad select", PORTRAIT, PixelUI.portrait_window(HOME.TILE_PORTRAIT_W), "", ["heroes"]),
-		_site("encounter", "Encounter panel", PORTRAIT, PixelUI.portrait_window(HOME.ENC_PORTRAIT_W), "", ["bosses"]),
+		_site("encounter", "Encounter panel", PORTRAIT, PixelUI.portrait_window(HOME.TILE_PORTRAIT_W), "", ["bosses"]),
 		_site("evolution", "Evolution", PORTRAIT, PixelUI.portrait_window(evo_w), "", ["heroes"]),
 		_site("unlock_unit", "Unlock / run end", PORTRAIT, PixelUI.portrait_window(UNLOCK.HERO_PORTRAIT_W), "", ["heroes"]),
 		_site("help_row", "Help units", PORTRAIT, PixelUI.portrait_window(HelpMenu.ROW_PORTRAIT_W), "", ["heroes", "enemies", "bosses"]),

@@ -51,11 +51,11 @@ SIZE_OP_PTS = 8.0
 SIZE_OVERALL_PTS = 4.0
 
 # The deliberate break (scripts/checks/sim_size_break.py): a real change of
-# about 10 points on one operation, which the size check must catch. +8% enemy
-# damage in the Hive measured -9.8 / -8.9 / -10.3 points of Hive clear rate on
-# three 1,500-run seed sets (900000, 500000, 700000; G-58).
+# beyond 8 points on one operation, which the size check must catch. G-74
+# reduced the old +8% Hive damage fixture to -7.9 points; use +16% in this
+# TEST-ONLY arm. Live enemy data and the 8/4-point thresholds are unchanged.
 SIZE_BREAK_OP = "hive"
-SIZE_BREAK_TUNING = "enemy_dmg_scalar@hive=1.08"
+SIZE_BREAK_TUNING = "enemy_dmg_scalar@hive=1.16"
 
 OP_NAMES = {"facility": "Facility", "hive": "Hive", "veil": "Veil",
             "voidCirclet": "Signal Purge", "stellarMenagerie": "Mantle Hunt"}
