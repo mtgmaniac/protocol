@@ -4,6 +4,19 @@
 all UI work (color ownership, components, type roles, GAP, Protocol color,
 rarity). Older UI entries below yield to it where they differ.
 
+**UI batch A5 (Kev, 2026-10-17, DECISIONS_RESOLVED G-79 / G-80 / G-81; supersedes
+the entries below where they differ):** the dice tray floor is one reticle image
+(`assets/battle_tray/tray_floor_reticle.png`, the `tray_floors.reticle` entry),
+not the procedural grate + ember floor (the `TRAY_GRATE_*` tokens are gone). The
+title menu is CONTINUE (with a saved run) / NEW GAME / FEEDBACK: BEGIN is now NEW
+GAME, the title has no ABANDON RUN, and NEW GAME over a saved run asks first
+(KEEP RUN / START NEW, which deletes the run as ABANDON RUN did). Squad select is
+the "A5" layout: a mission card (ENCOUNTER_ACCENT frame, boss portrait at tile
+height, name, level pips, CLEARED / LOCKED, threat tags; no site line, no story
+box), the roster, an always-on unit info bar (blurb, roll band bar, hint), and
+DEPLOY SQUAD gated as "PICK n MORE"; a tap shows a unit and toggles it; the last
+operation and squad come back (profile `last_deploy`).
+
 **Art pass v1 (Kev, 2026-10-17, DECISIONS_RESOLVED G-76; supersedes the tray
 scene, floor decal, F7 and battle backdrop parts of the depth prototype entries
 below):** no background image on battle or in-run screens (the plain `UI_BG`;

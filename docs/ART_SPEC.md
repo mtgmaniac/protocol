@@ -155,10 +155,20 @@ a file in place to keep its entry).
 **Ruled out (Kev, 2026-10-17, DECISIONS_RESOLVED G-76).** Battle and every in-run
 screen (route fork, intercept, reward, evolution, unlock, the Directive picker)
 show the plain dark background token, `PixelUI.UI_BG`. Do not make battle
-backdrops; the old spec is archived (`docs/archive/BACKDROP_SPEC.md`). The dice
-tray floor is not art either: it is the "grate + ember" floor drawn in code on
-the same grid (`battle_bay_floor.gd`, data `tray_floors` in
-`data/raw/battle-tray-scenes.json`).
+backdrops; the old spec is archived (`docs/archive/BACKDROP_SPEC.md`).
+
+## Dice tray floor (Kev, 2026-10-17, G-79)
+
+One image at the tray's exact art size: **260 x 223 art px** (the 1040 x 892
+design px tray at 1080 x 2400). `assets/battle_tray/tray_floor_reticle.png`, a
+flat dark charcoal surface with a faint diagonal texture and one thin gray
+reticle at its centre, built from `assets/art_incoming/tray_reticle_raw.png` by
+`tools/build_tray_floor.py` (pixelize; `--check` measures the shipped file).
+`battle_bay_floor.gd` draws it one texel per art pixel, centred on the tray
+(data `tray_floors` in `data/raw/battle-tray-scenes.json`). Neutral only (no
+encounter colour), and quiet: floor luma 23.8 - 33.2, the reticle one tone at
+67.6, so the dice stay the brightest things in the tray. A replacement source
+may be any size: the build centre-crops it to the tray aspect.
 
 ## Title screen backdrop
 
@@ -178,10 +188,10 @@ the same grid (`battle_bay_floor.gd`, data `tray_floors` in
 | Element | Design px (x, y) | Art px (x, y) |
 |---|---|---|
 | Header band (opaque, with ? and back) | 0 - 1080, 0 - 144 | 0 - 270, 0 - 36 |
-| Logo, drawn (run waiting) | 80 - 1000, 716 - 1008 | 20 - 250, 179 - 252 |
+| Logo, drawn (run waiting) | 80 - 1000, 798 - 1090 | 20 - 250, 200 - 273 |
 | Logo, drawn (no run) | 80 - 1000, 880 - 1172 | 20 - 250, 220 - 293 |
-| Menu buttons (run waiting: CONTINUE, BEGIN, FEEDBACK, ABANDON RUN) | 220 - 860, 1060 - 1688 | 55 - 215, 265 - 422 |
-| Menu buttons (no run: BEGIN, FEEDBACK) | 220 - 860, 1224 - 1524 | 55 - 215, 306 - 381 |
+| Menu buttons (run waiting: CONTINUE, NEW GAME, FEEDBACK; G-80) | 220 - 860, 1142 - 1606 | 55 - 215, 285 - 402 |
+| Menu buttons (no run: NEW GAME, FEEDBACK) | 220 - 860, 1224 - 1524 | 55 - 215, 306 - 381 |
 | Version stamp and its underline | 24 - 177, 2340 - 2390 | 6 - 45, 585 - 598 |
 
 The logo and menu column is centred vertically, so it grows both ways when a
@@ -192,7 +202,7 @@ state adds a row (RESUME EARLIER POINT and its note, a save warning).
 Design px **x 80 - 1000, y 520 - 1880**; on the bleed canvas art px x 54 - 284,
 y 160 - 500. Every menu state's logo, buttons and notes sit inside it, the
 tallest (run waiting, with the earlier-point button and a browser save warning)
-from about y 528 to 1872. Inside it:
+from about y 610 to 1790 since G-80 (528 to 1872 with ABANDON RUN). Inside it:
 
 - **Luminance at most 20** (of 255), flat or a very low-contrast texture; no
   edges, windows or lamps behind the logo or button text.

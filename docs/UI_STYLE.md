@@ -9,10 +9,13 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 - **The player owns the bottom:** PLAYER cobalt for friendly frames, primary
   buttons, selection, the footer.
 - **The enemy owns the top:** the operation's ENCOUNTER color for the header
-  battle count and rule and the enemy frames. Nothing else.
+  battle count and rule and the enemy frames. Nothing else, except squad
+  select's mission card (G-81), which previews the operation: its frame, faint
+  tint, boss frame, name, level pips, threat tags and the current page dot.
 - **The tray is neutral shared ground:** neutral darks, never the encounter
-  color. Its floor is the one "grate + ember" floor for every operation (G-76,
-  `TRAY_GRATE_*`, drawn in code by `battle_bay_floor.gd`).
+  color. Its floor is one image for every operation, a charcoal surface with
+  one thin gray reticle (G-79, `assets/battle_tray/tray_floor_reticle.png`, drawn
+  one texel per art pixel by `battle_bay_floor.gd`; data `tray_floors`).
 - **CHROME carries no meaning:** text, panels, borders, secondary and disabled
   buttons. Most UI is CHROME.
 - **Dice colors are constant:** hero blue, enemy red, every operation.
@@ -181,10 +184,25 @@ font settings.
 ## The notch rule
 
 The single top-left notch marks a screen's **one primary action** (title
-CONTINUE / BEGIN, reward CONFIRM, DEPLOY SQUAD, the battle's ROLL / END TURN,
+CONTINUE / NEW GAME, reward CONFIRM, DEPLOY SQUAD, the battle's ROLL / END TURN,
 the run-flow screens' commit button) and **a pop-up's main confirm**. A choice
 between equals is secondary. A destructive confirm (abandon, discard) is
 DESTRUCTIVE, never notched. The notch never moves.
+
+## Squad select ("A5", G-81)
+
+MISSION and SQUAD subheaders are LABEL in CHROME_DIM. The mission card: an
+8 design px ENCOUNTER_ACCENT frame over a 10% tint, the boss through the shared
+portrait frame at the roster tile width (same height as the tiles), the name in
+CARD_NAME, level pips + LV + a CLEARED (cobalt outline) or LOCKED (line
+outline) tag, the threats as SMALL text in MIN_STROKE accent-outlined tags. The
+unit info bar: cobalt frame, UI_PANEL fill, callsign LABEL in light cobalt, HP
+and status SMALL, the one-line `blurb` SMALL, the roll band bar (segments sized
+by roll windows, fill = the effect's keyword colour darkened 60% or UI_ROW, one
+7 x 7 art px glyph each: attack KW_DAMAGE, heal KW_HEAL, shield KW_SHIELD,
+neutral dot CHROME_DIM), the hint SMALL CHROME_DIM (WARNING for the squad-full
+hint). The unit in the info bar gets a CHROME outline outside its tile frame.
+Short of three picks DEPLOY is disabled as "PICK n MORE".
 
 ## Protocol color
 

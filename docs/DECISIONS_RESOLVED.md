@@ -15,6 +15,96 @@ the live game. Implementing these needs its own task.
   heal above); remaining summons are full HP.
 - **Supersedes the G-54 summons hold once implemented.** Until then G-54 stands.
 
+## G-81. Squad select "A5": mission card, unit info bar, PICK n MORE (Kev, 2026-10-17)
+
+Branch `ui/batch-a5`. **Supersedes** UI batch 2026-09-27 B3's site line,
+encounter detail box (story + THREATS) and "a tap only toggles; unit info is
+long-press only", the 2026-07-10 picker's "SELECT ENCOUNTER / SELECT SQUAD"
+headers and "DEPLOY SQUAD (N MORE)" gate, and G-75's "the encounter colour is
+the header and enemy frames, nothing else" for this one card. G-16's hidden
+locked hero names stand.
+
+Top to bottom, every block one GAP apart, the cluster centred between the
+header (? and back only, no title) and DEPLOY:
+- **MISSION** subheader (LABEL, CHROME_DIM).
+- **Mission card** between small prev / next arrows (72 x 144): an 8 design px
+  ("3 px" on a 390 phone) ENCOUNTER_ACCENT frame over a 10% tint of it; the boss
+  portrait at the left through the shared portrait frame at the roster tile
+  width (230 window, 238 x 274 framed, the tiles' height), framed in the
+  accent; the operation name (CARD_NAME, accent); a row of five level pips
+  (accent / empty) + "LV n" + a CLEARED tag (cobalt outline) when won, or a
+  LOCKED tag (line outline) when locked; the THREATS (the existing briefing
+  data) as small outlined tags in the accent, or a locked operation's "Clear
+  X to unlock" in their slot. Nothing else: the flavor paragraph leaves the
+  screen (it stays in data, Help and the card's long-press).
+- Page dots under the card, the current one in the accent.
+- A thin separator (UI_LINE, MIN_STROKE).
+- **SQUAD** subheader with "n / 3" right-aligned; the 4-column roster
+  unchanged (tiles, picks' cobalt frame and 1-3 badge, locked silhouettes). The
+  unit in the info bar gets a bone (CHROME) outline drawn just outside its
+  frame (an expand margin: the grid does not move).
+- **Unit info bar**, always present at one height: cobalt frame, UI_PANEL fill;
+  the callsign (light cobalt), "HP n" and IN SQUAD / ON BENCH / LOCKED
+  right-aligned (SMALL); the one-line `blurb` (SMALL); a roll band bar of five
+  segments sized by the unit's real roll windows (whole art px, largest
+  remainder), each with a 7 x 7 art px glyph for its main effect: attack
+  (KW_DAMAGE), heal (KW_HEAL), shield (KW_SHIELD) by the largest of its damage /
+  heal / shield amounts (ties: heal, then shield), a neutral CHROME_DIM dot
+  otherwise; the hint "HOLD ANY UNIT FOR FULL INTEL". A locked unit shows "???",
+  LOCKED and its unlock condition (`SaveManager.hero_unlock_condition`), no bar.
+- **DEPLOY SQUAD**, the one primary; short of three picks it is disabled and
+  reads "PICK n MORE" (a locked operation with three picks: OPERATION LOCKED).
+
+Behaviour: a tap shows the unit in the info bar AND toggles it in or out of
+the squad; with the squad full a bench tap only shows it and the hint line
+reads "SQUAD FULL: TAP A PICK TO REMOVE" (WARNING); a locked unit's tap only
+shows it. A long-press opens the unit inspect pop-up (a locked unit's does
+nothing, as before). The info bar opens on pick 1. The last operation and
+squad deployed come back (profile `last_deploy`, healed to empty on older
+saves, no version bump) when still playable.
+
+Data: a one-line `blurb` per hero (role + signature effect, <= 60 chars),
+`blurbStatus: "draft"` until Kev approves the copy. Evolutions are not shown
+on this screen and have none.
+
+**Open:** the `panel count` gate pins 11 framed panels on this screen; A5 draws
+15 (16 worst case: card, boss, 8 tiles, focus ring, info bar, 3 threat tags, a
+status tag). Raising the pin needs Kev's sign-off (ratchet hook), so the gate
+fails on the branch until then.
+
+## G-80. Title menu: CONTINUE / NEW GAME / FEEDBACK; NEW GAME asks over a run (Kev, 2026-10-17)
+
+Branch `ui/batch-a5`. BEGIN is renamed NEW GAME everywhere it is named, and the
+title has no ABANDON RUN. The menu is CONTINUE (only with a saved run), NEW
+GAME (always), FEEDBACK; the primary (notched) is CONTINUE when a run is saved,
+otherwise NEW GAME. NEW GAME over a saved run opens a confirm, "START A NEW
+GAME?" / "Your current run will be lost.", with KEEP RUN (the pop-up's
+primary) and START NEW (DESTRUCTIVE, amber), which does what ABANDON RUN did
+(`GameState.reset_run`: the run save is deleted, the profile kept) and then
+starts a new game (the first-run tutorial question included). Tapping outside
+keeps the run. Without a save NEW GAME starts at once. RESUME EARLIER POINT,
+the save notices and the battle's own ABANDON RUN are unchanged.
+
+## G-79. The dice tray floor is one reticle image (Kev, 2026-10-17)
+
+Branch `ui/batch-a5`. **Supersedes G-76's "grate + ember" floor.** The tray
+floor is `assets/battle_tray/tray_floor_reticle.png`: a flat dark charcoal
+surface, a faint diagonal texture and one thin gray reticle (outer ring with
+ticks, inner broken ring), 260 x 223 art px (the 1040 x 892 design px tray / 4),
+built from `assets/art_incoming/tray_reticle_raw.png` by
+`tools/build_tray_floor.py` through `pixelize` (source cropped to centre the
+reticle, then centre-cropped to the tray aspect; one stray reticle-tone speck
+is set to the floor). `battle_bay_floor.gd` draws it one texel per art pixel,
+centred on the tray; a tray of another size (safe-area insets) crops its edges
+or extends it with its most common colour. The procedural slats, ember glow,
+lip, frame and reticle and the `PixelUI.TRAY_GRATE_*` tokens are removed; the
+data entry stays (`tray_floors.reticle`, named by the root `tray_floor`) so an
+operation could override it. Floor luma 23.8 - 33.2 (median 26.5), the reticle
+one tone at luma 67.6; the dice's numerals and edges (luma ~210) are the
+brightest things in the tray (the reticle is brighter than the dice body fills,
+red ~38-45, blue ~46-71, but one art px thin and achromatic). Hard pixel dice
+shadows, physics, bounds and ROLL are unchanged.
+
 ## G-78. The defeat screen shares the victory design; run-end text steps up (Kev, 2026-10-17)
 
 Branch `art/backdrops-v1`. **Supersedes G-76's line that the defeat screen
