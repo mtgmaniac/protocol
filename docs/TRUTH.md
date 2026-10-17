@@ -1,5 +1,12 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**v0.4 copy and matched balance (2026-10-17):** Hive's threats read
+`BURN · SWARM · LEECH` (was SIPHON), matching its enemy `lifestealPct` abilities.
+1,500 matched seeds per operation against G-74 reproduce all 7,500 JSONL traces
+byte-for-byte: Facility 34.40%, Hive 22.87%, Veil 18.47%, Signal 18.20%, Mantle
+15.73%, every delta 0.00. The earlier small-sample Mantle +14.6 does not hold.
+Details: `docs/V04_POLISH.md`; no tuning or baseline change.
+
 **v0.4 gate debt cleared (2026-10-17):** title/unlock starts with a clean dev
 run save; framing previews use `HOME.TILE_PORTRAIT_W`. The sim break fixture
 uses +16% Hive damage in memory: G-74 made the old +8% fixture only -7.9 points,

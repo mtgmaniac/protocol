@@ -32,7 +32,7 @@ const OPERATION_COPY := {
 		"name": "HIVE INCURSION",
 		"origin": "An invasive brood has overrun the colony labs. The hive is spreading into the surrounding settlements.",
 		"site": "Colony bioresearch labs",
-		"threats": "BURN · SWARM · SIPHON",
+		"threats": "BURN · SWARM · LEECH",
 		"failure": "Hive containment lost",
 		"directive": "Kill the Hive Matriarch",
 	},
