@@ -1,9 +1,9 @@
 # Deploy / picker screen ("A5", UI batch A5, Kev 2026-10-17, DECISIONS_RESOLVED
 # G-81): mission card, squad grid, unit info bar, DEPLOY.
 #
-# Top to bottom (every block GAP apart, under the shared header, which carries
-# only ? and back here):
-# - MISSION (LABEL subheader), then the mission card between small prev / next
+# Top to bottom, under the shared header (which carries only ? and back here):
+# - MISSION (subheader, one clean step above LABEL: m5x7 96 drawn pixel-exact),
+#   then the mission card between small prev / next
 #   arrows: an ENCOUNTER_ACCENT frame over a faint tint of it; the boss portrait
 #   at the left (the shared portrait frame at the roster tile width, so the same
 #   height as the tiles, framed in the accent); the operation name (CARD_NAME,
@@ -13,8 +13,8 @@
 #   inside the card (the `panel count` gate pins the screen at 11). Nothing else: the flavor paragraph left
 #   this screen (it stays in data, Help and the card's long-press). Page dots
 #   under the card, the current one in the accent.
-# - A thin separator, GAP above and below.
-# - SQUAD (LABEL subheader) with "n / 3" right-aligned, and the 4-column roster
+# - A thin separator.
+# - SQUAD (subheader, as MISSION) with "n / 3" right-aligned, and the 4-column roster
 #   grid (tile sizes unchanged). Picks keep the cobalt frame and the 1-3 badge;
 #   the unit shown in the info bar has its own tile border in bone (CHROME).
 # - The unit info bar, always present at one height (cobalt frame, dark fill):
@@ -25,8 +25,11 @@
 #   unlock condition and no bar.
 # - DEPLOY SQUAD, the one primary; short of three picks it reads "PICK n MORE",
 #   disabled.
-# Content starts one GAP under the header; the leftover height sits between the
-# info bar and DEPLOY.
+# Spacing (Kev, 2026-10-17, G-86): a buffer of at least 2 GAP under the header
+# and above DEPLOY, at least one GAP between the four sections (mission block,
+# separator, squad block, info bar). The height left over is shared evenly by
+# those five gaps in whole GAPs (gap_sizes), never by the elements; a short
+# screen shrinks the two buffers first, then the section gaps.
 # Tap a unit: it shows in the info bar AND toggles in or out of the squad; with
 # the squad full a bench tap only shows it, plus "SQUAD FULL: TAP A PICK TO
 # REMOVE". Long-press opens the unit's inspect pop-up. The info bar opens on
@@ -45,6 +48,15 @@ const MAX_SELECTED_UNITS := 3
 const ROOT_MARGIN_X := 40   # buys the grid its exact-fit width (1000 px content)
 const ROOT_MARGIN_BOTTOM := 48
 const GAP := PixelUI.GAP
+## The five gaps' floors, top to bottom (G-86): header -> mission block,
+## mission -> separator, separator -> squad, squad -> info bar, info bar ->
+## DEPLOY.
+const GAP_FLOORS: Array[int] = [2 * GAP, GAP, GAP, GAP, 2 * GAP]
+## Subheaders (MISSION, SQUAD and its n / 3): one clean step above LABEL's 64,
+## m5x7 laid out at 96 and drawn pixel-exact (PixelUI.bind_m5x7_snap), as the
+## run-end report's rows: 2 screen px per font pixel on the phones, 3 at the
+## 540 preview.
+const SUBHEADER_FONT_PX := Vector2(5.0, 6.0)
 ## Design px per art pixel: glyphs, pips and the band bar sit on this grid.
 const ART_PX := 4
 
@@ -152,6 +164,11 @@ var _info_strip: Control
 var _info_hint: Label
 var _deploy_panel: PanelContainer
 var _deploy_button: Button
+var _layout_margin: MarginContainer
+var _column: VBoxContainer
+## The five gap slots (GAP_FLOORS order) and the blocks between them.
+var _gaps: Array[Control] = []
+var _blocks: Array[Control] = []
 
 
 # ─── Lifecycle ────────────────────────────────────────────────────────────────
@@ -233,39 +250,116 @@ func _build_layout() -> void:
 	margin.add_theme_constant_override("margin_right", ROOT_MARGIN_X + PixelUI.safe_right)
 	# Reserve room for the always-on PersistentHeader band (its real height on a
 	# cutout device) plus one GAP; DEPLOY clears the gesture bar.
-	margin.add_theme_constant_override("margin_top", int(PersistentHeader.band_height()) + GAP)
+	margin.add_theme_constant_override("margin_top", int(PersistentHeader.band_height()))
 	margin.add_theme_constant_override("margin_bottom", ROOT_MARGIN_BOTTOM + PixelUI.safe_bottom)
 	add_child(margin)
+	_layout_margin = margin
 
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", GAP)
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	margin.add_child(column)
+	# No container separation: every space between blocks is a gap slot, sized
+	# by _distribute_gaps.
+	_column = VBoxContainer.new()
+	_column.add_theme_constant_override("separation", 0)
+	_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(_column)
 
-	# Content starts one GAP under the header (the margin above); the one
-	# spacer takes the leftover height between the info bar and DEPLOY.
-	column.add_child(_make_subheader("MISSION"))
-	column.add_child(_build_mission_row())
-	column.add_child(_build_dots())
-	column.add_child(_build_divider())
-	column.add_child(_build_squad_header())
-	column.add_child(_build_roster())
+	var mission := VBoxContainer.new()
+	mission.add_theme_constant_override("separation", GAP)
+	mission.add_child(_make_subheader_row("MISSION"))
+	mission.add_child(_build_mission_row())
+	mission.add_child(_build_dots())
+	var squad := VBoxContainer.new()
+	squad.add_theme_constant_override("separation", GAP)
+	squad.add_child(_build_squad_header())
+	squad.add_child(_build_roster())
 	_info_bar = _build_info_bar()
-	column.add_child(_info_bar)
-	var spacer_bottom := Control.new()
-	spacer_bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	spacer_bottom.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(spacer_bottom)
-	column.add_child(_build_deploy_button())
+	_blocks = [mission, _build_divider(), squad, _info_bar, _build_deploy_button()]
+	_gaps.clear()
+	for i in _blocks.size():
+		if i < GAP_FLOORS.size():
+			var gap := Control.new()
+			gap.name = "Gap%d" % i
+			gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			gap.custom_minimum_size.y = GAP_FLOORS[i]
+			_column.add_child(gap)
+			_gaps.append(gap)
+		_column.add_child(_blocks[i])
+	margin.resized.connect(_distribute_gaps)
+	_distribute_gaps.call_deferred()
 
 
-# A section subheader: LABEL role, CHROME_DIM (MISSION, SQUAD).
-func _make_subheader(text: String) -> Label:
+# Sizes the five gap slots from the height the blocks leave (gap_sizes).
+func _distribute_gaps() -> void:
+	if _layout_margin == null or _gaps.is_empty():
+		return
+	var available: float = _layout_margin.size.y - float(_layout_margin.get_theme_constant("margin_top")) - float(_layout_margin.get_theme_constant("margin_bottom"))
+	var content := 0.0
+	for block: Control in _blocks:
+		content += block.get_combined_minimum_size().y
+	var sizes: Array[int] = gap_sizes(available - content)
+	for i in _gaps.size():
+		_gaps[i].custom_minimum_size.y = float(sizes[i])
+
+
+## The five gaps for `free` design px left by the blocks (G-86). Each starts at
+## its floor (GAP_FLOORS); the rest is shared evenly in whole GAPs, the odd
+## GAPs to the section gaps from the middle out, then the buffers; under one
+## GAP of it stays below DEPLOY (the bottom margin). Short of the floors, the
+## two buffers shrink first (to 0), then the section gaps, on the 4 px art grid.
+static func gap_sizes(free: float) -> Array[int]:
+	var sizes: Array[int] = GAP_FLOORS.duplicate()
+	var floors := 0
+	for floor_px: int in GAP_FLOORS:
+		floors += floor_px
+	if free >= float(floors):
+		var units: int = int(floorf((free - float(floors)) / float(GAP)))
+		var each: int = units / sizes.size()
+		for i in sizes.size():
+			sizes[i] += each * GAP
+		var order: Array[int] = [2, 1, 3, 0, 4]
+		for n in units - each * sizes.size():
+			sizes[order[n]] += GAP
+		return sizes
+	var inner: float = float(floors - GAP_FLOORS[0] - GAP_FLOORS[4])
+	var buffers: float = maxf(free - inner, 0.0)
+	var buffer: int = int(floorf(buffers * 0.5 / ART_PX)) * ART_PX
+	sizes[0] = mini(buffer, GAP_FLOORS[0])
+	sizes[4] = mini(buffer, GAP_FLOORS[4])
+	if free < inner:
+		var section: int = int(floorf(maxf(free, 0.0) / 3.0 / ART_PX)) * ART_PX
+		for i in [1, 2, 3]:
+			sizes[i] = mini(section, GAP_FLOORS[i])
+	return sizes
+
+
+# A subheader line in a plain holder (the pixel-exact snap needs a plain
+# Control parent): MISSION, or SQUAD with its counter.
+func _make_subheader_row(text: String) -> Control:
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(roundi(SUBHEADER_FONT_PX.y * 16.0)))
+	_add_subheader(holder, _make_subheader(text, PixelUI.CHROME_DIM))
+	return holder
+
+
+# Fills the holder, sized on each resize. (Full-rect anchors set while the
+# holder is still 0 wide keep the text's width as an offset, so the label grew
+# past the holder's right edge and the right-aligned counter drew off screen.)
+func _add_subheader(holder: Control, label: Label) -> void:
+	holder.add_child(label)
+	holder.resized.connect(func() -> void:
+		label.position = Vector2.ZERO
+		label.size = holder.size)
+
+
+# A section subheader: one clean step above LABEL (MISSION, SQUAD, n / 3).
+func _make_subheader(text: String, ink: Color) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	PixelUI.apply_type(label, PixelUI.TYPE_LABEL, PixelUI.CHROME_DIM)
+	PixelUI.apply_type(label, PixelUI.TYPE_LABEL, ink)
+	PixelUI.bind_m5x7_snap(label, SUBHEADER_FONT_PX.x, SUBHEADER_FONT_PX.y)
 	return label
 
 
@@ -582,14 +676,10 @@ func _build_divider() -> Control:
 
 # ─── Squad grid ───────────────────────────────────────────────────────────────
 func _build_squad_header() -> Control:
-	var header := HBoxContainer.new()
-	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var title := _make_subheader("SQUAD")
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-	_counter_label = _make_type_label("0 / %d" % MAX_SELECTED_UNITS, PixelUI.TYPE_LABEL, PixelUI.CHROME)
-	header.add_child(_counter_label)
+	var header: Control = _make_subheader_row("SQUAD")
+	_counter_label = _make_subheader("0 / %d" % MAX_SELECTED_UNITS, PixelUI.CHROME)
+	_counter_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_add_subheader(header, _counter_label)
 	return header
 
 
@@ -839,6 +929,8 @@ func _refresh_unit_tiles() -> void:
 func _refresh_squad_counter() -> void:
 	if _counter_label != null:
 		_counter_label.text = "%d / %d" % [_selected_unit_ids.size(), MAX_SELECTED_UNITS]
+		# Right-aligned: its text origin moves with the text, so re-snap it.
+		PixelUI.set_block_ink_snap(_counter_label)
 
 
 # Compatibility aliases for the established screen contract (flow smoke test,
