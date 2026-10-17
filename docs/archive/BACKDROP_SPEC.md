@@ -1,4 +1,10 @@
-# Battle backdrop spec (flat pixel B, 2026-10-16)
+# Battle backdrop spec (flat pixel B, 2026-10-16) — RETIRED
+
+> **Retired 2026-10-17 (Kev, DECISIONS_RESOLVED G-76): there is no battle
+> backdrop image.** Battle and in-run screens show the plain dark background
+> token; the `backdrops` / `boss_backdrop` / `boss_backdrop_battles` fields, the
+> placeholder art and `backdrop_for` are removed. Kept for history only. See
+> `docs/ART_SPEC.md`.
 
 The battle backdrop is one full-screen image per battle, drawn BEHIND everything:
 the cards, the tray, the header and the footer all sit on top of it. It shows only

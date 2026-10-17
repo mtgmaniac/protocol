@@ -84,7 +84,7 @@ func _on_chrome_changed(_id: String) -> void:
 
 
 # Depth prototype A/B, debug builds only: F6 swaps the scene for the plain tray,
-# F7 hides the floor decal, F8 puts the v2 plates back behind the die tags, F9
+# F8 puts the v2 plates back behind the die tags, F9
 # switches the flat tray (flat pixel A) for the v3 perspective path.
 # Returns true when it used the key.
 func handle_depth_debug_key(event: InputEvent) -> bool:
@@ -93,8 +93,6 @@ func handle_depth_debug_key(event: InputEvent) -> bool:
 		return false
 	if key.keycode == KEY_F6:
 		DEPTH.backdrop_on = not DEPTH.backdrop_on
-	elif key.keycode == KEY_F7:
-		DEPTH.decal_on = not DEPTH.decal_on
 	elif key.keycode == KEY_F8:
 		DEPTH.plates_on = not DEPTH.plates_on
 	elif key.keycode == KEY_F9:
@@ -135,15 +133,6 @@ func refresh_depth_scene() -> void:
 func make_tag_field() -> PanelContainer:
 	var portrait: bool = not is_landscape
 	return PixelUI.make_battle_tag_field(portrait and DEPTH.plates_on, portrait and not DEPTH.plates_on)
-
-
-# Flat pixel B: the backdrop image for this battle (null = the plain texture).
-func _battle_backdrop() -> Texture2D:
-	var game_state: Node = _scene._game_state()
-	var path: String = DEPTH.backdrop_for(_operation_id(), int(game_state.get("current_battle")), int(game_state.get("run_seed")))
-	if path == "" or not ResourceLoader.exists(path):
-		return null
-	return load(path) as Texture2D
 
 
 func _operation_id() -> String:
@@ -512,7 +501,6 @@ func _build_depth_backdrop() -> void:
 	_depth_painter = PAINTER.new()
 	_depth_painter.name = "EnvironmentalBay"
 	_depth_painter.operation_id = _operation_id()
-	_depth_painter.backdrop_image = _battle_backdrop()
 	viewport.add_child(_depth_painter)
 	_depth_painter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	refresh_depth_scene()

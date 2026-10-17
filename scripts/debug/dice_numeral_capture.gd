@@ -29,7 +29,7 @@ func _initialize() -> void:
 func _run() -> void:
 	load("res://scripts/debug/capture_window.gd").apply(root, _window)
 	var floor_rect := ColorRect.new()
-	floor_rect.color = PixelUI.tray_palette()["floor"]
+	floor_rect.color = PixelUI.TRAY_GRATE_VOID
 	# Grown past the tray so a crop at the tray edge never reaches the clear color.
 	floor_rect.position = TRAY_RECT.position - Vector2(48, 48)
 	floor_rect.size = TRAY_RECT.size + Vector2(96, 96)

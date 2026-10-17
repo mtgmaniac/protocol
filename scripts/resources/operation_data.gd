@@ -11,6 +11,9 @@ extends Resource
 @export_multiline var lore: String = ""
 @export_multiline var victory_title: String = ""
 @export_multiline var victory_subtitle: String = ""
+## The Operation Cleared screen's image (G-76): a res:// path, "" for none (the
+## plain dark background). Facility has one; the others fall back.
+@export var victory_backdrop: String = ""
 ## UNWIRED — parked, not cut (INVARIANTS #6/#8): authored for per-battle HP scaling, but no
 ## reader wires it (not even the sim). Godot combat uses flat `enemyUnitDefs` stats.
 @export var track_hp_scale: float = 1.0

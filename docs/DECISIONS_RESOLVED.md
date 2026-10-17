@@ -15,6 +15,82 @@ the live game. Implementing these needs its own task.
   heal above); remaining summons are full HP.
 - **Supersedes the G-54 summons hold once implemented.** Until then G-54 stands.
 
+## G-77. The portrait region is re-ruled to the battle card's visible window (Kev, 2026-10-17)
+
+**Ruling:** the portrait region is the battle card's visible window, **320 x 384
+design px** (aspect 0.833), whose master is **80 x 96 art px** at the one
+art-pixel rule (`docs/ART_SPEC.md`). It replaces `PixelUI.HERO_PORTRAIT_REGION`
+= 328 x 380 (aspect 0.863), measured 2026-07-12 under an older card skin.
+
+**Not yet applied in code (recorded, constant unchanged).** The task allowed the
+constant to move only if nothing changed on screen today. It would: every
+portrait frame outside the battle card takes its height from this aspect
+(`PixelUI.portrait_window`), so each would grow about 4% taller (squad tile
+230 x 266 -> 230 x 276, encounter thumb 216 x 250 -> 216 x 260, evolution branch
+162 x 188 -> 162 x 194, unlock row 144 x 166 -> 144 x 172, Help row 96 x 112 ->
+96 x 116), and the anchor fit (`_targets`, fractions of the frame height) would
+re-seat every head on those screens. The battle card keeps its own frame and
+would not move. Applying it is its own task, with the native-art framing path
+of ART_SPEC ("What the code does today"), the `portrait frame` and
+`framing sites` gates and captures of every portrait screen. Until then
+`HERO_PORTRAIT_REGION` stays 328 x 380 and CLAUDE.md's "Portrait region" text
+describes the live game.
+
+## G-76. Art pass v1: title space backdrop, no battle backdrop, grate + ember tray, Operation Cleared (Kev, 2026-10-17)
+
+Branch `art/backdrops-v1`. Rendering, UI and art only: combat, balance, dice
+physics, tray bounds and copy outside the victory screen are unchanged.
+
+- **No background image on battle or in-run screens.** Battle, route fork,
+  intercept, reward, evolution, unlock and the Directive picker show the plain
+  dark background token (`PixelUI.UI_BG`). The operation battle backdrop layer,
+  its data fields (`backdrops`, `boss_backdrop`, `boss_backdrop_battles`) and the
+  placeholder art (`assets/battle_backdrops/`) are removed; `docs/BACKDROP_SPEC.md`
+  is retired (moved to `docs/archive/`). The in-run screens' faint scanlines and
+  edge vignette (`PixelUI.add_terminal_backdrop`) are procedural overlays, not an
+  image, and stay.
+- **One "grate + ember" dice tray floor for every operation.** Drawn in code at
+  art resolution (tray size / 4 design px) and shown NEAREST at 4x by
+  `battle_bay_floor.gd`: slat rows (art y % 5 == 0 and 1), a void, a faint
+  4x4-Bayer ember glow in the void rows toward the front, a support frame two
+  columns in from each side, a recessed lip, a centre reticle (four arcs at
+  radius 34 with 24 degree gaps at 0/90/180/270, a radius-3 ring). Colours are
+  the `PixelUI.TRAY_GRATE_*` tokens. It is a data entry (`tray_floors.grate_ember`
+  in `data/raw/battle-tray-scenes.json`, named by the root `tray_floor`), so an
+  operation could override it later with its own `tray_floor`. It replaces the
+  flat floor patterns, the rim and the floor decal (`assets/battle_tray/flat_*`,
+  the reticle and reactor emblem decals; debug F7 went with the decal). Hard pixel
+  dice shadows stay. The tray stays neutral: no encounter colour on it.
+- **A space backdrop on the title screen.** `assets/ui/title/title_backdrop.png`
+  (338 x 660 art px: the 270 x 600 core in the bleed canvas), drawn one texel per
+  art pixel, centred, by `scripts/ui/title_backdrop.gd`; the procedural street
+  (wall slabs, rust banner, window lights, rubble) and its `PixelUI.TITLE_*`
+  palette are removed. A missing file draws the plain dark screen colour. Logo,
+  menu buttons, ? / < and the version tag are unchanged. Values follow
+  ART_SPEC's title limits (safe zone luminance at most 20, highlights at most 48).
+- **One "Operation Cleared" image per operation on the victory screen,
+  Facility first.** New per-operation data field `victoryBackdrop`
+  (`OperationData.victory_backdrop`); Facility's is
+  `assets/ui/victory/victory_facility.png` (the same bleed canvas). Other
+  operations fall back to the plain dark background. The old victory layout and
+  its banner art (`assets/ui/events/victory.png`) are removed. The victory
+  screen, top to bottom: the shared operation header; OPERATION CLEARED (Battle
+  Block HEADER role, CHROME) over the art's sky; the operation name
+  (ENCOUNTER_ACCENT); a report panel near the bottom (UI_PANEL at 88%, thin
+  UI_LINE border) with "<BOSS> DESTROYED" (ENCOUNTER_ACCENT), a divider and
+  label / value rows (labels CHROME_DIM, values CHROME, right-aligned); one
+  primary CONTINUE (outlined cobalt, the notch). Rows use only stats the run
+  already tracks: battles won, survivors (heroes standing at the final battle's
+  end), XP earned, relics, turns, time. **This ends run report parity for a
+  victory** (TRUTH "Run report parity"): the defeat screen keeps the shared THIS
+  RUN block and SERVICE RECORD, unchanged.
+- **Raw art and the downscale exception.** Raw AI-generated sources sit in
+  `assets/art_incoming/` (a `.gdignore`: never imported, never shipped).
+  `tools/pixelize.py` (area downscale to the exact final size, median-cut
+  quantize to about 32 colours, no dithering) is the sanctioned exception to
+  ART_SPEC's "never downscale": the shipped file is at final art size; only the
+  raw source was large. `tools/build_backdrops.py` builds both images.
+
 ## G-75. UI style rulings; docs/UI_STYLE.md is the UI authority (Kev, 2026-10-16)
 
 Settled on `integration/ui-merge` (the UI stack: restyle A, flat-pixel A/B,

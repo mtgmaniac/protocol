@@ -2,8 +2,9 @@
 
 Sizes for art made outside the repo, measured from the live layout on
 `integration/ui-merge` (after the 2026-10-17 text step-up) at the 1080 x 2400
-design resolution. Battle backdrop detail: `docs/BACKDROP_SPEC.md`. UI rules:
-`docs/UI_STYLE.md`.
+design resolution. Backdrops (Kev, 2026-10-17, DECISIONS_RESOLVED G-76): a space
+image on the title, one Operation Cleared image per operation, no image on
+battle or in-run screens. UI rules: `docs/UI_STYLE.md`.
 
 ## The one rule: 1 art pixel = 4 design pixels
 
@@ -16,6 +17,16 @@ on a 390 px phone.
   a small file: the game shows art with NEAREST sampling at **whole multiples** of
   the grid only (4x design, or 8x for a doubled icon), so a file at the wrong size
   shows at the wrong size, not resampled.
+- **The one exception: `tools/pixelize.py`** (Kev, 2026-10-17, G-76). A raw,
+  large AI-generated source may be converted, because the file that ships is
+  written at the exact final art size: an area (box) downscale to the target
+  size, then a median-cut quantize to about 32 colours with no dithering
+  (`--accents N` keeps a few of them for small lit pixels such as lamps, which
+  median cut would otherwise merge away). Raw sources live in
+  `assets/art_incoming/`, which holds a `.gdignore`: Godot never imports them and
+  they never ship. Only the converted file goes under `assets/`. The title and
+  victory images are built by `tools/build_backdrops.py` (the bleed canvas and
+  the title's brightness limits on top of pixelize).
 - Hard pixel edges, flat tones, no gradients, blur or anti-aliasing.
 - PNG, 8-bit sRGB. Import stays **Lossless** (the default). Never lossy WebP or
   VRAM compression: the noise moves on dark flat tones and breaks framing crops.
@@ -53,12 +64,13 @@ hand-declared head anchors (`portrait_anchors.json`) and nudges by physical px.
 None of that is a whole multiple. Showing the 80 x 96 masters at 4x / 3x / 2x / 1x
 needs a code task: a native-art framing path (exact scale, no zoom, no anchor
 fit, no physical-px nudges, the art placed on the window) and the window sizes
-in the table. Also a **ruling for Kev**: the ruled portrait region is
-`PixelUI.HERO_PORTRAIT_REGION` = 328 x 380 (aspect 0.863), measured 2026-07-12
-under an older card skin; the battle card now shows 320 x 384 (0.833). This spec
-follows the battle card. Until the region is re-ruled, the other screens would
-cover-fit the 80 x 96 master into their 0.863 windows (fitting the width, the
-bottom 3% trimmed).
+in the table. **Region re-ruled (Kev, 2026-10-17, DECISIONS_RESOLVED G-77):**
+the portrait region is the battle card's visible window, 320 x 384 (aspect
+0.833), master 80 x 96. Recorded, not yet in code: `PixelUI.HERO_PORTRAIT_REGION`
+stays 328 x 380 (0.863), because moving it would make every portrait frame
+outside the battle card about 4% taller today. Until that task lands, the other
+screens would cover-fit the 80 x 96 master into their 0.863 windows (fitting the
+width, the bottom 3% trimmed).
 
 ### Framing inside the master
 
@@ -138,11 +150,15 @@ Framing: `portrait_anchors.json` `items` / `relics` entries (`center_x`,
 registered by id in `DataManager.ITEM_ICON_BY_ID` / `RELIC_ICON_BY_ID` (replace
 a file in place to keep its entry).
 
-## Battle backdrops
+## Battle and in-run screens: no backdrop image
 
-**Confirmed: 270 x 600 art px at the one rule** (1 texel = 4 design px, drawn
-NEAREST by `battle_bay_floor.gd`, centred). The full spec, safe zones (updated for
-the 2026-10-17 layout), values and registration: `docs/BACKDROP_SPEC.md`.
+**Ruled out (Kev, 2026-10-17, DECISIONS_RESOLVED G-76).** Battle and every in-run
+screen (route fork, intercept, reward, evolution, unlock, the Directive picker)
+show the plain dark background token, `PixelUI.UI_BG`. Do not make battle
+backdrops; the old spec is archived (`docs/archive/BACKDROP_SPEC.md`). The dice
+tray floor is not art either: it is the "grate + ember" floor drawn in code on
+the same grid (`battle_bay_floor.gd`, data `tray_floors` in
+`data/raw/battle-tray-scenes.json`).
 
 ## Title screen backdrop
 
@@ -197,17 +213,47 @@ Same family as the battle backdrops, darker than the menu:
   130), the street level below the menu (art y 470 - 585), and the side strips
   (art x 0 - 20 and 250 - 270, wider on 16:9 phones).
 
-### Registering it
+### The live image (Kev, 2026-10-17, G-76)
 
-**Not wired yet:** the title backdrop is the procedural placeholder in
-`scripts/ui/title_backdrop.gd` (drawn on the same 4 px grid through
-`PixelUI.make_art_grid_view`). Hooking an image is a small code task:
+`assets/ui/title/title_backdrop.png`: deep space with a planet's limb along the
+bottom, 338 x 660 (the bleed canvas), Lossless import. `scripts/ui/title_backdrop.gd`
+draws it one texel per art pixel, centred on the screen, on the shared grid
+(`PixelUI.make_art_grid_view`); a missing file draws the plain dark screen
+colour (the procedural street is gone). Built from
+`assets/art_incoming/title_space_raw.png` by `tools/build_backdrops.py`, which
+also prints these checks (`--check` measures the shipped file only; luminance is
+Rec. 601 luma):
 
-1. Save the PNG as `assets/ui/title/title_backdrop.png` (Lossless import, commit
-   it with its `.import` file).
-2. `title_backdrop.gd` draws it one texel per art pixel, centred on the screen,
-   like `battle_bay_floor.gd _draw_flat`, and keeps the procedural street as the
-   fallback when the file is missing.
-3. Check it at 360 x 800, 390 x 867, 540 x 1200, a 16:9 window (360 x 640) and a
-   21:9 window (360 x 840) with `scripts/debug/main_menu_capture.gd`
-   (`--capture-run-save` for the taller menu).
+- Stars are crisp single art pixels; the four-point sparkles keep their cross
+  but at plain-star brightness. Stars in the safe zone are kept at luma 20 or
+  under, so they are faint there.
+- Safe zone: luma 9.6 to 19.7 (median 11.7), limit 20.
+- Everywhere else: median 11.7, 97% of pixels in 8 - 30, max 43.7 (the planet's
+  rim; the planet is passed through a soft knee so the rim tops out under 48).
+  Saturation (HSV) max 35.7%: the stars' cool white.
+- Bleed: the core mirrored outward, so the space keeps its faint texture with no
+  seam; within 30 art px of the planet the mirror keeps the radius of a circle
+  fitted to the rim, so the limb carries on along its own curve to the 16:9
+  edges (it meets the core edge at about core y 528 and the bleed edge at about
+  540), and the bottom 30 rows mirror the planet's body. A sparse seeded
+  starfield is added outside the planet.
+
+Check it at 360 x 800, 390 x 867, 540 x 1200, a 16:9 window (360 x 640) and a
+21:9 window (360 x 840) with `scripts/debug/main_menu_capture.gd`
+(`--capture-run-save` for the taller menu).
+
+## Operation Cleared image (victory screen)
+
+One per operation (Kev, 2026-10-17, G-76), named by the operation's
+`victoryBackdrop` in `data/raw/battle-modes.json` (Facility:
+`assets/ui/victory/victory_facility.png`). Same canvas as the title: the 270 x
+600 core in a 338 x 660 bleed, drawn one texel per art pixel, centred (the
+victory screen reuses `title_backdrop.gd`). An operation without one shows the
+plain dark background.
+
+What sits on it (core art px): the header band (y 0 - 36); OPERATION CLEARED and
+the operation's name over the sky (about y 60 - 105); the report panel and
+CONTINUE in the bottom third (about y 380 - 588 at 20:9). Keep the sky behind the
+title calm and put the busy foreground where the panel covers it (the panel is
+88% opaque). No brightness limits beyond the global ones: it is a ceremony
+screen, not a play surface. Lossless import.

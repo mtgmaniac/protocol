@@ -43,8 +43,6 @@ func _run_capture() -> void:
 		if not config.has(step[0]):
 			continue
 		depth.set(step[1], step[2])
-		if step[1] == "backdrop_on":
-			depth.set("decal_on", false)
 		current_scene.get("_layout").call("refresh_depth_scene")
 		# Die tags rebuild on the scene's next frames; let them land and draw.
 		await create_timer(0.5).timeout
@@ -153,7 +151,7 @@ func _parse_args() -> Dictionary:
 			# again with the die tag plates on (F8).
 			config["depth_plates_output"] = arg.get_slice("=", 1)
 		elif arg.begins_with("--capture-depth-flat-output="):
-			# ...and again with the scene and the floor decal off (F6 + F7).
+			# ...and again with the scene off (F6).
 			config["depth_flat_output"] = arg.get_slice("=", 1)
 		elif arg.begins_with("--capture-mid-roll-ms="):
 			# Press Roll and capture this many ms later, dice in the air.

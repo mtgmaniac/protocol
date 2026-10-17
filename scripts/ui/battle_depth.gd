@@ -7,10 +7,10 @@ extends RefCounted
 ## the tray camera unprojects); `depth` is its y as 0 (back wall) .. 1 (front).
 ## Preloaded by path (no class_name) so `-s` test scripts never resolve it early.
 
-## Debug A/B switches (battle scene, debug builds): F6 the scene, F7 the floor
-## decal, F8 the v2 plates behind the die tags, F9 the v3 perspective.
+## Debug A/B switches (battle scene, debug builds): F6 the scene, F8 the v2
+## plates behind the die tags, F9 the v3 perspective. (F7, the floor decal, went
+## with the decal: the grate + ember floor draws its own reticle, G-76.)
 static var backdrop_on := true
-static var decal_on := true
 static var plates_on := false
 ## Flat pixel A: the tray is drawn top-down and flat (every die the same size, no
 ## depth scaling, the dice drawn exactly where they simulate, hard pixel drop
@@ -42,27 +42,13 @@ static func encounter_accent(operation_id: String) -> Color:
 	return token(str(scene_for(operation_id).get("accent", "")))
 
 
-## Flat pixel B: the battle's full-screen backdrop image (docs/BACKDROP_SPEC.md).
-## A battle whose number is in `boss_backdrop_battles` (default [10]) uses
-## `boss_backdrop` when it is set; any other battle picks one of `backdrops`.
-## The pick is seeded from the run seed, the operation and the battle number (a
-## local generator, never the combat streams), so a resumed battle shows the
-## same image. "" means no image: the painter draws the plain dark texture.
-const BOSS_BACKDROP_BATTLES_DEFAULT := [10]
-
-
-static func backdrop_for(operation_id: String, battle_number: int, run_seed: int) -> String:
+## The dice tray's floor (Kev, 2026-10-17, G-76): one "grate + ember" floor for
+## every operation, a data entry in `tray_floors`. The root `tray_floor` names
+## the default; a scene entry may name its own `tray_floor` to override it later.
+static func tray_floor_for(operation_id: String) -> Dictionary:
 	var entry: Dictionary = scene_for(operation_id)
-	var boss_battles: Array = entry.get("boss_backdrop_battles", BOSS_BACKDROP_BATTLES_DEFAULT)
-	var boss: String = str(entry.get("boss_backdrop", ""))
-	if boss != "" and (battle_number in boss_battles or float(battle_number) in boss_battles):
-		return boss
-	var choices: Array = entry.get("backdrops", [])
-	if choices.is_empty():
-		return ""
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([run_seed, operation_id, battle_number])
-	return str(choices[rng.randi_range(0, choices.size() - 1)])
+	var floor_id: String = str(entry.get("tray_floor", _scenes.get("tray_floor", "")))
+	return (_scenes.get("tray_floors", {}) as Dictionary).get(floor_id, {})
 
 
 ## A PixelUI colour named in the scene data. Empty name: transparent.

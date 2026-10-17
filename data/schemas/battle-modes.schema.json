@@ -23,6 +23,10 @@
           "blurb": { "type": "string" },
           "victoryTitle": { "type": "string" },
           "victorySub": { "type": "string" },
+          "victoryBackdrop": {
+            "type": "string",
+            "description": "The Operation Cleared screen's image (Kev, 2026-10-17, DECISIONS_RESOLVED G-76): a res:// path to a 338 x 660 art px bleed canvas (docs/ART_SPEC.md). Absent or missing: the plain dark background."
+          },
           "callsign": {
             "type": "string",
             "description": "Short operation callsign shown in UI (e.g. FACILITY)."

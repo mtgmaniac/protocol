@@ -1,7 +1,9 @@
-# Run-end screen — victory / defeat summary in the Direction-05 DT language.
+# Run-end screen. A victory is the OPERATION CLEARED screen (Kev, 2026-10-17,
+# DECISIONS_RESOLVED G-76): the operation's image, a title over its sky, a
+# report panel near the bottom and one CONTINUE. A defeat keeps the
+# Direction-05 summary (title, banner, THIS RUN and SERVICE RECORD), unchanged.
 extends Control
 
-const VICTORY_TITLE_FONT := 108
 const DEFEAT_TITLE_FONT := 150
 # Kev 2026-07-10: readability pass — heads/summary/button were well below the
 # phone-legibility floor (section heads rendered ~13 preview px).
@@ -9,6 +11,16 @@ const SECTION_HEAD_FONT := 48
 const SUMMARY_FONT := 64
 const BUTTON_FONT := 56
 const BUTTON_SIZE := Vector2(360, 120)
+
+# The victory screen. Its image is drawn like the title's (one texel per art
+# pixel, centred, the bleed canvas), through the same painter.
+const ART_PAINTER := preload("res://scripts/ui/title_backdrop.gd")
+## Design px from the screen edges to the victory text, panel and button.
+const VICTORY_SIDE := 60
+const VICTORY_BOTTOM := 48
+## The title sits this far under the header, over the art's sky.
+const VICTORY_TITLE_TOP := 96
+const VICTORY_BUTTON_FONT := 64
 
 @onready var background: ColorRect = $Background
 @onready var title_label: Label = %TitleLabel
@@ -29,7 +41,8 @@ func _ready() -> void:
 	MusicManager.play_track(&"sci_fi_loop_1")
 	MusicManager.set_combat(false)
 	# The run's last screen keeps the in-operation header (ui-cleanup); its
-	# buttons stay inert (this screen binds none of them).
+	# buttons stay inert (this screen binds none of them). It also sets
+	# PixelUI.ENCOUNTER_ACCENT to this operation's color.
 	PersistentHeader.clear_battle_actions()
 	if GameState.tutorial_mode:
 		PersistentHeader.set_run_active(false)
@@ -43,35 +56,162 @@ func _ready() -> void:
 
 	var victory := GameState.last_run_result == "victory"
 	AudioManager.play_sfx("victory" if victory else "failure")
+	background.color = PixelUI.UI_BG
 	if victory:
-		title_label.text = "OPERATION COMPLETE"
-		if operation != null and operation.victory_title != "":
-			title_label.text = operation.victory_title.to_upper()
-		summary_label.text = "%s cleared.\n%s" % [
-			operation_name,
-			_run_report_text(),
-		]
-		if operation != null and operation.victory_subtitle != "":
-			summary_label.text = "%s\n%s" % [summary_label.text, operation.victory_subtitle]
-	else:
-		title_label.text = "RUN FAILED"
-		summary_label.text = "The squad was wiped during %s.\nOperation: %s\n%s" % [
-			GameState.get_battle_progress_text(),
-			operation_name,
-			_run_report_text(),
-		]
-
-	_apply_visual_theme(victory)
+		_build_victory(operation, operation_name)
+		return
+	title_label.text = "RUN FAILED"
+	summary_label.text = "The squad was wiped during %s.\nOperation: %s\n%s" % [
+		GameState.get_battle_progress_text(),
+		operation_name,
+		_run_report_text(),
+	]
+	_apply_defeat_theme()
 
 
-# The shared compact run report — identical rows on victory and defeat (the
-# defeat screen's old structure is the template; victory folds progress into
-# its "cleared" line, defeat into its "wiped during" line, so the block itself
-# never repeats the battle count).
+# ── Victory: OPERATION CLEARED ───────────────────────────────────────────────
+
+func _build_victory(operation: OperationData, operation_name: String) -> void:
+	# The defeat layout is not used.
+	$Content.visible = false
+	var painter: Control = ART_PAINTER.new()
+	painter.set("image_path", operation.victory_backdrop if operation != null else "")
+	var art: SubViewportContainer = PixelUI.make_art_grid_view(painter, "VictoryBackdrop")
+	add_child(art)
+	move_child(art, background.get_index() + 1)
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	# Top: the title and the operation's name, over the art's sky.
+	var top := VBoxContainer.new()
+	top.name = "VictoryTitle"
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_theme_constant_override("separation", PixelUI.GAP)
+	add_child(top)
+	top.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	top.offset_left = VICTORY_SIDE
+	top.offset_right = -VICTORY_SIDE
+	top.offset_top = PersistentHeader.band_height() + VICTORY_TITLE_TOP
+	var title := Label.new()
+	title.name = "ClearedLabel"
+	title.text = "OPERATION CLEARED"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PixelUI.apply_type(title, PixelUI.TYPE_HEADER, PixelUI.CHROME)
+	top.add_child(title)
+	var op_label := Label.new()
+	op_label.name = "OperationLabel"
+	op_label.text = operation_name
+	op_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	PixelUI.apply_type(op_label, PixelUI.TYPE_LABEL, PixelUI.ENCOUNTER_ACCENT)
+	_outline(op_label)
+	top.add_child(op_label)
+
+	# Bottom: the report panel, then the one primary action.
+	var bottom := VBoxContainer.new()
+	bottom.name = "VictoryReport"
+	bottom.add_theme_constant_override("separation", PixelUI.GAP * 2)
+	add_child(bottom)
+	bottom.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	bottom.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	bottom.offset_left = VICTORY_SIDE
+	bottom.offset_right = -VICTORY_SIDE
+	bottom.offset_top = 0
+	bottom.offset_bottom = -(VICTORY_BOTTOM + PixelUI.safe_bottom)
+	bottom.add_child(_victory_report_panel(operation))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	bottom.add_child(row)
+	var button := Button.new()
+	button.name = "ContinueButton"
+	button.text = "CONTINUE"
+	button.custom_minimum_size = BUTTON_SIZE
+	PixelUI.style_ui_primary_button(button, VICTORY_BUTTON_FONT)   # the screen's primary
+	button.pressed.connect(_on_new_run_button_pressed)
+	row.add_child(button)
+
+
+func _victory_report_panel(operation: OperationData) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = "ReportPanel"
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", PixelUI.victory_report_style())
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", PixelUI.GAP)
+	panel.add_child(col)
+	var boss := Label.new()
+	boss.name = "BossLabel"
+	boss.text = "%s DESTROYED" % _boss_name(operation)
+	boss.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	PixelUI.apply_type(boss, PixelUI.TYPE_LABEL, PixelUI.ENCOUNTER_ACCENT)
+	col.add_child(boss)
+	var divider := ColorRect.new()
+	divider.color = PixelUI.UI_LINE
+	divider.custom_minimum_size = Vector2(0, PixelUI.MIN_STROKE)
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(divider)
+	for entry: Array in _victory_rows():
+		var line := HBoxContainer.new()
+		var key := Label.new()
+		key.text = str(entry[0])
+		key.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		PixelUI.apply_type(key, PixelUI.TYPE_LABEL, PixelUI.CHROME_DIM)
+		line.add_child(key)
+		var value := Label.new()
+		value.text = str(entry[1])
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		PixelUI.apply_type(value, PixelUI.TYPE_NUMERAL, PixelUI.CHROME)
+		line.add_child(value)
+		col.add_child(line)
+	return panel
+
+
+## The report rows: stats the run already tracks (GameState), nothing new.
+## Battles won: the battle the run ended on (all of them on a clear).
+## Survivors: heroes standing at the final battle's end (deaths_last_battle).
+## XP earned: the squad's run XP (unit_xp, reset at start_run).
+## Relics: held at the end (a Starting Directive's relic included).
+## Turns and time: the run report's totals (run_total_turns, the wall clock).
+func _victory_rows() -> Array:
+	var squad: Array = GameState.selected_units
+	var standing: int = 0
+	var xp: int = 0
+	for unit_id_variant in squad:
+		var unit_id: String = str(unit_id_variant)
+		if not GameState.deaths_last_battle.has(unit_id):
+			standing += 1
+		xp += GameState.get_unit_xp(unit_id)
+	return [
+		["BATTLES WON", "%d" % GameState.current_battle],
+		["SURVIVORS", "%d / %d" % [standing, squad.size()]],
+		["XP EARNED", "%d" % xp],
+		["RELICS", "%d" % GameState.relics.size()],
+		["TURNS", "%d" % GameState.run_total_turns],
+		["TIME", _format_duration(GameState.run_duration_secs())],
+	]
+
+
+## The operation boss's name: the unit with a standing rule in the last battle.
+func _boss_name(operation: OperationData) -> String:
+	if operation == null or operation.battles.is_empty():
+		return "BOSS"
+	var names: Array = (operation.battles[operation.battles.size() - 1] as Dictionary).get("enemy_names", [])
+	var bosses: Array = GameState.boss_names_in(names)
+	return str(bosses[0]) if not bosses.is_empty() else "BOSS"
+
+
+# A dark edge for m5x7 text over the art (Battle Block roles get theirs from
+# apply_type).
+func _outline(label: Label) -> void:
+	label.add_theme_color_override("font_outline_color", PixelUI.INK_OUTLINE)
+	label.add_theme_constant_override("outline_size", PixelUI.MIN_STROKE)
+
+
+# ── Defeat ───────────────────────────────────────────────────────────────────
+
+# The shared compact run report (the defeat screen's THIS RUN block). Progress
+# is in its "wiped during" line, so the block never repeats the battle count.
 func _run_report_text() -> String:
 	var lines: Array = []
-	if GameState.last_run_result == "victory":
-		lines.append(GameState.get_battle_progress_text())
 	lines.append("Duration: %s | Turns: %d" % [
 		_format_duration(GameState.run_duration_secs()),
 		GameState.run_total_turns,
@@ -128,12 +268,10 @@ func _on_new_run_button_pressed() -> void:
 		SceneManager.go_to_unlocks()
 
 
-func _apply_visual_theme(victory: bool) -> void:
-	# Result accent: teal for a win (green is HP-only now), rust for a loss.
-	# ui-unify: a win is the player's color, a loss the warning amber.
-	var accent: Color = PixelUI.PLAYER_ACCENT if victory else PixelUI.WARNING
+func _apply_defeat_theme() -> void:
+	# ui-unify: a loss is the warning amber.
+	var accent: Color = PixelUI.WARNING
 
-	background.color = PixelUI.UI_BG
 	# Edge vignette + faint scanlines behind the content (which we lift to the front).
 	PixelUI.add_terminal_backdrop(self)
 	move_child($Content, get_child_count() - 1)
@@ -148,11 +286,10 @@ func _apply_visual_theme(victory: bool) -> void:
 	summary_panel.add_theme_stylebox_override("panel", PixelUI.make_hard_style(PixelUI.UI_PANEL, accent.darkened(0.3), PixelUI.MIN_STROKE))
 	PixelUI.add_corner_brackets(summary_panel, accent, 24.0, 3.0, 8.0)
 
-	var title_font: int = VICTORY_TITLE_FONT if victory else DEFEAT_TITLE_FONT
-	_style_label(title_label, title_font, accent.lightened(0.3))
+	_style_label(title_label, DEFEAT_TITLE_FONT, accent.lightened(0.3))
 	PixelUI.apply_type(title_label, PixelUI.TYPE_DISPLAY)
 
-	_add_result_banner(victory, accent)
+	_add_result_banner(accent)
 	_build_two_section_stats(accent)
 
 	# Continue is centered text, matching the unlock screen's primary action.
@@ -161,10 +298,10 @@ func _apply_visual_theme(victory: bool) -> void:
 	new_run_button.icon = null
 
 
-# Result illustration (victory / defeat) pinned above the title. Cover-cropped
-# to a fixed banner height so the centered emblem reads at any source aspect.
-func _add_result_banner(victory: bool, accent: Color) -> void:
-	var path: String = "res://assets/ui/events/%s.png" % ("victory" if victory else "defeat")
+# Defeat illustration pinned above the title. Cover-cropped to a fixed banner
+# height so the centered emblem reads at any source aspect.
+func _add_result_banner(accent: Color) -> void:
+	var path: String = "res://assets/ui/events/defeat.png"
 	if not ResourceLoader.exists(path):
 		return
 	var tex: Texture2D = load(path) as Texture2D

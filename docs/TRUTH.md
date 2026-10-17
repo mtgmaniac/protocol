@@ -4,6 +4,23 @@
 all UI work (color ownership, components, type roles, GAP, Protocol color,
 rarity). Older UI entries below yield to it where they differ.
 
+**Art pass v1 (Kev, 2026-10-17, DECISIONS_RESOLVED G-76; supersedes the tray
+scene, floor decal, F7 and battle backdrop parts of the depth prototype entries
+below):** no background image on battle or in-run screens (the plain `UI_BG`;
+the operation backdrop layer, its data fields and placeholder art are gone);
+one "grate + ember" dice tray floor for every operation, drawn in code at art
+resolution by `battle_bay_floor.gd` from the `tray_floors` data entry
+(`data/raw/battle-tray-scenes.json`, `PixelUI.TRAY_GRATE_*`), replacing the flat
+floor patterns, rim and floor decal; a space backdrop on the title screen
+(`assets/ui/title/title_backdrop.png`, `title_backdrop.gd`); an OPERATION CLEARED
+victory screen with one image per operation (`victoryBackdrop`, Facility first)
+and a report panel of tracked stats (battles won, survivors, XP earned, relics,
+turns, time). The defeat screen is unchanged and keeps the THIS RUN block. The
+F9 v3 perspective scene stays a debug A/B. Sizes and the raw-art pipeline
+(`assets/art_incoming/`, `tools/pixelize.py`): `docs/ART_SPEC.md`. The portrait
+region is re-ruled to 320 x 384 (G-77) but not yet applied: `HERO_PORTRAIT_REGION`
+is still 328 x 380.
+
 **2026-10-13 battle depth prototype v2 (`proto/battle-depth-v2`, review only;
 replaces the v1 entry below on this branch):** rendering only. Combat, balance,
 copy, layout and every dice rule are unchanged.
@@ -2558,7 +2575,9 @@ ruling: "AUTO TURN" / "AUTO BATTLE" (not "1X"/"2X" — they are not speeds).
 
 ## Run report + feedback channel (2026-07-30, stranger-readiness)
 
-**Run report parity:** victory and defeat share ONE run-end screen
+**Run report parity** (since G-76, 2026-10-17, a victory has its own OPERATION
+CLEARED layout and report rows; the THIS RUN block below is the defeat
+screen's): victory and defeat share ONE run-end screen
 (`run_end_screen.gd`) and ONE compact THIS RUN block (`_run_report_text` — the
 old defeat structure is the template): battle progress, `Duration | Turns`,
 inventory counts, `Fallen: <full hero names | none>`. Per-run sources are

@@ -87,7 +87,7 @@ func _ready() -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	# Placeholder street backdrop on the shared pixel grid.
+	# The space backdrop on the shared pixel grid (title_backdrop.gd).
 	var backdrop: SubViewportContainer = PixelUI.make_art_grid_view(TITLE_BACKDROP.new(), "TitleBackdrop")
 	add_child(backdrop)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

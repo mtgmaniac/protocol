@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://y7atw77wnj8d"
-path="res://.godot/imported/flat_backdrop_tile.png-d3abfa4c0ea28c5064755316acaac608.ctex"
+uid="uid://dekjb03mhdmxo"
+path="res://.godot/imported/victory_facility.png-c3407bb01d158c1e25bc55147f09b334.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/battle_tray/flat_backdrop_tile.png"
-dest_files=["res://.godot/imported/flat_backdrop_tile.png-d3abfa4c0ea28c5064755316acaac608.ctex"]
+source_file="res://assets/ui/victory/victory_facility.png"
+dest_files=["res://.godot/imported/victory_facility.png-c3407bb01d158c1e25bc55147f09b334.ctex"]
 
 [params]
 

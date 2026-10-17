@@ -2,22 +2,22 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://drgayhq3qn4gb"
-path="res://.godot/imported/victory.png-fde624f0a167ae5b5068ff1c77c60789.ctex"
+uid="uid://c7u2e0tt5e5tp"
+path="res://.godot/imported/title_backdrop.png-9956b7975d3aaa018581ea2e284b17d2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/events/victory.png"
-dest_files=["res://.godot/imported/victory.png-fde624f0a167ae5b5068ff1c77c60789.ctex"]
+source_file="res://assets/ui/title/title_backdrop.png"
+dest_files=["res://.godot/imported/title_backdrop.png-9956b7975d3aaa018581ea2e284b17d2.ctex"]
 
 [params]
 
-compress/mode=1
+compress/mode=0
 compress/high_quality=false
-compress/lossy_quality=0.88
+compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

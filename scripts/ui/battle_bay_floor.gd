@@ -1,10 +1,12 @@
 extends Control
-## Flat pixel A/B (default): a flat, top-down scene. A dark low-contrast pixel
-## texture behind the whole board, the tray as one flat floor texture with a
-## neutral rim just outside the tray and the reticle decal at low opacity. The
-## tray is shared ground: floor tint, rim and decal come from CHROME
-## (PixelUI.tray_palette), never the encounter; the floor PATTERN comes from the
-## scene data. No walls, windows, vignette or streak.
+## The flat scene (default; Kev, 2026-10-17, DECISIONS_RESOLVED G-76): no
+## backdrop image, the plain dark background token behind the whole board, and
+## the dice tray's "grate + ember" floor: dark steel slats over a void with a
+## faint warm glow toward the front, a recessed lip, a support frame down both
+## sides and a centre reticle. It is drawn in code at art resolution (the tray's
+## size / 4 design px) into one image shown NEAREST at 4x. One floor for every
+## operation, a data entry (`tray_floors` in the scene data) an operation could
+## override later. The tray is neutral shared ground: never the encounter color.
 ##
 ## Battle depth prototype v3 (debug F9): the full-screen battle scene behind the board. A
 ## back wall behind the enemy cards, slab side walls down both edges, and one
@@ -15,11 +17,10 @@ extends Control
 ##
 ## It draws in a SubViewport one quarter of the screen's size (BattleLayout
 ## builds it), so every edge lands on the 4 design px art grid. Inputs are in
-## design px; textures are 1 texel per art pixel. Per-operation textures and
+## design px; textures are 1 texel per art pixel. Per-operation v3 textures and
 ## accents come from data/raw/battle-tray-scenes.json (PLACEHOLDER art).
 
 const DEPTH := preload("res://scripts/ui/battle_depth.gd")
-const RETICLE_PATH := "res://assets/battle_tray/placeholder_reactor_reticle_decal.png"
 ## Design px per art pixel.
 const ART_PX := 4.0
 const FLOOR_ROWS := 24
@@ -27,8 +28,6 @@ const FLOOR_COLUMNS := 12
 ## Back to front, the floor steps up to full brightness in flat bands.
 const FLOOR_SHADE_STEPS := 6
 const FLOOR_SHADE_BACK := 0.58
-## The reticle's footprint on the flat floor, as shares of the tray.
-const DECAL_FLAT_SIZE := Vector2(0.50, 0.34)
 const EDGE_WIDTH := 8.0
 ## Hazard dashes per unit of floor depth, and the lit share of each.
 const HAZARD_DASHES := 7.0
@@ -41,10 +40,8 @@ const VIGNETTE_STEP := 28.0
 ## Side-wall window slots near the top: design px from the screen top, and size.
 const WINDOW_TOPS: Array[float] = [196.0, 332.0]
 const WINDOW_SIZE := Vector2(12.0, 52.0)
-## Flat scene: the backdrop texture behind the cards, and the rim's two art-px
-## bands (a dark seam outside, the accent inside) just outside the tray.
-const FLAT_BACKDROP_PATH := "res://assets/battle_tray/flat_backdrop_tile.png"
-const FLAT_RIM_BANDS := 2
+## The 4x4 Bayer matrix the floor's ember glow is dithered with.
+const BAYER_4: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
 var operation_id: String = "":
 	set(value):
@@ -59,18 +56,12 @@ var hero_cards := Rect2()
 
 var _wall: Texture2D
 var _floor: Texture2D
-var _reticle: Texture2D
-var _accent := Color.TRANSPARENT
 var _edge := Color.TRANSPARENT
 var _streak := Color.TRANSPARENT
-var _flat_floor: Texture2D
-var _flat_backdrop: Texture2D
-## Flat pixel B: this battle's backdrop image (BattleLayout picks it through
-## battle_depth.gd backdrop_for). Null draws the plain dark texture instead.
-var backdrop_image: Texture2D = null:
-	set(value):
-		backdrop_image = value
-		queue_redraw()
+## The tray floor: its data entry, and the image built for the current size.
+var _tray_floor: Dictionary = {}
+var _floor_image: ImageTexture = null
+var _floor_image_size := Vector2i.ZERO
 
 
 func _ready() -> void:
@@ -92,12 +83,10 @@ func _load_scene() -> void:
 	var entry: Dictionary = DEPTH.scene_for(operation_id)
 	_wall = _texture(str(entry.get("wall_texture", "")))
 	_floor = _texture(str(entry.get("floor_texture", "")))
-	_reticle = _texture(RETICLE_PATH)
-	_accent = DEPTH.token(str(entry.get("accent", "")))
 	_edge = DEPTH.token(str(entry.get("edge_accent", "")))
 	_streak = DEPTH.token(str(entry.get("streak", "")))
-	_flat_floor = _texture(str(entry.get("flat_floor_texture", "")))
-	_flat_backdrop = _texture(FLAT_BACKDROP_PATH)
+	_tray_floor = DEPTH.tray_floor_for(operation_id)
+	_floor_image = null
 
 
 func _texture(path: String) -> Texture2D:
@@ -128,7 +117,6 @@ func _draw() -> void:
 	_draw_wall_seams(back_left, back_right)
 	_draw_back_wall(Rect2(back_left.x, 0.0, back_right.x - back_left.x, back_left.y))
 	_draw_floor(front_depth)
-	_draw_decal()
 	_draw_edges(front_depth)
 	_draw_vignette()
 	# Lit window slots sit over the vignette: they are the light.
@@ -136,36 +124,108 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
-# The flat scene. Every rect is snapped to the 4 design px art grid.
+# The flat scene: the plain dark background token, then the tray floor on the
+# tray rect snapped to the 4 design px art grid, one texel per art pixel.
 func _draw_flat() -> void:
-	draw_rect(Rect2(Vector2.ZERO, screen), PixelUI.BATTLE_FLAT_BACKDROP)
-	_tile(Rect2(Vector2.ZERO, screen), _flat_backdrop, PixelUI.BATTLE_FLAT_BACKDROP_TINT)
-	if backdrop_image != null:
-		# One texel per art px, centred on the screen; whatever it does not cover
-		# (a taller phone than the authored canvas) keeps the plain texture.
-		var drawn: Vector2 = backdrop_image.get_size() * ART_PX
-		draw_texture_rect(backdrop_image, Rect2(_snap((screen - drawn) * 0.5), drawn), false)
+	draw_rect(Rect2(Vector2.ZERO, screen), PixelUI.UI_BG)
 	var floor_rect := Rect2(_snap(tray.position), _snap(tray.end) - _snap(tray.position))
-	var tray_colors: Dictionary = PixelUI.tray_palette()
-	draw_rect(floor_rect.grow(ART_PX * FLAT_RIM_BANDS), PixelUI.BATTLE_BAY_SEAM)
-	draw_rect(floor_rect.grow(ART_PX), tray_colors["rim"])
-	var tint: Color = tray_colors["floor"]
-	draw_rect(floor_rect, tint)
-	_tile(floor_rect, _flat_floor, tint)
-	_draw_flat_decal(floor_rect)
-
-
-# The reticle flat on the floor at the tray's centre, one texel per art pixel
-# where it fits (scaled down by whole steps where it does not), neutral.
-func _draw_flat_decal(floor_rect: Rect2) -> void:
-	if _reticle == null or not DEPTH.decal_on:
+	var art_size := Vector2i((floor_rect.size / ART_PX).round())
+	if art_size.x < 8 or art_size.y < 8:
 		return
-	var tint: Color = PixelUI.tray_palette()["decal"]
-	var side: float = _reticle.get_size().x * ART_PX
-	while side > floor_rect.size.y * 0.8 and side > ART_PX * 8.0:
-		side *= 0.5
-	var origin: Vector2 = _snap(floor_rect.get_center() - Vector2(side, side) * 0.5)
-	draw_texture_rect(_reticle, Rect2(origin, Vector2(side, side)), false, tint)
+	if _floor_image == null or _floor_image_size != art_size:
+		_floor_image = ImageTexture.create_from_image(build_floor_image(art_size, _tray_floor))
+		_floor_image_size = art_size
+	draw_texture_rect(_floor_image, floor_rect, false)
+
+
+## The "grate + ember" floor at `art_size` art px from its data entry (see the
+## `tray_floors` _about in data/raw/battle-tray-scenes.json). Pure: the same
+## size and entry always give the same pixels. An empty entry gives the void.
+static func build_floor_image(art_size: Vector2i, spec: Dictionary) -> Image:
+	var w: int = art_size.x
+	var h: int = art_size.y
+	var void_c: Color = _spec_color(spec, "void", PixelUI.TRAY_GRATE_VOID)
+	var slat: Color = _spec_color(spec, "slat", void_c)
+	var slat_dim: Color = _spec_color(spec, "slat_dim", void_c)
+	var ember: Color = _spec_color(spec, "ember", void_c)
+	var period: int = maxi(int(spec.get("slat_period", 5)), 2)
+	var ember_start: float = float(spec.get("ember_start", 0.35))
+	var ember_max: float = float(spec.get("ember_max", 0.0))
+	var pixels := PackedByteArray()
+	pixels.resize(w * h * 3)
+	var at: int = 0
+	for y in range(h):
+		var phase: int = y % period
+		var t: float = clampf((float(y) / float(h) - ember_start) / maxf(1.0 - ember_start, 0.001), 0.0, 1.0) * ember_max
+		var base: Color = slat if phase == 0 else (slat_dim if phase == 1 else void_c)
+		for x in range(w):
+			var c: Color = base
+			# Ember: void rows only, a 4x4 Bayer threshold under t.
+			if phase > 1 and (float(BAYER_4[(y % 4) * 4 + x % 4]) + 0.5) / 16.0 < t:
+				c = ember
+			pixels[at] = c.r8
+			pixels[at + 1] = c.g8
+			pixels[at + 2] = c.b8
+			at += 3
+	var image := Image.create_from_data(w, h, false, Image.FORMAT_RGB8, pixels)
+	# The support frame: whole columns in from each side.
+	var frame: Color = _spec_color(spec, "frame", slat)
+	for column_variant: Variant in spec.get("frame_columns", []):
+		var column: int = int(column_variant)
+		for x: int in [column, w - 1 - column]:
+			if x >= 0 and x < w:
+				image.fill_rect(Rect2i(x, 0, 1, h), frame)
+	# The centre reticle: four arcs with gaps at 0/90/180/270, and a small ring.
+	var reticle: Color = _spec_color(spec, "reticle", slat)
+	var centre := Vector2i(w / 2, h / 2)
+	var radius: int = int(spec.get("reticle_radius", 0))
+	if radius > 0:
+		_ring(image, centre, radius, float(spec.get("reticle_gap_degrees", 0.0)), reticle)
+	var core: int = int(spec.get("reticle_core_radius", 0))
+	if core > 0:
+		_ring(image, centre, core, 0.0, reticle)
+	# The recessed lip: the outermost px, then the shaded top / left and the lit
+	# bottom / right bands (top / left win the two corners they share).
+	var band: int = int(spec.get("lip_band", 2))
+	var lit: Color = _spec_color(spec, "lip_lit", void_c)
+	var shade: Color = _spec_color(spec, "lip_shade", void_c)
+	image.fill_rect(Rect2i(1, h - 1 - band, w - 2, band), lit)
+	image.fill_rect(Rect2i(w - 1 - band, 1, band, h - 2), lit)
+	image.fill_rect(Rect2i(1, 1, w - 2, band), shade)
+	image.fill_rect(Rect2i(1, 1, band, h - 2), shade)
+	var lip: Color = _spec_color(spec, "lip", void_c)
+	for edge: Rect2i in [Rect2i(0, 0, w, 1), Rect2i(0, h - 1, w, 1), Rect2i(0, 0, 1, h), Rect2i(w - 1, 0, 1, h)]:
+		image.fill_rect(edge, lip)
+	return image
+
+
+static func _spec_color(spec: Dictionary, key: String, fallback: Color) -> Color:
+	var name: String = str(spec.get(key, ""))
+	return DEPTH.token(name) if name != "" else fallback
+
+
+# A 1 px ring (midpoint circle), skipping the points within gap / 2 degrees of
+# the four axes.
+static func _ring(image: Image, centre: Vector2i, radius: int, gap_degrees: float, colour: Color) -> void:
+	var x: int = radius
+	var y: int = 0
+	var err: int = 1 - radius
+	while x >= y:
+		for p: Vector2i in [Vector2i(x, y), Vector2i(y, x), Vector2i(-y, x), Vector2i(-x, y),
+				Vector2i(-x, -y), Vector2i(-y, -x), Vector2i(y, -x), Vector2i(x, -y)]:
+			if gap_degrees > 0.0:
+				var angle: float = fposmod(rad_to_deg(atan2(float(p.y), float(p.x))), 90.0)
+				if angle < gap_degrees * 0.5 or angle > 90.0 - gap_degrees * 0.5:
+					continue
+			var at: Vector2i = centre + p
+			if at.x >= 0 and at.y >= 0 and at.x < image.get_width() and at.y < image.get_height():
+				image.set_pixelv(at, colour)
+		y += 1
+		if err < 0:
+			err += 2 * y + 1
+		else:
+			x -= 1
+			err += 2 * (y - x) + 1
 
 
 func _snap(point: Vector2) -> Vector2:
@@ -253,31 +313,6 @@ func _draw_floor(front_depth: float) -> void:
 	_add_triangles(indices, points, colors, uvs, _floor)
 
 
-# The title logo's reactor emblem as a reticle on the floor at the tray's centre,
-# tinted with the operation accent.
-func _draw_decal() -> void:
-	if _reticle == null or not DEPTH.decal_on:
-		return
-	var tint: Color = _accent if _accent.a > 0.0 else Color.WHITE
-	tint.a = PixelUI.BATTLE_BAY_DECAL_ALPHA
-	var extent: Vector2 = tray.size * DECAL_FLAT_SIZE
-	var origin: Vector2 = (tray.size - extent) * 0.5
-	var points := PackedVector2Array()
-	var colors := PackedColorArray()
-	var uvs := PackedVector2Array()
-	var indices := PackedInt32Array()
-	const CELLS := 8
-	for row in range(CELLS):
-		for column in range(CELLS):
-			var first: int = points.size()
-			for corner: Vector2 in [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]:
-				var uv := Vector2(column + corner.x, row + corner.y) / float(CELLS)
-				var flat: Vector2 = origin + extent * uv
-				points.append((tray.position + DEPTH.floor_point(flat, tray.size)) / ART_PX)
-				colors.append(tint)
-				uvs.append(uv)
-			indices.append_array([first, first + 1, first + 2, first, first + 2, first + 3])
-	_add_triangles(indices, points, colors, uvs, _reticle)
 
 
 # Warped meshes go straight to the canvas item, in art px (the draw transform

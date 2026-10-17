@@ -10,8 +10,9 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
   buttons, selection, the footer.
 - **The enemy owns the top:** the operation's ENCOUNTER color for the header
   battle count and rule and the enemy frames. Nothing else.
-- **The tray is neutral shared ground:** CHROME-derived darks, never the
-  encounter color.
+- **The tray is neutral shared ground:** neutral darks, never the encounter
+  color. Its floor is the one "grate + ember" floor for every operation (G-76,
+  `TRAY_GRATE_*`, drawn in code by `battle_bay_floor.gd`).
 - **CHROME carries no meaning:** text, panels, borders, secondary and disabled
   buttons. Most UI is CHROME.
 - **Dice colors are constant:** hero blue, enemy red, every operation.
@@ -33,7 +34,7 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 | `ENEMY_DEFAULT` | `c9755a` (rust) | enemy UI outside any operation (Help's bestiary rows: name, and the frame darkened 0.3 as in battle) |
 | `WARNING` | `e8a33a` | warning text; the DESTRUCTIVE button |
 | `WARNING_INK` | `1a1206` | text on a WARNING fill (a pressed destructive button) |
-| `UI_BG` | `0e1216` | screen field |
+| `UI_BG` | `0e1216` | screen field; the battle and in-run background (no image, G-76) |
 | `UI_PANEL` / `UI_PANEL_EDGE` | `161c1f` / `22292d` | section panel fill / frame |
 | `UI_ROW` | `202427` | row plate inside a panel |
 | `UI_BUTTON` / `UI_LINE` | `1a1c20` / `4a5057` | button fill / neutral border |
@@ -54,7 +55,7 @@ digits only). Sizes are whole multiples of the native size only
 
 | Role | Font | Size | Use | Case |
 |---|---|---|---|---|
-| HEADER | Battle Block | 128 (x4) to 144, drawn pixel-exact (below) | the shared header's operation name and battle count, on battle and every in-run screen | caps |
+| HEADER | Battle Block | 128 (x4) to 144, drawn pixel-exact (below) | the shared header's operation name and battle count, on battle and every in-run screen; the victory screen's OPERATION CLEARED (G-76) | caps |
 | DISPLAY | Battle Block | 96 (x3), drawn pixel-exact (below) | screen titles; the header while the dev-mode buttons are up | caps |
 | CARD_NAME | Battle Block | 96 (x3), drawn pixel-exact (below) | battle card unit callsigns | caps |
 | CARD | Battle Block | 64 to 96, drawn pixel-exact (below) | battle card HP numbers | caps |
@@ -149,6 +150,9 @@ font settings.
 - One border weight: 4 design px (`MIN_STROKE`). Square corners only, no corner
   brackets or four-corner notches.
 - Focus: a PLAYER outline 8 px outside the button (`_ui_focus_style`).
+- **Victory report panel** (`victory_report_style`, G-76): `UI_PANEL` at 88%
+  over the Operation Cleared art, a thin `UI_LINE` border; boss line in
+  ENCOUNTER_ACCENT, labels `CHROME_DIM`, values `CHROME` right-aligned.
 
 ## The notch rule
 
@@ -198,9 +202,10 @@ whole button at `UNAFFORDABLE_ALPHA` 0.45.
 - Pixel art and pixel fonts draw NEAREST; item art at integer multiples
   (`make_integer_icon`); portraits only through `make_portrait_frame`.
 - Strokes and 1 px elements snap to physical pixels (INVARIANTS #14).
-- Scene art (title backdrop, battle backdrops, tray) is drawn on the quarter-res
-  grid: 1 art px = 4 design px. Backdrop spec: `docs/BACKDROP_SPEC.md`; sizes for
-  every external art asset (portraits, items, relics, backdrops): `docs/ART_SPEC.md`.
+- Scene art (the title backdrop, the Operation Cleared images, the tray floor)
+  is drawn on the quarter-res grid: 1 art px = 4 design px. Battle and in-run
+  screens have no backdrop image (G-76): the plain `UI_BG`. Sizes for every
+  external art asset (portraits, items, relics, backdrops): `docs/ART_SPEC.md`.
 
 ## Keyword colors
 

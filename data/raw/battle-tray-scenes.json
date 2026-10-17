@@ -1,6 +1,32 @@
 {
-  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER accent (flat pixel B color ownership): in battle it drives the header battle count and rule and the enemy card frames and name headers, nothing else (the F9 v3 scene also tints its decal with it). `flat_floor_texture` is the flat tray's floor pattern (a gray mask; its color is the neutral PixelUI.tray_palette, never the encounter). `wall_texture`, `floor_texture`, `edge_accent` and `streak` feed the v3 perspective scene (debug F9). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`. `backdrops` (image paths, one picked per battle), `boss_backdrop` (path) and `boss_backdrop_battles` (battle numbers that use it; default [10], 5 is a valid extra entry) are the full-screen battle backdrop behind the whole board (docs/BACKDROP_SPEC.md); empty falls back to the plain dark texture.",
+  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER accent (flat pixel B color ownership): in battle it drives the header battle count and rule and the enemy card frames and name headers, nothing else. `wall_texture`, `floor_texture`, `edge_accent` and `streak` feed the v3 perspective scene (debug F9 only). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`. The dice tray floor (Kev, 2026-10-17, DECISIONS_RESOLVED G-76): `tray_floor` names the entry of `tray_floors` every operation uses; a scene entry may set its own `tray_floor` to override it (none do). There is no battle backdrop image (G-76): battle and in-run screens show the plain dark background token.",
   "fallback": "bare",
+  "tray_floor": "grate_ember",
+  "tray_floors": {
+    "grate_ember": {
+      "_about": "Drawn in code at art resolution (tray size / 4 design px), NEAREST at 4x (battle_bay_floor.gd build_floor_image). Rows: art y % slat_period == 0 is `slat`, == 1 `slat_dim`, the rest `void`. The ember glow sits in void rows only: `ember` where a 4x4 Bayer threshold is under clamp((y/H - ember_start) / (1 - ember_start), 0, 1) * ember_max. Support frame: `frame_columns` from each side. Recessed lip: the outermost px `lip`, then 2 px `lip_shade` on top and left, `lip_lit` on bottom and right. Reticle: a 1 px ring at `reticle_radius` in four arcs with `reticle_gap_degrees` gaps at 0/90/180/270, and a full ring at `reticle_core_radius`.",
+      "void": "TRAY_GRATE_VOID",
+      "slat": "TRAY_GRATE_SLAT",
+      "slat_dim": "TRAY_GRATE_SLAT_DIM",
+      "slat_period": 5,
+      "ember": "TRAY_GRATE_EMBER",
+      "ember_start": 0.35,
+      "ember_max": 0.55,
+      "frame": "TRAY_GRATE_SLAT",
+      "frame_columns": [
+        3,
+        4
+      ],
+      "lip": "TRAY_GRATE_LIP",
+      "lip_shade": "TRAY_GRATE_LIP_SHADE",
+      "lip_lit": "TRAY_GRATE_LIP_LIT",
+      "lip_band": 2,
+      "reticle": "TRAY_GRATE_LIP",
+      "reticle_radius": 34,
+      "reticle_gap_degrees": 24,
+      "reticle_core_radius": 3
+    }
+  },
   "scenes": {
     "facility": {
       "label": "Foundry hall (PLACEHOLDER art)",
@@ -8,29 +34,15 @@
       "floor_texture": "res://assets/battle_tray/placeholder_facility_floor_panels.png",
       "accent": "ENCOUNTER_FACILITY",
       "edge_accent": "BATTLE_BAY_AMBER_LIT",
-      "streak": "BATTLE_BAY_RUST",
-      "flat_floor_texture": "res://assets/battle_tray/flat_floor_plates.png",
-      "backdrops": [
-        "res://assets/battle_backdrops/placeholder_facility_backdrop_01.png"
-      ],
-      "boss_backdrop": "res://assets/battle_backdrops/placeholder_facility_backdrop_boss.png",
-      "boss_backdrop_battles": [
-        10
-      ]
+      "streak": "BATTLE_BAY_RUST"
     },
     "hive": {
-      "label": "Hive (flat floor pattern PLACEHOLDER art; no v3 art)",
+      "label": "Hive (no v3 art)",
       "wall_texture": "",
       "floor_texture": "",
       "accent": "ENCOUNTER_HIVE",
       "edge_accent": "",
-      "streak": "",
-      "flat_floor_texture": "res://assets/battle_tray/flat_floor_hive.png",
-      "backdrops": [],
-      "boss_backdrop": "",
-      "boss_backdrop_battles": [
-        10
-      ]
+      "streak": ""
     },
     "veil": {
       "label": "STUB: no art yet",
@@ -38,13 +50,7 @@
       "floor_texture": "",
       "accent": "ENCOUNTER_VEIL",
       "edge_accent": "",
-      "streak": "",
-      "flat_floor_texture": "",
-      "backdrops": [],
-      "boss_backdrop": "",
-      "boss_backdrop_battles": [
-        10
-      ]
+      "streak": ""
     },
     "voidCirclet": {
       "label": "STUB: no art yet (Signal Purge)",
@@ -52,13 +58,7 @@
       "floor_texture": "",
       "accent": "ENCOUNTER_SIGNAL",
       "edge_accent": "",
-      "streak": "",
-      "flat_floor_texture": "",
-      "backdrops": [],
-      "boss_backdrop": "",
-      "boss_backdrop_battles": [
-        10
-      ]
+      "streak": ""
     },
     "stellarMenagerie": {
       "label": "STUB: no art yet (Mantle Hunt)",
@@ -66,13 +66,7 @@
       "floor_texture": "",
       "accent": "ENCOUNTER_MANTLE",
       "edge_accent": "",
-      "streak": "",
-      "flat_floor_texture": "",
-      "backdrops": [],
-      "boss_backdrop": "",
-      "boss_backdrop_battles": [
-        10
-      ]
+      "streak": ""
     },
     "bare": {
       "label": "Bare scene",
@@ -80,13 +74,7 @@
       "floor_texture": "",
       "accent": "",
       "edge_accent": "",
-      "streak": "",
-      "flat_floor_texture": "",
-      "backdrops": [],
-      "boss_backdrop": "",
-      "boss_backdrop_battles": [
-        10
-      ]
+      "streak": ""
     }
   }
 }

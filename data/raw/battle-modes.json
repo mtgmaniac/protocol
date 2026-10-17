@@ -15,6 +15,7 @@
       "blurb": "Rogue war machines defend the foundry and rebuild their dead.",
       "victoryTitle": "VICTORY",
       "victorySub": "Scrapmaster destroyed. Foundry secured.",
+      "victoryBackdrop": "res://assets/ui/victory/victory_facility.png",
       "battles": [
         {
           "enemies": [

@@ -45,29 +45,21 @@ const BATTLE_BAY_AMBER_LIT := Color("9a7038")
 const BATTLE_BAY_WINDOW_FRAME := Color("221a14")
 const BATTLE_BAY_RUST := Color("4e2817")
 const BATTLE_BAY_RUST_LIT := Color("7a3d1f")
-const BATTLE_BAY_DECAL_ALPHA := 0.22
 const BATTLE_HEADER_RULE := Color("3a454c")
 const BATTLE_BAY_SHADOW_ALPHA := 0.85
-# Flat pixel A: the flat tray (battle_bay_floor.gd flat scene, dice_tray_3d.gd
-# hard drop shadows). Floor tints per operation are named in the scene data; the
-# floor and backdrop textures are light gray masks these colors multiply.
-const BATTLE_FLAT_BACKDROP := Color("0b0d0f")
-const BATTLE_FLAT_BACKDROP_TINT := Color("15181b")
+# Flat pixel A: the hard pixel drop shadow under each die (dice_tray_3d.gd).
 const BATTLE_FLAT_SHADOW := Color("040506")
-# Flat pixel B: the tray is shared ground, so its floor, rim and decal are
-# neutral, derived from CHROME (F10 moves them with it); no encounter color on
-# or inside the tray. How dark each tone sits below CHROME:
-const BATTLE_TRAY_FLOOR_DARKEN := 0.86
-const BATTLE_TRAY_RIM_DARKEN := 0.45
-const BATTLE_TRAY_DECAL_ALPHA := 0.07
-
-
-## The neutral tray palette: floor tint (times the floor mask), rim, decal tint.
-static func tray_palette() -> Dictionary:
-	var decal: Color = CHROME
-	decal.a = BATTLE_TRAY_DECAL_ALPHA
-	return {"floor": CHROME.darkened(BATTLE_TRAY_FLOOR_DARKEN),
-		"rim": CHROME_DIM.darkened(BATTLE_TRAY_RIM_DARKEN), "decal": decal}
+# The dice tray floor, "grate + ember" (Kev, 2026-10-17, DECISIONS_RESOLVED
+# G-76): one floor for every operation, drawn by battle_bay_floor.gd from the
+# `tray_floors` entry in data/raw/battle-tray-scenes.json (which names these).
+# Neutral shared ground: dark steel slats over a void with a faint warm glow.
+const TRAY_GRATE_VOID := Color("0b0c0e")   # (11, 12, 14)
+const TRAY_GRATE_SLAT := Color("16181b")   # (22, 24, 27)
+const TRAY_GRATE_SLAT_DIM := Color("111316")   # (17, 19, 22)
+const TRAY_GRATE_EMBER := Color("1e120c")   # (30, 18, 12)
+const TRAY_GRATE_LIP := Color("23262a")   # (35, 38, 42)
+const TRAY_GRATE_LIP_SHADE := Color("0d0e10")   # (13, 14, 16)
+const TRAY_GRATE_LIP_LIT := Color("1c1e22")   # (28, 30, 34)
 # The vignette: hard-edged steps of black, darkest first (no smooth ramp).
 const BATTLE_VIGNETTE_STEPS: Array[float] = [0.42, 0.26, 0.12]
 # Die tags: transparent over the scene (2026-07-09 ruling); F8 brings the v2
@@ -576,16 +568,6 @@ const BATTLE_TICK := Color("2a333a")
 const PATTERN_GRID := Color(0.49, 0.54, 0.59, 0.08)
 const PATTERN_GRID_MAJOR := Color(0.49, 0.54, 0.59, 0.12)
 const PATTERN_SCANLINE := Color(0.02, 0.03, 0.05, 0.22)
-# The title's placeholder street backdrop (title_backdrop.gd).
-const TITLE_VOID := Color("0c0d0f")
-const TITLE_SLAB_FAR := Color("111214")
-const TITLE_SLAB := Color("16171a")
-const TITLE_SLAB_LIT := Color("1d1e21")
-const TITLE_SEAM := Color("0a0a0b")
-const TITLE_RUBBLE := Color("141517")
-const TITLE_RUBBLE_LIT := Color("1f2023")
-const TITLE_GIRDER := Color("1b1c1f")
-const TITLE_GIRDER_LIT := Color("292a2e")
 
 # ── UI restyle A tokens (2026-10-14, docs/UI_RESTYLE.md) ──
 # The charcoal family the mocks share (NEUTRAL role). Strokes are MIN_STROKE
@@ -2967,6 +2949,17 @@ static func _ui_focus_style() -> StyleBoxFlat:
 	style.border_color = PLAYER_ACCENT
 	style.set_border_width_all(MIN_STROKE)
 	style.set_expand_margin_all(float(MIN_STROKE * 2))
+	return style
+
+
+## The victory screen's report panel (G-76): a dark fill at VICTORY_REPORT_ALPHA
+## over the Operation Cleared art, with the thin neutral border.
+const VICTORY_REPORT_ALPHA := 0.88
+static func victory_report_style() -> StyleBoxFlat:
+	var fill: Color = UI_PANEL
+	fill.a = VICTORY_REPORT_ALPHA
+	var style: StyleBoxFlat = make_hard_style(fill, UI_LINE, MIN_STROKE)
+	style.set_content_margin_all(float(GAP * 2))
 	return style
 
 
