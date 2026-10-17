@@ -104,6 +104,8 @@ func _ready() -> void:
 	_help_button.pressed.connect(_on_help_pressed)
 	_debug_button.pressed.connect(func() -> void: _dispatch(_debug_action, false))
 	_debug2_button.pressed.connect(func() -> void: _dispatch(_debug2_action, false))
+	if not OS.is_debug_build():
+		strip_debug_buttons()
 	_back_button.pressed.connect(func() -> void: _dispatch(_back_action, true))
 	set_run_active(false)
 	set_dev_mode(false)
@@ -229,11 +231,14 @@ func _style() -> void:
 	_refresh_summary()
 	_background.queue_redraw()
 	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
-	PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
-	PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
+	if is_instance_valid(_debug_button):
+		PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
+	if is_instance_valid(_debug2_button):
+		PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
 	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
 	for b: Button in [_help_button, _debug_button, _debug2_button, _back_button]:
-		b.custom_minimum_size = _battle_style.get("header_button_size", BUTTON_SIZE)
+		if is_instance_valid(b):
+			b.custom_minimum_size = _battle_style.get("header_button_size", BUTTON_SIZE)
 
 
 # Held for the node's life: a style made inside the draw callback is freed when
@@ -366,6 +371,23 @@ func set_debug_enabled(enabled: bool) -> void:
 func set_debug2_enabled(enabled: bool) -> void:
 	if is_instance_valid(_debug2_button):
 		_debug2_button.disabled = not enabled
+
+
+## Release builds (Kev, 2026-10-16): the ^ auto-turn and ^^ auto-battle buttons
+## do not exist. _ready frees both nodes, so no unlock, setting or binding can
+## show them; the seven-tap unlock (G-10) still opens the SETTINGS dev tools.
+## Public so the dev unlock gate can prove the release path in a debug run.
+func strip_debug_buttons() -> void:
+	for b: Button in [_debug_button, _debug2_button]:
+		if is_instance_valid(b):
+			b.get_parent().remove_child(b)
+			b.free()
+	_debug_button = null
+	_debug2_button = null
+
+
+func has_debug_buttons() -> bool:
+	return is_instance_valid(_debug_button) and is_instance_valid(_debug2_button)
 
 
 ## Developer mode (SETTINGS > DEV toggle): the debug buttons are entirely absent

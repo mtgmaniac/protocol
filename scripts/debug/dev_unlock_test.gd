@@ -43,5 +43,18 @@ func run() -> void:
 	check(migrated["unlocks"]["item_gates_awarded"] == 14, "Unlock progression must survive migration")
 	check(not migrated["settings"].has("dev_mode"), "Old persisted developer mode must be discarded")
 	sm.set("data", saved)
+	# Release builds: the ^ / ^^ buttons are stripped (Kev, 2026-10-16). A
+	# headless run is a debug build, so drive the release path directly; it is
+	# last because it frees the autoload's buttons for the rest of the process.
+	check(header.call("has_debug_buttons"), "Debug builds must keep the header debug buttons")
+	header.call("strip_debug_buttons")
+	check(not header.call("has_debug_buttons"), "Release path must free both header debug buttons")
+	check(header.find_child("DebugButton", true, false) == null and header.find_child("Debug2Button", true, false) == null,
+		"Release header must hold no DebugButton / Debug2Button node")
+	header.call("set_dev_mode", true)
+	header.call("set_debug_enabled", true)
+	header.call("set_debug2_enabled", true)
+	header.call("_style")
+	check(header.find_child("DebugButton", true, false) == null, "Unlock, binding or restyle must not bring the buttons back")
 	print("[DEV_UNLOCK] " + ("FAIL" if failed else "PASS"))
 	quit(1 if failed else 0)
