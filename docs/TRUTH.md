@@ -13,6 +13,20 @@ operation and boss lines): Facility Sweep red `CE6256`, Hive Incursion yellow
 violet `9172D8`. The hex is the `PixelUI.ENCOUNTER_*` token; the operation data
 (`battle-tray-scenes.json` `accent`) names it. The player side stays cobalt.
 
+**Art + squad select polish (Kev, 2026-10-17, DECISIONS_RESOLVED G-84 / G-85 /
+G-86 / G-87; supersedes the A5 entry below where they differ):** each operation
+has its own dice tray floor (`assets/battle_tray/tray_floor_<op>.png`, copied
+pixel-exact, `tray_floors.<op>`; Facility's for the tutorial and fallback), not
+one reticle floor. Every operation has an Operation Cleared image
+(`victory_<op>.png`), moved up per screen by `victoryBackdropOffset` so its focal
+subject clears the report panel, never past the bleed. Squad select's height is
+shared by five gaps (2 GAP buffers under the header and above DEPLOY, a GAP
+between the mission block, separator, squad block and info bar, the rest evenly
+in whole GAPs); MISSION / SQUAD / n / 3 are m5x7 96 drawn pixel-exact. Its roll
+band bar gives each band one effect type, ATTACK / SHIELD / HEAL / UTILITY,
+lit in KW_DAMAGE / the shield status colour / KW_HEAL / UTILITY_SEGMENT, with
+the in-game pip icon under it.
+
 **UI batch A5 (Kev, 2026-10-17, DECISIONS_RESOLVED G-79 / G-80 / G-81 / G-82; supersedes
 the entries below where they differ):** the dice tray floor is one reticle image
 (`assets/battle_tray/tray_floor_reticle.png`, the `tray_floors.reticle` entry),

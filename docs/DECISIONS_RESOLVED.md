@@ -15,6 +15,127 @@ the live game. Implementing these needs its own task.
   heal above); remaining summons are full HP.
 - **Supersedes the G-54 summons hold once implemented.** Until then G-54 stands.
 
+## G-87. Squad select roll band bar: one effect type per band, the in-game icons (Kev, 2026-10-17)
+
+Branch `ui/art-polish`. **Supersedes** G-81's band glyphs (7 x 7 art px sword /
+cross / shield in the keyword colours on a segment darkened 60%, a CHROME_DIM dot
+for everything else) and its "a neutral dot otherwise".
+
+- **One primary effect type per band**, from the hero's real ability data
+  (`home_screen.gd band_effect`): ATTACK, SHIELD or HEAL by the largest of the
+  ability's damage / shield / heal amounts (a tie goes to heal, then shield, as
+  before); UTILITY for an ability with none of them that does anything else
+  (mark, burn, freeze, jam, taunt, cloak, Protocol gain, roll changes ...). "No
+  effect" (the empty track, UI_ROW) only for a band with no ability; no base hero
+  has one.
+- **Segment colours, lit:** ATTACK `KW_DAMAGE`; SHIELD the in-game shield status
+  chip's colour, `DT_STATUS.shield.border` (`3fd0e2`, the token the battle card's
+  shield chip draws its border, number and frame with); HEAL `KW_HEAL`; UTILITY
+  the new `PixelUI.UTILITY_SEGMENT`, a lit steel gray `6e7682`, never as dark as
+  the track.
+- **Icons under each segment**, the in-game pip icons (`assets/ui/pips/`,
+  `PixelUI.pip_texture_for_key`) in their own colours (`pip_tint_for_key`), 48
+  design px (12 art px, the width of a one-roll band), NEAREST: damage / shield /
+  heal for those types; for UTILITY the ability's own status icon, the first it
+  carries of taunt, cloak, mark, freeze, jam, rewrite, hijack, roll down, roll
+  up, burn, spike, Protocol, cleanse, firewall, revive, summon
+  (`UTILITY_ICON_KEYS`; a taunt beacon that also grants spike shows taunt). Only
+  an ability with none of those would show a 5 x 5 art px 4-point spark in
+  CHROME; no base hero does. No plain dots for real abilities.
+- **The reported Engineer bug:** the old classifier already read Barrier Deploy
+  (5-10) as shield; what misread was the drawing (a steel-gray shield glyph on a
+  dark, near-neutral segment). The lit colours and real icons fix it.
+- Mapping, all 8 heroes (`debug_artifacts/art_polish/band_table.png`, built by
+  `scripts/debug/band_table_capture.gd` + `scripts/checks/band_table.py`):
+  STRIKE 1-5 Target Lock UTILITY/mark, 6-10 / 11-14 / 15-19 / 20 ATTACK;
+  ENGINEER 1-4 Field Patch SHIELD, 5-10 Barrier Deploy SHIELD, 11-20 ATTACK;
+  SPLICE 1-4 Diagnostic Pulse HEAL (3 heal = 3 shield, the tie), 5-9 Infusion
+  HEAL, 10-20 ATTACK; PULSE all ATTACK; AVALANCHE 1-3 / 4-9 ATTACK, 10-14 Cryo
+  Lattice UTILITY/freeze, 15-19 Cryo Recovery HEAL, 20 ATTACK; SPIKE 1-2
+  Reactive Cover SHIELD, 3-8 Challenge Beacon UTILITY/taunt, 9-15 Spike Stance
+  SHIELD, 16-20 ATTACK; GHOST 1-6 Active Camouflage UTILITY/cloak, 7-20 ATTACK;
+  BREAKER 1-2 Wideband Hiss UTILITY/roll down, 3-9 ATTACK, 10-15 Harmonic Glitch
+  UTILITY/roll down, 16-20 ATTACK.
+
+## G-86. Squad select spacing: buffers, even section gaps, subheaders one step up (Kev, 2026-10-17)
+
+Branch `ui/art-polish`. **Supersedes** G-81's "every block one GAP apart,
+starting one GAP under the header; the leftover height sits between the info bar
+and DEPLOY" and its LABEL-role MISSION / SQUAD subheaders.
+
+- **Five gaps** (`home_screen.gd GAP_FLOORS` / `gap_sizes`): header -> mission
+  block at least 2 GAP, mission block -> separator, separator -> squad block,
+  squad block -> info bar at least 1 GAP each, info bar -> DEPLOY at least 2 GAP.
+  The height the blocks leave is shared evenly by the five gaps in whole GAPs
+  (an odd GAP goes to the section gaps from the middle out, then the buffers;
+  under one GAP stays under DEPLOY); the elements keep their sizes. At 1080 x
+  2400 (360 x 800, 390 x 867, the 540 preview and a 360 x 640 window are all 2400
+  design px tall: `expand` adds width, not height) the gaps are 112 / 112 / 112 /
+  112 / 112 design px (7 GAP each). A short screen (safe-area insets) shrinks the
+  two buffers first, to 0, then the section gaps, on the 4 px grid, before
+  anything overlaps.
+- **MISSION, SQUAD and its n / 3 go one clean type step up**: m5x7 laid out at
+  96 and drawn pixel-exact (`PixelUI.bind_m5x7_snap`, font pixel 5 to 6 design
+  px, as the run-end report rows of G-78): 2 screen px per font pixel at 360 and
+  390, 3 at the 540 preview (`stroke_runs`: k 2 / 2 / 3). In a 360 x 640 window
+  (scale 0.267) no k fits 5 to 6, so the snap takes k 1 (3.75 design px): even
+  1 px strokes, drawn about LABEL's size there.
+
+## G-85. Operation Cleared images for every operation, with per-screen focal offsets (Kev, 2026-10-17)
+
+Branch `ui/art-polish`. **Completes G-76** ("Facility first; other operations
+fall back to the plain dark background").
+
+- Hive, Mantle, Signal and Veil get their images: raw sources
+  `assets/art_incoming/victory_<op>_raw.png` (841 x 1870), converted exactly as
+  Facility's was (`tools/build_backdrops.py`: box downscale to the 270 x 600
+  core, the core mirrored into the 338 x 660 bleed, median-cut 32 colours with 5
+  accents; Facility rebuilds byte-identical), shipped as
+  `assets/ui/victory/victory_<op>.png` and named by each operation's
+  `victoryBackdrop`. A defeat draws the same image with G-78's darken /
+  desaturate.
+- **Per-operation, per-screen vertical offset** (`victoryBackdropOffset`,
+  `{"victory": n, "defeat": n}`, whole art px, negative = up): the report panel
+  covers the bottom (core art y 392 on a victory, 359 on a defeat, at 20:9), so
+  each image moves up until its focal subject sits above the panel. The painter
+  (`title_backdrop.gd shift_for`) clamps the move to the bleed the screen
+  leaves, so an edge of the image never shows: 30 art px each way at 20:9, 15 at
+  21:9, none at 22:9 (drawn centred there).
+
+  | Operation | Focal subject (core art y, unshifted) | Victory | Defeat |
+  |---|---|---|---|
+  | Facility | the refinery tower and the lit skyline, y 115-360 | 0 | 0 |
+  | Hive | the hive mound with the beaked head, y 300-410 | -30 | -30 |
+  | Mantle | the fallen titan's ridge and lava cracks, y 285-420 | -30 | -30 |
+  | Signal | the broken tower, its lit tip y 145 to the banner y 390 | -20 | -30 |
+  | Veil | the corridor's lit far end, y 330-385 | -30 | -30 |
+
+  Facility stays at 0: its subject already clears both panels, and moving it up
+  would put the tower tops behind the title. Hive's and Mantle's subjects are
+  taller than the room above the defeat panel: at the 30 art px limit the defeat
+  panel still covers the bottom of the beak (about 20 rows) and of the titan's
+  body.
+
+## G-84. Per-operation dice tray floors (Kev, 2026-10-17)
+
+Branch `ui/art-polish`. **Supersedes G-79's one reticle floor for every
+operation** (`tray_floor_reticle.png` is retired; nothing reads `tray_reticle_raw.png` any more).
+
+- Each operation has its own tray floor, 260 x 223 art px (the 1040 x 892 design
+  px tray / 4): a dark charcoal surface, a faint texture and one thin gray
+  reticle of its own shape (Facility an octagon, Hive a hexagon, Mantle a
+  diamond, Signal chevrons, Veil a square). Copied **as-is** from
+  `assets/art_incoming/tray_<op>.png` to `assets/battle_tray/tray_floor_<op>.png`:
+  no conversion, resampling or quantizing (`tools/build_tray_floor.py` copies,
+  refuses any other size, and `--check` confirms each shipped file is
+  byte-identical to its source). Floor luma 22.0 - 27.3, reticle 66.7, 3 or 4
+  colours each: the dice stay the brightest things in the tray.
+- Data: `tray_floors.<op>` in `data/raw/battle-tray-scenes.json`, named by each
+  scene entry's `tray_floor`; the root `tray_floor` is `facility`, so the
+  tutorial and any scene without one (the `bare` fallback) draw Facility's.
+  `battle_bay_floor.gd` draws it one texel per art pixel, nearest, centred, as
+  before. The tray stays neutral: no encounter colour.
+
 ## G-83. Encounter colors: enemies warm, the player cool (Kev, 2026-10-17)
 
 Branch `ui/encounter-colors`. **Supersedes** the per-operation encounter

@@ -17,9 +17,10 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
   victory boss lines. Every reader goes through `battle_depth.gd
   encounter_accent` or `ENCOUNTER_ACCENT`; no screen holds a copy of a hex.
 - **The tray is neutral shared ground:** neutral darks, never the encounter
-  color. Its floor is one image for every operation, a charcoal surface with
-  one thin gray reticle (G-79, `assets/battle_tray/tray_floor_reticle.png`, drawn
-  one texel per art pixel by `battle_bay_floor.gd`; data `tray_floors`).
+  color. Each operation has its own floor image, a charcoal surface with one thin
+  gray reticle of its own shape (G-84, `assets/battle_tray/tray_floor_<op>.png`,
+  drawn one texel per art pixel by `battle_bay_floor.gd`; data `tray_floors`;
+  Facility's for the tutorial).
 - **CHROME carries no meaning:** text, panels, borders, secondary and disabled
   buttons. Most UI is CHROME.
 - **Dice colors are constant:** hero blue, enemy red, every operation.
@@ -49,6 +50,7 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 | `RARITY_COMMON` / `RARITY_UNCOMMON` / `RARITY_RARE` / `RARITY_LEGENDARY` | `8a8f94` muted gray / `84b84a` leaf green / `9d52d8` violet / `edb03e` gold | rarity (epic = rare). The uncommon green leans yellow (hue ~88) so it never reads as a heal (`KW_HEAL` / `COLOR_HEAL`, hue ~136-141) |
 | `INK_OUTLINE`, `SCRIM` | near-black, 98% / 78% | dark text edge over art / modal dim |
 | `KW_DAMAGE` / `KW_HEAL` / `KW_SHIELD` / `KW_PROTOCOL` | `f2584c` / `5fd17a` / `a9bccb` / `66e0ff` | keyword colors in text |
+| `UTILITY_SEGMENT` | `6e7682` (lit steel gray) | squad select's roll band bar: a UTILITY band (G-87); never as dark as the empty track (`UI_ROW`) |
 
 Battle-only families: `BATTLE_*` (cards, tray), `FX_*` (float text, flashes),
 `PORTRAIT_*`, `PIP_BORDERS`, effect icon colors `COLOR_*`. Never a hex in a
@@ -206,8 +208,13 @@ DESTRUCTIVE, never notched. The notch never moves.
 
 ## Squad select ("A5", G-81)
 
-Content starts one GAP under the header; the leftover height sits between the
-info bar and DEPLOY. MISSION and SQUAD subheaders are LABEL in CHROME_DIM. The
+Spacing (G-86): five gaps, header -> mission block and info bar -> DEPLOY at
+least 2 GAP, mission block -> separator -> squad block -> info bar at least 1
+GAP; the leftover height is shared evenly by the five in whole GAPs (112 each at
+2400 design px tall), never by the elements, and a short screen shrinks the two
+buffers first. MISSION, SQUAD and its n / 3 are one clean step above LABEL: m5x7
+96 drawn pixel-exact (`bind_m5x7_snap` 5 - 6), MISSION / SQUAD in CHROME_DIM,
+the count in CHROME. The
 mission card: an 8 design px ENCOUNTER_ACCENT frame over a 10% tint, the boss
 through the shared portrait frame at the roster tile width (same height as the
 tiles), the name in CARD_NAME, level pips + LV + CLEARED (light cobalt) or
@@ -215,10 +222,13 @@ LOCKED (CHROME_DIM) as plain SMALL text, the threats as one plain SMALL line
 ("SHIELDS · JAM · REBUILD"). No frames inside the card: the screen holds 11
 framed panels (card, boss, 8 tiles, info bar; the `panel count` gate). The
 unit info bar: cobalt frame, UI_PANEL fill, callsign LABEL in light cobalt, HP
-and status plain SMALL, the one-line `blurb` SMALL, the roll band bar (segments sized
-by roll windows, fill = the effect's keyword colour darkened 60% or UI_ROW, one
-7 x 7 art px glyph each: attack KW_DAMAGE, heal KW_HEAL, shield KW_SHIELD,
-neutral dot CHROME_DIM), the hint SMALL CHROME_DIM (WARNING for the squad-full
+and status plain SMALL, the one-line `blurb` SMALL, the roll band bar (G-87: segments sized
+by roll windows; each band one effect type from its ability data, lit in
+KW_DAMAGE (ATTACK), `DT_STATUS.shield.border` (SHIELD, the in-game shield status
+colour), KW_HEAL (HEAL) or UTILITY_SEGMENT (UTILITY: mark, burn, freeze, jam,
+taunt, cloak, Protocol gain, roll changes); UI_ROW only for no ability; under
+each the in-game pip icon at 48 design px in its own colours, a UTILITY band's
+own status icon, a CHROME spark only when it has none), the hint SMALL CHROME_DIM (WARNING for the squad-full
 hint). The unit in the info bar has its own tile border in CHROME (bone).
 Short of three picks DEPLOY is disabled as "PICK n MORE".
 

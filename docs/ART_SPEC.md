@@ -157,18 +157,21 @@ screen (route fork, intercept, reward, evolution, unlock, the Directive picker)
 show the plain dark background token, `PixelUI.UI_BG`. Do not make battle
 backdrops; the old spec is archived (`docs/archive/BACKDROP_SPEC.md`).
 
-## Dice tray floor (Kev, 2026-10-17, G-79)
+## Dice tray floors (Kev, 2026-10-17, G-84)
 
-One image at the tray's exact art size: **260 x 223 art px** (the 1040 x 892
-design px tray at 1080 x 2400). `assets/battle_tray/tray_floor_reticle.png`, a
-flat dark charcoal surface with a faint diagonal texture and one thin gray
-reticle at its centre, built from `assets/art_incoming/tray_reticle_raw.png` by
-`tools/build_tray_floor.py` (pixelize; `--check` measures the shipped file).
-`battle_bay_floor.gd` draws it one texel per art pixel, centred on the tray
-(data `tray_floors` in `data/raw/battle-tray-scenes.json`). Neutral only (no
-encounter colour), and quiet: floor luma 23.8 - 33.2, the reticle one tone at
-67.6, so the dice stay the brightest things in the tray. A replacement source
-may be any size: the build centre-crops it to the tray aspect.
+One image per operation at the tray's exact art size: **260 x 223 art px** (the
+1040 x 892 design px tray at 1080 x 2400), `assets/battle_tray/tray_floor_<op>.png`
+(facility, hive, mantle, signal, veil): a flat dark charcoal surface, a faint
+texture and one thin gray reticle of the operation's own shape. **Drawn at final
+size and copied as-is** from `assets/art_incoming/tray_<op>.png`: no pixelize,
+no resampling, no quantizing. `tools/build_tray_floor.py` copies them, refuses a
+source of any other size (never scales it) and `--check` confirms each shipped
+file is byte-identical to its source. `battle_bay_floor.gd` draws it one texel
+per art pixel, centred on the tray (data `tray_floors` in
+`data/raw/battle-tray-scenes.json`, each scene's `tray_floor`; Facility's for the
+tutorial and fallback). Neutral only (no encounter colour), and quiet: floor
+luma 22.0 - 27.3, the reticle one tone at 66.7, so the dice stay the brightest
+things in the tray. A replacement must be drawn at 260 x 223.
 
 ## Title screen backdrop
 
@@ -254,9 +257,12 @@ Check it at 360 x 800, 390 x 867, 540 x 1200, a 16:9 window (360 x 640) and a
 
 ## Operation Cleared image (victory screen)
 
-One per operation (Kev, 2026-10-17, G-76), named by the operation's
-`victoryBackdrop` in `data/raw/battle-modes.json` (Facility:
-`assets/ui/victory/victory_facility.png`). The defeat screen shows the same
+One per operation (Kev, 2026-10-17, G-76, G-85), named by the operation's
+`victoryBackdrop` in `data/raw/battle-modes.json`:
+`assets/ui/victory/victory_<op>.png` for facility, hive, mantle, signal and veil,
+each built from `assets/art_incoming/victory_<op>_raw.png` by
+`tools/build_backdrops.py` (box downscale to the core, the core mirrored into the
+bleed, 32 colours with 5 accents). The defeat screen shows the same
 image darkened 30% and desaturated 50% (G-78, `PixelUI.DEFEAT_BACKDROP_*`), so
 draw it to read both as a won and as a lost field. Same canvas as the title: the 270 x
 600 core in a 338 x 660 bleed, drawn one texel per art pixel, centred (the
@@ -270,3 +276,11 @@ y 359 - 588 at 20:9: its panel has a wrapped FALLEN row and the feedback line). 
 title calm and put the busy foreground where the panel covers it (the panel is
 88% opaque). No brightness limits beyond the global ones: it is a ceremony
 screen, not a play surface. Lossless import.
+
+**Focal offset (G-85).** `victoryBackdropOffset` (`{"victory": n, "defeat": n}`,
+whole art px, negative = up) moves the image per screen so its focal subject
+(the creature, tower, beast) sits above the panel: Facility 0 / 0, Hive -30 /
+-30, Mantle -30 / -30, Signal -20 / -30, Veil -30 / -30. The painter clamps it to
+the bleed, so no edge shows (30 art px at 20:9, 15 at 21:9, 0 at 22:9). Draw the
+focal subject above core y 360 where you can: 30 art px is all the room an
+offset has.
