@@ -156,3 +156,118 @@ trait line's styling and position. Gates on `integration/ui-merge`: `first run`,
 | `boss relics` | Caused by this pass's Phase 3 snap, not the UI stack: in a window too small for one screen px per font pixel the snap scaled Battle Block labels above their cap, so the header label covered the screen and swallowed the "tap empty space cancels" test tap. | `block_pixel_px` never returns more than the cap. |
 
 All other 38 gates in the set passed. No gameplay, data or save behavior changed.
+
+## Phase 3: finish (2026-10-16)
+
+### Rulings, verbatim, with scope
+
+**INVARIANTS #7 (UI doctrine).** Scope: every screen; the six-components and
+capitalization paragraphs are Polish Build A (Kev, 2026-07-14). Opening
+paragraph: "Green is reserved for HP bars and heals — nothing else is ever
+green. Grouping uses filled plates, never stroked outlines. Primer/keyword text
+is one sentence, ~12 words max, stating the RULE not flavor. `PixelUI` is the
+single source of visual constants; `theme_overload.tres` only mirrors it." Six
+components: "every panel frame is one of six `PixelUI.component_style` kinds;
+strong cyan borders belong to `selected_card` only, strong gold to
+`major_event` only; one 4px frame width — rank is color, never width." (Also
+the capitalization law and band vocabulary, unchanged.)
+
+**Ruling #18 (DECISIONS_RESOLVED, Kev, 2026-07-10, UI review S-2).** Scope: the
+rarity tokens and the evolution branch-name green. "**Ruling:** recolor. Rarity
+ladder is gray → blue → purple → orange: common `#7a8290` (keep) · uncommon
+`#5b7fe8` (was rare's blue) · rare `#9d52d8` (was epic's purple) · legendary
+`#ff8230` (keep). … Green now has zero non-HP/heal surfaces."
+
+**Build B reward presentation (TRUTH, Kev ruling).** Scope: the reward screen
+(`reward_screen.gd`), i.e. every reward draft including battle 5's relic
+cache. "RELIC offers stay ceremonial: two large Major-event (gold) cards —
+deliberately a tier above ordinary rows, split builders on purpose
+(`reward_screen._create_reward_row` / `_create_relic_card`)."
+
+**Does Build B cover boss relic rewards?** No. Boss relics are never reward
+offers: `GameState._roll_relic_choice_ids` excludes them ("they unlock via first
+operation clears"), and the unlock screen shows them on its own gold card
+(`unlock_screen._make_boss_relic_card`, untouched). The "two" relic offers are
+the relic cache (`RELIC_ONLY_ROUND := 5`, `RELIC_CHOICE_COUNT := 2`). So the
+ruling covers the relic cache, and the cache gets the ceremonial cards back.
+
+### What changed
+
+| Change | Files | Gate |
+|---|---|---|
+| Relic cache: ceremonial cards restored (from `5008f47`), minus the "RELIC" label. Effect pips also stay off: the earlier fix removed Field Cache's green +1, which repeated its description. No Build B override needed. | `scripts/ui/reward_screen.gd`, `scripts/debug/reward_model_test.gd` (T7 asserts no RELIC label) | `reward model` PASS |
+| Header ^ (auto turn) / ^^ (auto battle) exist in debug builds only. Release builds free both nodes in `_ready` (`strip_debug_buttons`), and SETTINGS > DEV drops the "Developer mode (header debug buttons)" toggle (`has_debug_buttons`). The seven-tap unlock still opens the other dev tools. G-10 asks that developer controls stay hidden until that unlock; it does not require the arrows in release, so no G-10 conflict. | `scripts/autoloads/PersistentHeader.gd`, `scripts/ui/help_menu.gd`, `scripts/debug/dev_unlock_test.gd` (release path: buttons freed, nothing brings them back) | `developer unlock`, `safe area` PASS |
+
+### Governance edits (complete list)
+
+1. `docs/DECISIONS_RESOLVED.md`, top: new **G-75** (color ownership, constant
+   dice colors, notch rule, solid primary / outlined secondary / amber
+   destructive with no stripes, type roles incl. CARD, GAP rule, Protocol
+   color, rarity ladder, relic cache cards, debug-only ^/^^), with
+   **Overrides**: #18 and INVARIANTS #7, each "overridden by Kev, 2026-10-16"
+   with one reason line. #7 is overridden in two clauses only (green rarity;
+   the component table replaces the six-component list).
+2. `docs/DECISIONS_RESOLVED.md`, top: **"Decided 2026-10, NOT YET
+   IMPLEMENTED"**: Scrapmaster heals 8 HP per living Scrap Drone; Signal Purge
+   non-fodder units add a 25% Signal Wisp summon to their lowest band;
+   summoning becomes Hive's identity; supersedes the G-54 summons hold once
+   implemented. Recorded only.
+3. `docs/DECISIONS_RESOLVED.md` #18: one line under the heading pointing at the
+   override.
+4. `docs/INVARIANTS.md` #7: one line under the heading pointing at the
+   override.
+5. `docs/TRUTH.md`: a three-line UI-authority entry at the top naming
+   `docs/UI_STYLE.md`; the header chevron paragraph notes debug builds only.
+
+### Verification
+
+- **Full `verify_gate.py` (with sim), once:** 90 of 91 hard gates PASS,
+  profile isolation PASS. **FAIL: `sim size break`**, not caused by this work.
+  `main`'s G-74 re-pin (`3d095d2`) changed `baseline.json` /
+  `baseline_pins.json` without re-stamping `scripts/sim/size_break_stamp.json`
+  (last stamped at G-67), so the gate's real leg is due on `main` as well. Its
+  Part B self-test then measured hive moving -7.9 points for a 1.08 damage
+  scalar on 1,500 runs, under the ~10 it expects to flag. This branch changes
+  no sim, data or pin file. Needs Kev's call (re-measure / re-stamp on main).
+  Because a hard gate failed, `verify_gate` skipped the sim tripwire; it was
+  run separately: **no move** (300 pinned runs per policy; l1 0.1833, l1_evo2
+  0.2533; "the pinned runs reproduced exactly, so combat is unchanged").
+- **Boot check, every player-facing screen** (scratch profile, a live run):
+  MainMenu, UnitSelect, BattleScene, RewardScreen, InterceptScreen,
+  RouteForkScreen, EvolutionScreen, UnlockScreen, RunEndScreen: all load with
+  zero new errors. (UnlockScreen with nothing to unlock routes home, as built.)
+
+### Deliverables (`debug_artifacts/ui_fix/`, gitignored, 390 px unless noted)
+
+`battle_facility.png`, `battle_trait_card.png` (VIGILANT PATROL / VOLATILE VOLT
+cards, 3x nearest crop of `battle_trait_full.png`), `battle_360.png` (360x800,
+AVALANCHE / ENGINEER / BREAKER), `reward.png` (uncommon in leaf green),
+`intercept_relic.png` (relic cache, ceremonial cards, no RELIC label).
+
+### Branch cleanup
+
+Checked with `git rev-list --count <branch> ^integration/ui-merge`. **Fully
+contained, safe to delete:**
+
+- `proto/battle-depth-v2`, `proto/battle-depth-v3`, `proto/flat-pixel-a`,
+  `proto/flat-pixel-b`, `proto/ui-restyle-a`, `proto/ui-unify`,
+  `proto/ui-cleanup`
+- `codex/battle-depth-prototype`, `codex/battle-ui-pixel-restyle`,
+  `codex/approved-copy`, `codex/boss-nameplate`,
+  `codex/compact-battle-ui-three-unit-pips`, `codex/demo-finishing-review`,
+  `codex/desktop-tutorial-fit`, `codex/final-feedback-revival`,
+  `codex/title-unlock-polish`, `codex/tutorial-real-rolls`,
+  `codex/ui-compact-card-prototype`
+- Remote: `origin/codex/compact-battle-ui-three-unit-pips`,
+  `origin/codex/dice-rules-containment`
+
+**Keep: `codex/godot-telemetry`** (1 commit, `e8835cb`, not contained:
+unfinished telemetry client with draft TRUTH/DECISIONS text).
+
+### Fast-forward (for Kev; main was not touched)
+
+`main` is an ancestor of `integration/ui-merge`, so this is a pure fast-forward:
+
+    git checkout main
+    git merge --ff-only integration/ui-merge
+    git push origin main
