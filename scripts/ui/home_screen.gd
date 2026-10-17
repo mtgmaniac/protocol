@@ -369,8 +369,19 @@ func _build_mission_row() -> Control:
 	text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(text_col)
 
+	# The name sits in a plain holder so its text origin can snap to a whole
+	# screen px (PixelUI.set_block_ink_snap skips container children): a
+	# CARD_NAME k of 2 at 390 drew some strokes 1 and 3 px wide from a half-px
+	# origin.
+	var name_holder := Control.new()
+	name_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_holder.custom_minimum_size.y = float(PixelUI.type_px(PixelUI.TYPE_CARD_NAME))
+	name_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_col.add_child(name_holder)
 	_enc_name_label = _make_type_label("", PixelUI.TYPE_CARD_NAME, PixelUI.CHROME)
-	text_col.add_child(_enc_name_label)
+	_enc_name_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	name_holder.add_child(_enc_name_label)
+	PixelUI.set_block_ink_snap(_enc_name_label)
 
 	_enc_level_row = HBoxContainer.new()
 	_enc_level_row.add_theme_constant_override("separation", LEVEL_ROW_GAP)
