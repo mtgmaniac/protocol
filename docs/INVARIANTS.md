@@ -57,6 +57,7 @@ the inspect text can't explain. (Enemy freeze targeting the hero's lowest reveal
 the pattern: one deterministic sentence.)
 
 ## 7. UI doctrine
+*Overridden by Kev, 2026-10-16 (DECISIONS G-75), in two clauses: the uncommon rarity is green, and frames follow the component table in `docs/UI_STYLE.md`. The rest stands.*
 Green is reserved for HP bars and heals — nothing else is ever green. Grouping uses
 filled plates, never stroked outlines. Primer/keyword text is one sentence, ~12 words
 max, stating the RULE not flavor. `PixelUI` is the single source of visual constants;

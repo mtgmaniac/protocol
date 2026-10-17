@@ -1,5 +1,72 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## Decided 2026-10, NOT YET IMPLEMENTED: summons and Scrapmaster (Kev, 2026-10-16)
+
+Recorded only. Nothing below is in code or data yet; until it is implemented,
+the G-54 summons hold and the current Scrapmaster rule (DECISIONS #5) describe
+the live game. Implementing these needs its own task.
+
+- **Scrapmaster heals 8 HP per living Scrap Drone each turn** instead of
+  rebuilding drones (replaces ASSEMBLY LINE's rebuild).
+- **Signal Purge non-fodder units add a 25% Signal Wisp summon to their
+  lowest band** rather than replacing it.
+- **Summoning becomes Hive's identity.** Hive units and the Matriarch summon;
+  other enemies get new top moves; Scrapmaster gets a non-summon mechanic (the
+  heal above); remaining summons are full HP.
+- **Supersedes the G-54 summons hold once implemented.** Until then G-54 stands.
+
+## G-75. UI style rulings; docs/UI_STYLE.md is the UI authority (Kev, 2026-10-16)
+
+Settled on `integration/ui-merge` (the UI stack: restyle A, flat-pixel A/B,
+ui-unify, ui-cleanup, ui-fix). Details, tokens and helpers: `docs/UI_STYLE.md`,
+which TRUTH names as the UI authority.
+
+- **Color ownership.** The player owns the bottom (PLAYER cobalt: friendly
+  frames, primary buttons, selection, the footer). The enemy owns the top (the
+  operation's ENCOUNTER color: the header battle count and rule, and enemy
+  frames, nothing else). The tray is neutral (CHROME-derived darks). CHROME
+  carries no meaning.
+- **Dice colors are constant:** hero blue, enemy red, in every operation.
+- **The notch rule.** One top-left notch marks a screen's one primary action and
+  a pop-up's main confirm. A choice between equals is secondary; a destructive
+  confirm is never notched; the notch never moves.
+- **Buttons.** Primary is a solid PLAYER fill with light text and the notch;
+  secondary is outlined (neutral border); destructive is an amber (WARNING)
+  border and text, with no stripes and no notch.
+- **Type roles:** DISPLAY, CARD, LABEL, BODY, SMALL, NUMERAL, at whole
+  multiples of the font's native size. CARD (Battle Block, 64 to 96, drawn
+  pixel-exact) is the battle card's unit names and HP numbers.
+- **One GAP:** `PixelUI.GAP` = 16 design px between bars and cards and between
+  stacked blocks on every screen; no spacer adds a second gap. Header and footer
+  bars are both 144. Gate: `layout rhythm`.
+- **Protocol color:** `PROTOCOL_ACCENT` (electric cyan-blue) for everything
+  Protocol: meter cells (empty cells dark), footer costs, Protocol feedback, the
+  keyword.
+- **Rarity ladder:** common muted gray `8a8f94`, uncommon leaf green `84b84a`,
+  rare violet `9d52d8`, legendary gold `edb03e`. The uncommon green leans yellow
+  (hue ~88), apart from the heal greens (hue ~136-141).
+- **Relic cache cards (Build B kept).** Battle 5's two relic offers stay
+  ceremonial Major-event cards, without the "RELIC" type label and without
+  effect pips. Boss relics are never reward offers; their ceremonial card is on
+  the unlock screen, unchanged.
+- **Header ^ (auto turn) and ^^ (auto battle) exist in debug builds only.**
+  Release builds free both buttons and drop the SETTINGS toggle for them; the
+  seven-tap unlock (G-10) still opens the SETTINGS dev tools. G-10 asks that
+  developer controls stay hidden until that unlock; it does not require the
+  arrows in release. Gate: `developer unlock`.
+
+**Overrides.**
+
+- **#18 (Rarity palette, green exits): overridden by Kev, 2026-10-16.** Reason:
+  uncommon is green again, a yellow-leaning leaf green that does not read as a
+  heal.
+- **INVARIANTS #7: overridden by Kev, 2026-10-16,** in two clauses only: "nothing
+  else is ever green" (the uncommon rarity is green) and the six-component frame
+  list (the UI_STYLE.md component table governs frames; gold stays
+  ceremonial-only). Reason: the settled UI stack replaced the frame set and
+  restored a green rarity. The rest of #7 (filled plates, one-sentence primers,
+  PixelUI as the one source, the capitalization law, band vocabulary) stands.
+
 ## Battle depth prototype v2: rendering only (Kev, 2026-10-13; review only)
 
 Branch `proto/battle-depth-v2`, from `codex/battle-depth-prototype` at `d18fda2`.
@@ -3006,6 +3073,7 @@ confirmed in #2, the chip must visibly drop at the correct phase tick, not at
 round end."
 
 ## 18. Rarity palette — GREEN EXITS *(ruled by Kev, 2026-07-10; UI review S-2)*
+**Overridden by Kev, 2026-10-16 (G-75):** uncommon is a leaf green `84b84a` again; the ladder is gray, leaf green, violet, gold.
 **Question:** `RARITY_UNCOMMON` green (#5cb85c) surfaced on reward-card borders,
 the equip overlay, and item text — in tension with INVARIANTS #7 ("green is
 reserved for HP bars and heals — nothing else is ever green"). Sanctioned

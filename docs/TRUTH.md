@@ -1,5 +1,9 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**UI authority (Kev, 2026-10-16, G-75):** `docs/UI_STYLE.md` is the authority for
+all UI work (color ownership, components, type roles, GAP, Protocol color,
+rarity). Older UI entries below yield to it where they differ.
+
 **2026-10-13 battle depth prototype v2 (`proto/battle-depth-v2`, review only;
 replaces the v1 entry below on this branch):** rendering only. Combat, balance,
 copy, layout and every dice rule are unchanged.
@@ -2548,7 +2552,8 @@ sizes — deliberately, to avoid name-under-description rank inversions.
 header buttons are NOT speed controls — Debug (single chevron) = auto-complete
 the current turn, Debug2 (double chevron) = auto-complete the battle
 (`battle_scene._on_auto_turn_button_pressed` / `_on_auto_battle_button_pressed`;
-hidden unless SETTINGS > DEV developer mode). Label proposal pending Kev's
+hidden unless SETTINGS > DEV developer mode; debug builds only since
+2026-10-16, G-75: release builds free both). Label proposal pending Kev's
 ruling: "AUTO TURN" / "AUTO BATTLE" (not "1X"/"2X" — they are not speeds).
 
 ## Run report + feedback channel (2026-07-30, stranger-readiness)
