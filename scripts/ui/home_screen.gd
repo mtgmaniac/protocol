@@ -48,10 +48,10 @@ const GAP := PixelUI.GAP
 ## Design px per art pixel: glyphs, pips and the band bar sit on this grid.
 const ART_PX := 4
 
-const TILE_NAME_FONT := 60         # sized to the widest callsign (AVALANCHE) at cell width 238
+const TILE_NAME_FONT := 64         # design px (text_px); AVALANCHE fits the 238 px cell
 # Kit blurb in the Directive picker: the body-copy tier through the ONE body token.
 static var DETAIL_DESC_FONT: int = PixelUI.scale_font_size(PixelUI.FONT_BODY_MIN)
-const DETAIL_NAME_FONT := 76
+const DETAIL_NAME_FONT := 80       # design px (text_px)
 const FOCUS_CHIP_FONT := 40
 const DEPLOY_FONT := 84
 const DEPLOY_GATE_FONT := 64       # the disabled "PICK N MORE" gate reads smaller than DEPLOY

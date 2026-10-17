@@ -18,11 +18,6 @@ const SECTION_FONT := 36
 const BODY_FONT := PixelUI.FONT_INFO_MIN  # table rows / stats (read under duress — floored, UI review S-1)
 const BODY_LONG_FONT := PixelUI.FONT_BODY_MIN  # long-form prose: bullets, keyword definitions (Polish Build A)
 const TERM_FONT := 33
-const SYNTAX_FONT := 27
-const HEADER_FONT := 42
-const RANGE_FONT := 30
-const PICKER_FONT := 28
-const BLURB_FONT := 28
 
 const HELP_TABS := [
 	{"id": "basics", "label": "BASICS"},

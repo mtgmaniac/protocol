@@ -42,7 +42,6 @@ static var HP_BACK := PixelUI.DT_FIELD_BG
 # multiple of 10, and degenerated into a picket fence at boss HP (up to 200). The
 # number is the readout. No tick layer, no interval constant, no HP_TICK color.
 const CARD_NAME_FONT_SIZE := 72
-const CARD_HP_FONT_SIZE := 72
 const STATUS_MAX_VISIBLE := 3
 const STATUS_ICON_FONT_SIZE := 56
 # Value numerals read at a glance (Kev 2026-07-07: they were too small) —
