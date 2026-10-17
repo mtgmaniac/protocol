@@ -1,5 +1,11 @@
 # UI style reference
 
+**Wide windows (Kev, 2026-10-17):** squad select, title, Help, battle, rewards,
+and victory/defeat use a centered column capped at 1080 design px, including
+the shared header. Existing edge padding and vertical rhythm stay inside the
+cap; windows at or below that width keep their layout. Background art and
+modal scrims still cover the window. `PixelUI.cap_portrait_width` owns the cap.
+
 The rules for all UI work. Tokens and helpers live in `scripts/ui/pixel_ui.gd`
 (`PixelUI`), the single source; `assets/ui/theme_overload.tres` only mirrors it.
 History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.

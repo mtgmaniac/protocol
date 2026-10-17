@@ -85,6 +85,7 @@ func _build(victory: bool, operation: OperationData, operation_name: String) -> 
 	_top.offset_left = SIDE
 	_top.offset_right = -SIDE
 	_top.offset_top = PersistentHeader.band_height() + TITLE_TOP
+	PixelUI.cap_portrait_width(_top)
 	var title := Label.new()
 	title.name = "TitleLabel"
 	title.text = "OPERATION CLEARED" if victory else "OPERATION FAILED"
@@ -112,6 +113,7 @@ func _build(victory: bool, operation: OperationData, operation_name: String) -> 
 	bottom.offset_right = -SIDE
 	bottom.offset_top = 0
 	bottom.offset_bottom = -(BOTTOM + PixelUI.safe_bottom)
+	PixelUI.cap_portrait_width(bottom)
 	bottom.add_child(_report_panel(victory, operation))
 	# The block grows upward, so it is placed after the text first snaps; any
 	# move re-snaps it (a moved panel is not resized, so the labels' own hooks
@@ -190,6 +192,8 @@ func _report_panel(victory: bool, operation: OperationData) -> PanelContainer:
 func _layout_top() -> void:
 	var y: float = 0.0
 	for label: Node in _top.get_children():
+		if not label is Label:
+			continue
 		y = _place(label as Label, Vector2(0.0, y), _top.size.x) + PixelUI.GAP
 	_top.custom_minimum_size.y = maxf(y - PixelUI.GAP, 0.0)
 	_resnap()

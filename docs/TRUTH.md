@@ -1,5 +1,11 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Wide windows (Kev, 2026-10-17):** squad select, title, Help, battle, rewards,
+and victory/defeat use a centered column capped at 1080 design px, including
+the shared header. Existing edge padding and vertical rhythm stay inside the
+cap; windows at or below that width keep their layout. Background art and
+modal scrims still cover the window. `PixelUI.cap_portrait_width` owns the cap.
+
 **UI authority (Kev, 2026-10-16, G-75):** `docs/UI_STYLE.md` is the authority for
 all UI work (color ownership, components, type roles, GAP, Protocol color,
 rarity). Older UI entries below yield to it where they differ.

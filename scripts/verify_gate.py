@@ -196,6 +196,7 @@ GATES = [
     # Protocol label at LABEL. Windowed at 360 and 390 px (headless has no real
     # window size).
     ("layout rhythm", [GODOT, "--path", str(ROOT), "-s", "scripts/debug/layout_rhythm_test.gd"], "[LAYOUT_RHYTHM] PASS", False),
+    ("portrait width", [GODOT, "--path", str(ROOT), "-s", "scripts/debug/portrait_width_test.gd"], "[PORTRAIT_WIDTH] PASS", False),
     # Android Build #1: safe-area insets (cutout/gesture bar) — header grows,
     # protocol row lifts, desktop reads all-zero (no-regression guarantee).
     ("safe area", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/safe_area_test.gd"], "[SAFE_AREA] PASS", False),

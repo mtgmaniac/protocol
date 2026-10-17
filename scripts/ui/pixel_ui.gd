@@ -1,6 +1,15 @@
 class_name PixelUI
 extends RefCounted
 
+const PORTRAIT_WIDTH := 1080.0
+
+
+static func cap_portrait_width(content: Control) -> void:
+	var cap := load("res://scripts/ui/portrait_column.gd").new() as Node
+	cap.name = "PortraitWidthCap"
+	content.add_child(cap)
+
+
 const BG_PANEL := Color(0.050, 0.055, 0.078, 1.0)
 const BG_PANEL_ALT := Color(0.075, 0.085, 0.120, 1.0)
 const LINE_DIM := Color(0.18, 0.23, 0.34, 1.0)

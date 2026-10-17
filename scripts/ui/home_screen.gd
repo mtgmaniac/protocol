@@ -279,6 +279,7 @@ func _build_layout() -> void:
 	margin.add_theme_constant_override("margin_top", int(PersistentHeader.band_height()))
 	margin.add_theme_constant_override("margin_bottom", ROOT_MARGIN_BOTTOM + PixelUI.safe_bottom)
 	add_child(margin)
+	PixelUI.cap_portrait_width(margin)
 	_layout_margin = margin
 
 	# No container separation: every space between blocks is a gap slot, sized

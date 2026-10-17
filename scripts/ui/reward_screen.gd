@@ -106,6 +106,7 @@ func _ready() -> void:
 	# Rows span the full width, so they consume the side insets too (Build B).
 	content.offset_left += float(PixelUI.safe_left)
 	content.offset_right -= float(PixelUI.safe_right)
+	PixelUI.cap_portrait_width(content)
 	_apply_visual_theme()
 	resized.connect(_update_reward_layout)
 	# Header bar lives in the PersistentHeader autoload; bind this screen's handlers.

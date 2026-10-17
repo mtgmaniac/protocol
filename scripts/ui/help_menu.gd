@@ -157,6 +157,7 @@ func _build() -> void:
 	# Bottom clears the gesture-bar inset on device (0 on desktop).
 	margin.add_theme_constant_override("margin_bottom", 46 + PixelUI.safe_bottom)
 	add_child(margin)
+	PixelUI.cap_portrait_width(margin)
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP

@@ -99,6 +99,7 @@ func _ready() -> void:
 	margin.add_theme_constant_override("margin_top", 60)
 	margin.add_theme_constant_override("margin_bottom", 60)
 	add_child(margin)
+	PixelUI.cap_portrait_width(margin)
 
 	var col := VBoxContainer.new()
 	col.alignment = BoxContainer.ALIGNMENT_CENTER

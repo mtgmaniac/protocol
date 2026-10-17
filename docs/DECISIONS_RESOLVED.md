@@ -1,5 +1,12 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-91. v0.4 wide-window cap (Kev, 2026-10-17)
+
+Cap the squad select content as one centered column at the 1080 design-pixel
+portrait width. Apply the same cap to stretching title, Help, battle, reward
+and victory/defeat content. Below that width nothing changes. Keep existing
+vertical rhythm, components and panel counts; backgrounds remain full-window.
+
 ## Decided 2026-10, NOT YET IMPLEMENTED: summons and Scrapmaster (Kev, 2026-10-16)
 
 Recorded only. Nothing below is in code or data yet; until it is implemented,

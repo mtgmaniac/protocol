@@ -86,6 +86,7 @@ func _ready() -> void:
 	_apply_chrome_arg()
 	_fit_desktop_window()
 	_apply_capture_window_arg()
+	PixelUI.cap_portrait_width($HeaderBand)
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8
 	_background.draw.connect(_draw_battle_frame)
