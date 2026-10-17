@@ -44,7 +44,7 @@ const HEADER_GAP := 16
 const HEADER_FONT := 72
 const COUNTER_FONT := 64
 const ENC_NAME_FONT := 80          # biggest text in the banner by design; long names
-                                   # (STELLAR MENAGERIE) wrap to two lines instead of clipping
+								   # (STELLAR MENAGERIE) wrap to two lines instead of clipping
 const ENC_META_FONT := 56          # THREAT / LV — sized up from 48
 const ENC_SITE_FONT := 52          # site subtitle + THREATS line; 44 -> 52 readability bump (2026-09-21)
 # A locked encounter's unlock condition shares the subtitle slot. "Clear Facility
