@@ -208,11 +208,12 @@ DESTRUCTIVE, never notched. The notch never moves.
 
 ## Squad select ("A5", G-81)
 
-Spacing (G-86): five gaps, header -> mission block and info bar -> DEPLOY at
-least 2 GAP, mission block -> separator -> squad block -> info bar at least 1
-GAP; the leftover height is shared evenly by the five in whole GAPs (112 each at
-2400 design px tall), never by the elements, and a short screen shrinks the two
-buffers first. MISSION, SQUAD and its n / 3 are one clean step above LABEL: m5x7
+Spacing (G-86, G-88): five gaps, header -> mission block and info bar -> DEPLOY at
+least 2 GAP, mission block -> separator -> squad block at least 1 GAP; the info
+bar sits exactly 1 GAP under the squad block, attached. The leftover height is
+shared evenly in whole GAPs, never by the elements, and the info bar gap's share
+goes to the two section gaps (112 / 160 / 160 / 16 / 112 at 2400 design px
+tall); a short screen shrinks the two buffers first. MISSION, SQUAD and its n / 3 are one clean step above LABEL: m5x7
 96 drawn pixel-exact (`bind_m5x7_snap` 5 - 6), MISSION / SQUAD in CHROME_DIM,
 the count in CHROME. The
 mission card: an 8 design px ENCOUNTER_ACCENT frame over a 10% tint, the boss
@@ -224,13 +225,26 @@ framed panels (card, boss, 8 tiles, info bar; the `panel count` gate). The
 unit info bar: cobalt frame, UI_PANEL fill, callsign LABEL in light cobalt, HP
 and status plain SMALL, the one-line `blurb` SMALL, the roll band bar (G-87: segments sized
 by roll windows; each band one effect type from its ability data, lit in
-KW_DAMAGE (ATTACK), `DT_STATUS.shield.border` (SHIELD, the in-game shield status
-colour), KW_HEAL (HEAL) or UTILITY_SEGMENT (UTILITY: mark, burn, freeze, jam,
+KW_DAMAGE (ATTACK), `PIP_BORDERS.shield` `6ba8e0` (SHIELD, the effect-pip shield
+blue, G-88), KW_HEAL (HEAL) or UTILITY_SEGMENT (UTILITY: mark, burn, freeze, jam,
 taunt, cloak, Protocol gain, roll changes); UI_ROW only for no ability; under
 each the in-game pip icon at 48 design px in its own colours, a UTILITY band's
-own status icon, a CHROME spark only when it has none), the hint SMALL CHROME_DIM (WARNING for the squad-full
+own status icon, a CHROME spark only when it has none; in the info bar only, each
+icon is a lighter variant in a 1 art px UI_LINE ring so dark icons read, G-88),
+the hint SMALL CHROME_DIM (WARNING for the squad-full
 hint). The unit in the info bar has its own tile border in CHROME (bone).
 Short of three picks DEPLOY is disabled as "PICK n MORE".
+
+## Help menu (G-89)
+
+Five tabs, SETTINGS (the default), BASICS, ICONS, UNITS, LOG, in one strip with
+X; tab labels at SMALL so five fit at 360. Every page is SETTINGS-style: section
+panels (`make_ui_section`) of row plates (`make_ui_row`), row label UI_TEXT,
+description UI_TEXT_DIM. BASICS' Spending Protocol rows put the cost
+right-aligned in PROTOCOL_ACCENT. ICONS is one flat page of four panels (CORE,
+OFFENSE, DEFENSE, CONTROL): icon, name, the keyword's `def`. UNITS keeps the
+faction sub-tabs; each unit is a row plate (portrait, name, HP, keyword icons),
+a hero's evolutions inside it.
 
 ## Protocol color
 

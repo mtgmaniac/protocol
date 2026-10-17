@@ -15,6 +15,102 @@ the live game. Implementing these needs its own task.
   heal above); remaining summons are full HP.
 - **Supersedes the G-54 summons hold once implemented.** Until then G-54 stands.
 
+## G-90. DEMO v0.4: version, balance check, web build (Kev, 2026-10-17)
+
+Branch `ui/release-v04`, fast-forwarded into `main`, tagged `demo-v0.4`.
+
+- **Version:** `project.godot` `config/version` 0.3 -> 0.4, the one source: the
+  title stamp and the Help footer read DEMO v0.4 from it, and the Android preset
+  (empty `version/name`) falls back to it. The Web preset has no version field.
+  `sim_runner.gd SIM_VERSION` ("0.3.0") is the sim harness's own version, set in
+  July and never tied to the demo number; it is unchanged.
+- **Web preset:** `builds/*` added to the Web exclude filter, so the release
+  zip and devlog in `builds/` never ship inside the .pck. Nothing else changed.
+  There is no telemetry client on `main` (it lives only on the unmerged
+  `codex/godot-telemetry` branch), so the preset ships none.
+- **Balance check (report only, nothing tuned).** Policy `l1`, 60 runs per
+  operation, random 3-of-8 squads, seed base 100000
+  (`results/release_v04_<op>/`). Compared with the last recorded sim, the G-74
+  pin (`scripts/sim/baseline.json`: 300 `l1` runs over random operations, about
+  60 each):
+
+  | Operation | Clear | Avg battle reached | Most common wipe | G-74 pin | Delta |
+  |---|---|---|---|---|---|
+  | Facility Sweep | 35.0% | 7.5 | battle 5 (15 of 39 losses) | 31.0% | +4.0 |
+  | Hive Incursion | 21.7% | 8.2 | battle 10 (22 of 47) | 25.4% | -3.8 |
+  | Veil Breach | 11.7% | 7.3 | battle 10 (16 of 53) | 10.8% | +0.9 |
+  | Signal Purge | 18.3% | 8.2 | battle 10 (27 of 49) | 17.5% | +0.8 |
+  | Mantle Hunt | 16.7% | 9.1 | battle 10 (37 of 50) | 2.1% | +14.6 |
+  | Overall | 20.7% | | | 18.3% | +2.4 |
+
+  At about 60 runs per operation the noise is about +-6 points. Four operations
+  are inside it. Mantle Hunt is not: +14.6 against a pin of 1 clear in about 48
+  runs, on different seeds. Every commit since the pin is labelled UI, art or
+  docs, so the pin's small Mantle sample is the likely cause, but it was not
+  checked: a matched-seed 1,500-run comparison is the way to tell, and it was
+  out of scope here.
+
+## G-89. Help menu: five tabs, every page in the SETTINGS style (Kev, 2026-10-17)
+
+Branch `ui/release-v04`. **Supersedes** the 2026-09-20 four-tab Help (Basics
+default, Keywords / Icon Guide as Basics' secondary glossary) and G-17's ICON
+GUIDE ACTIONS / EFFECTS / MORE EFFECTS pages.
+
+- **Five tabs, in order: SETTINGS, BASICS, ICONS, UNITS, LOG.** SETTINGS opens
+  by default. The strip is one row: five equal tabs and X, 4 design px apart,
+  labels at the SMALL size (m5x7 48). At LABEL's 64 floor SETTINGS alone is 208
+  design px with its padding, and five plus X cannot fit the 976 px the panel
+  leaves at 360. BATTLE LOG is renamed LOG; its content and copy are unchanged.
+- **Every page is drawn as SETTINGS is:** section panels (`make_ui_section`:
+  header + rule) holding rows on the row plate (`make_ui_row`). Row text: a
+  label in UI_TEXT, a description in UI_TEXT_DIM.
+- **BASICS:** each heading is a panel, each line a row. SPENDING PROTOCOL rows
+  are name, effect and the cost right-aligned in PROTOCOL_ACCENT (NUDGE 1,
+  REROLL 2, SET 4, ITEM 1, then the "Costs shown are the usual costs" note:
+  ITEM and the note carry over from the retired ACTIONS page; "reroll" / "set"
+  take a capital now that they start the line). The KEYWORDS / ICON GUIDE
+  button is gone; REPLAY TUTORIAL closes the page.
+- **ICONS:** one flat page, no sub-tabs. Panels CORE (damage, shield, heal),
+  OFFENSE, DEFENSE, CONTROL. A row: the in-game pip icon in its own colours, the
+  name, the keyword's canonical `def` (the copy Help showed before; damage keeps
+  the icon guide's line). Placement (`help_menu.gd ICON_PANEL_BY_KEYWORD`):
+  OFFENSE burn, chain, detonate, execute, breach, leech, mark, rampage, pack
+  bonus, pierce, shield wipe, summon, all / AoE, siphon; DEFENSE spike, cleanse,
+  revive, firewall, accrete, cloak, targets self, targets lowest; CONTROL roll
+  down, roll up, jam, rewrite, hijack, freeze, taunt, Protocol gain. A keyword
+  added to the data later falls back by its data category. The conventions
+  lines (duration "2t", targeting words) and "Hold a unit to inspect its full
+  effects." are no longer shown.
+- **UNITS:** the faction sub-tabs stay. The list is a section panel (PLAYER
+  UNITS / HOSTILE UNITS); each unit is one row plate with its portrait, name,
+  HP and up to four keyword icons (were comma words); a hero's two evolutions
+  sit inside its plate. Long-press still opens the breakdown.
+- **Copy unchanged** everywhere else. Old links (`keywords`, `reference`)
+  open ICONS; `protocol`, `rewards` open BASICS; `bestiary` opens UNITS.
+- Gate `help polish` pins the order, the default, the strip fit, the cost rows,
+  the four ICONS panels with every keyword, one plate per hero and the icons.
+
+## G-88. Squad select touch-ups: attached info bar, shield blue, readable band icons (Kev, 2026-10-17)
+
+Branch `ui/release-v04`. **Amends** G-86 (spacing) and G-87 (shield colour).
+
+- **The info bar sits one GAP under the roster**, attached to the units
+  (`home_screen.gd INFO_GAP_INDEX`). The leftover height is still shared by the
+  five gaps in whole GAPs; the info bar gap's share then moves to the two
+  section gaps above it (separator -> squad first, then mission -> separator).
+  At 2400 design px tall: 112 / 160 / 160 / 16 / 112 (was 112 x 5). The two
+  buffers keep their size; a short screen still shrinks them first.
+- **SHIELD segment colour:** `6ba8e0`, the effect-pip shield blue
+  (`PixelUI.PIP_BORDERS.shield`, the battle cards' shield pip border), not the
+  status chip's `3fd0e2`, which sat too close to the Protocol cyan.
+- **Band icons in the info bar only** are drawn as a lighter variant: the icon
+  averaged down to its 12 art px (weighted by alpha, so faint art keeps its
+  shape and hue), texels under 6% coverage dropped, the rest opaque with HSV
+  value at least 0.45, and a 1 art px ring in UI_LINE. Ghost's half-transparent
+  cloak now reads as a hood. The in-game icons everywhere else are unchanged.
+  (A CHROME_DIM ring around the untouched icon was tried first: the cloak's
+  interior stayed dark and the ring read as a gray blob.)
+
 ## G-87. Squad select roll band bar: one effect type per band, the in-game icons (Kev, 2026-10-17)
 
 Branch `ui/art-polish`. **Supersedes** G-81's band glyphs (7 x 7 art px sword /
@@ -28,9 +124,9 @@ for everything else) and its "a neutral dot otherwise".
   (mark, burn, freeze, jam, taunt, cloak, Protocol gain, roll changes ...). "No
   effect" (the empty track, UI_ROW) only for a band with no ability; no base hero
   has one.
-- **Segment colours, lit:** ATTACK `KW_DAMAGE`; SHIELD the in-game shield status
-  chip's colour, `DT_STATUS.shield.border` (`3fd0e2`, the token the battle card's
-  shield chip draws its border, number and frame with); HEAL `KW_HEAL`; UTILITY
+- **Segment colours, lit:** ATTACK `KW_DAMAGE`; SHIELD `6ba8e0`, the effect-pip
+  shield blue `PIP_BORDERS.shield` (G-88; was the status chip's `3fd0e2`, too
+  close to the Protocol cyan); HEAL `KW_HEAL`; UTILITY
   the new `PixelUI.UTILITY_SEGMENT`, a lit steel gray `6e7682`, never as dark as
   the track.
 - **Icons under each segment**, the in-game pip icons (`assets/ui/pips/`,

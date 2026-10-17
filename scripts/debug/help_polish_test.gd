@@ -31,15 +31,40 @@ func _run() -> void:
 	root.content_scale_size = Vector2i(1080, 2400)
 	help.open(root)
 	var menu = help._active
-	check(menu._tab_buttons.keys() == ["basics", "units", "log", "settings"], "Four primary tabs")
-	check(menu._active_tab == "basics", "Help opens on Basics")
+	# G-89: five tabs, SETTINGS first and open by default.
+	check(menu._tab_buttons.keys() == ["settings", "basics", "icons", "units", "log"], "Five primary tabs in order")
+	check(menu._tab_buttons["log"].text == "LOG", "The log tab reads LOG")
+	check(menu._active_tab == "settings", "Help opens on Settings")
+	await settle()
+	# All five tabs plus X fit the strip: no label is wider than its button.
+	for tab_id in menu._tab_buttons.keys():
+		var tab_button: Button = menu._tab_buttons[tab_id]
+		var text_w: float = tab_button.get_theme_font("font").get_string_size(tab_button.text, HORIZONTAL_ALIGNMENT_LEFT, -1, tab_button.get_theme_font_size("font_size")).x
+		check(text_w <= tab_button.size.x - 8.0, "Tab %s label fits its button (%d in %d)" % [tab_id, int(text_w), int(tab_button.size.x)])
+	menu._select_tab("basics")
+	await settle()
 	var opening_text := ""
 	for label in menu._content_host.find_children("*", "Label", true, false): opening_text += label.text + "\n"
 	check("HOW A TURN WORKS" in opening_text, "Basics exposes turn rules")
 	check("THE PROTOCOL" in opening_text, "Basics contains Protocol")
 	check("EVOLUTION / REWARDS" in opening_text, "Basics contains rewards")
-	check(not menu._content_host.find_children("*", "Button", true, false).filter(func(b): return b.text == "REPLAY TUTORIAL").is_empty(), "Basics exposes tutorial replay")
-	check(not menu._content_host.find_children("*", "Button", true, false).filter(func(b): return b.text == "KEYWORDS / ICON GUIDE").is_empty(), "Basics exposes reference")
+	var basics_buttons: Array = menu._content_host.find_children("*", "Button", true, false)
+	check(not basics_buttons.filter(func(b): return b.text == "REPLAY TUTORIAL").is_empty(), "Basics exposes tutorial replay")
+	check(basics_buttons.filter(func(b): return b.text == "KEYWORDS / ICON GUIDE").is_empty(), "Basics has no icon guide button")
+	check(basics_buttons.size() > 0 and basics_buttons[-1].text == "REPLAY TUTORIAL", "REPLAY TUTORIAL closes Basics")
+	var costs: Array = menu._content_host.find_children("CostLabel", "Label", true, false).map(func(l): return l.text)
+	check(costs == ["1", "2", "4", "1"], "Spending Protocol rows carry their costs (%s)" % str(costs))
+	# ICONS: one flat page, four panels, every keyword placed once.
+	menu._select_tab("icons")
+	await settle()
+	var icons_text := ""
+	for label in menu._content_host.find_children("*", "Label", true, false): icons_text += label.text + "\n"
+	for panel_title in ["CORE", "OFFENSE", "DEFENSE", "CONTROL"]:
+		check(panel_title + "\n" in icons_text, "Icons has the %s panel" % panel_title)
+	check(menu._content_host.find_children("*", "Button", true, false).is_empty(), "Icons is one flat page (no sub-tabs)")
+	for kw in root.get_node("DataManager").get_keywords().get("keywords", []):
+		check(icons_text.count(str(kw.get("term", "")).to_upper() + "\n") >= 1, "Icons lists %s" % str(kw.get("term", "")))
+	check(menu.ICON_PANEL_BY_KEYWORD.get("shield") == "CORE" and menu.ICON_PANEL_BY_KEYWORD.get("heal") == "CORE", "Shield and heal sit in CORE")
 	menu._select_tab("units")
 	await settle()
 	var scroll: ScrollContainer = menu._content_scroll
@@ -54,6 +79,7 @@ func _run() -> void:
 				if hp_right >= 0: check(is_equal_approx(hp_right, node.get_global_rect().end.x), "HP right alignment")
 				hp_right = node.get_global_rect().end.x
 		for node in menu._bestiary_detail.find_children("*", "TextureRect", true, false):
+			if node.has_meta("keyword_icon"): continue
 			check(node.get_parent().size.is_equal_approx(load("res://scripts/ui/pixel_ui.gd").portrait_window(menu.ROW_PORTRAIT_W)), "Uniform thumbnail box: " + str(node.get_parent().size))
 	menu._select_bestiary_faction("squad")
 	await settle()
@@ -62,6 +88,7 @@ func _run() -> void:
 	var dm_node: Node = root.get_node("DataManager")
 	var row_art: Dictionary = {}
 	for tex_node in menu._content_host.find_children("*", "TextureRect", true, false):
+		if tex_node.has_meta("keyword_icon"): continue
 		var row: Node = tex_node.get_parent().get_parent().get_parent()
 		for label in row.find_children("*", "Label", true, false):
 			row_art[label.text] = tex_node.texture
@@ -77,6 +104,14 @@ func _run() -> void:
 			check(want != null, "%s has no evolution portrait file" % title)
 			check(row_art.get(title) == want and want != unit.portrait, "Help > Units %s row shows its own evolved portrait" % title)
 	check(evo_rows == 16, "Help > Units lists 16 evolution rows (saw %d)" % evo_rows)
+	# G-89: each hero is one row plate with its evolutions nested in it, and the
+	# keywords show as icons, never comma words.
+	var plates: Array = menu._bestiary_detail.find_children("*", "PanelContainer", true, false).filter(
+		func(p): return p.get_child_count() == 1 and p.get_child(0) is VBoxContainer and p.get_child(0).get_child_count() == 3 			and p.get_child(0).get_children().all(func(c): return c is HBoxContainer))
+	check(plates.size() == dm_node.units.size(), "Help > Units: one plate per hero holding its two evolutions (saw %d)" % plates.size())
+	for label in menu._bestiary_detail.find_children("*", "Label", true, false):
+		check(not (", " in label.text and label.text == label.text.to_lower()), "Help > Units has no comma keyword line: " + label.text)
+	check(not menu._bestiary_detail.find_children("*", "", true, false).filter(func(n): return n.has_meta("keyword_icon")).is_empty(), "Help > Units rows carry keyword icons")
 	var motion := InputEventMouseMotion.new()
 	motion.position = root.get_final_transform() * scroll.get_global_rect().get_center()
 	Input.parse_input_event(motion)
@@ -99,9 +134,7 @@ func _run() -> void:
 	check(help.is_open() and not menu._breakdown_open, "Esc closes inspection before Help")
 	menu._select_tab("keywords")
 	await settle()
-	Input.parse_input_event(esc)
-	await settle()
-	check(help.is_open() and menu._reference_section == "", "Esc backs out of subsection")
+	check(menu._active_tab == "icons", "The old keywords link opens ICONS")
 	Input.parse_input_event(esc)
 	await settle()
 	check(not help.is_open(), "Esc closes Help")

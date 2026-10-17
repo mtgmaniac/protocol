@@ -25,11 +25,13 @@
 #   unlock condition and no bar.
 # - DEPLOY SQUAD, the one primary; short of three picks it reads "PICK n MORE",
 #   disabled.
-# Spacing (Kev, 2026-10-17, G-86): a buffer of at least 2 GAP under the header
-# and above DEPLOY, at least one GAP between the four sections (mission block,
-# separator, squad block, info bar). The height left over is shared evenly by
-# those five gaps in whole GAPs (gap_sizes), never by the elements; a short
-# screen shrinks the two buffers first, then the section gaps.
+# Spacing (Kev, 2026-10-17, G-86; G-88): a buffer of at least 2 GAP under the
+# header and above DEPLOY, at least one GAP between the four sections (mission
+# block, separator, squad block, info bar). The info bar sits exactly one GAP
+# under the roster, attached to the units; the height left over is shared evenly
+# by the five gaps in whole GAPs (gap_sizes), never by the elements, and the
+# info bar gap's share goes to the two section gaps above it; a short screen
+# shrinks the two buffers first, then the section gaps.
 # Tap a unit: it shows in the info bar AND toggles in or out of the squad; with
 # the squad full a bench tap only shows it, plus "SQUAD FULL: TAP A PICK TO
 # REMOVE". Long-press opens the unit's inspect pop-up. The info bar opens on
@@ -52,6 +54,10 @@ const GAP := PixelUI.GAP
 ## mission -> separator, separator -> squad, squad -> info bar, info bar ->
 ## DEPLOY.
 const GAP_FLOORS: Array[int] = [2 * GAP, GAP, GAP, GAP, 2 * GAP]
+## The squad block -> info bar gap stays at its floor, one GAP (G-88): the info
+## bar reads as attached to the units. Its share of the leftover height goes to
+## the two section gaps (mission -> separator, separator -> squad).
+const INFO_GAP_INDEX := 3
 ## Subheaders (MISSION, SQUAD and its n / 3): one clean step above LABEL's 64,
 ## m5x7 laid out at 96 and drawn pixel-exact (PixelUI.bind_m5x7_snap), as the
 ## run-end report's rows: 2 screen px per font pixel on the phones, 3 at the
@@ -114,6 +120,14 @@ const BAND_ICON_GAP := 8
 ## (PixelUI.pip_texture_for_key) in its own colours, 12 art px square, so it
 ## fits the narrowest band (a single roll, 1/20 of the bar).
 const BAND_ICON := 48
+## The info bar's band icons only (G-88): a lighter variant of each icon (its
+## faint pixels made opaque, its dark ones lifted to BAND_ICON_VALUE_FLOOR) in a
+## 1 art px ring of UI_LINE, so the dark and half-transparent ones (Ghost's
+## cloak) read on the panel. The in-game icons elsewhere stay as they are.
+const BAND_ICON_OUTLINE := ART_PX
+const BAND_ICON_ALPHA_FLOOR := 0.06   # texels with less coverage drop out
+const BAND_ICON_VALUE_FLOOR := 0.45
+static var BAND_ICON_OUTLINE_COLOR: Color = PixelUI.UI_LINE
 const HINT_TEXT := "HOLD ANY UNIT FOR FULL INTEL"
 const SQUAD_FULL_TEXT := "SQUAD FULL: TAP A PICK TO REMOVE"
 ## A UTILITY band's icon: the first of these the ability carries, as its
@@ -316,7 +330,8 @@ func _distribute_gaps() -> void:
 ## The five gaps for `free` design px left by the blocks (G-86). Each starts at
 ## its floor (GAP_FLOORS); the rest is shared evenly in whole GAPs, the odd
 ## GAPs to the section gaps from the middle out, then the buffers; under one
-## GAP of it stays below DEPLOY (the bottom margin). Short of the floors, the
+## GAP of it stays below DEPLOY (the bottom margin). The info bar gap then
+## gives its share to the two section gaps above it (G-88). Short of the floors, the
 ## two buffers shrink first (to 0), then the section gaps, on the 4 px art grid.
 static func gap_sizes(free: float) -> Array[int]:
 	var sizes: Array[int] = GAP_FLOORS.duplicate()
@@ -331,6 +346,12 @@ static func gap_sizes(free: float) -> Array[int]:
 		var order: Array[int] = [2, 1, 3, 0, 4]
 		for n in units - each * sizes.size():
 			sizes[order[n]] += GAP
+		# The info bar stays attached (G-88): its share moves to the section
+		# gaps above, middle out.
+		var moved: int = (sizes[INFO_GAP_INDEX] - GAP_FLOORS[INFO_GAP_INDEX]) / GAP
+		sizes[INFO_GAP_INDEX] = GAP_FLOORS[INFO_GAP_INDEX]
+		for n in moved:
+			sizes[2 if n % 2 == 0 else 1] += GAP
 		return sizes
 	var inner: float = float(floors - GAP_FLOORS[0] - GAP_FLOORS[4])
 	var buffers: float = maxf(free - inner, 0.0)
@@ -1026,7 +1047,7 @@ func _build_info_bar() -> PanelContainer:
 	# The roll band bar and its glyph row, drawn in one control on the art grid.
 	_info_strip = Control.new()
 	_info_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_info_strip.custom_minimum_size = Vector2(0, BAND_BAR_H + BAND_ICON_GAP + BAND_ICON)
+	_info_strip.custom_minimum_size = Vector2(0, BAND_BAR_H + BAND_ICON_GAP + BAND_ICON + BAND_ICON_OUTLINE)
 	# The pip icons draw NEAREST, as on the battle cards.
 	_info_strip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_info_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1157,15 +1178,16 @@ static func band_layout(unit: UnitData, width_art: int) -> Array[Dictionary]:
 	return out
 
 
-## A segment's fill (G-87): the damage red, the in-game shield status colour
-## (the status chip's DT_STATUS shield border), the heal green, the lit utility
-## gray; a band with no ability is the empty track.
+## A segment's fill (G-87, G-88): the damage red, the effect-pip shield blue
+## (PIP_BORDERS shield, 6ba8e0: the battle cards' shield pip border; the status
+## chip's 3fd0e2 sat too close to the Protocol cyan), the heal green, the lit
+## utility gray; a band with no ability is the empty track.
 static func band_color(effect: String) -> Color:
 	match effect:
 		"attack":
 			return PixelUI.KW_DAMAGE
 		"shield":
-			return PixelUI.DT_STATUS["shield"]["border"]
+			return Color(PixelUI.PIP_BORDERS["shield"], 1.0)
 		"heal":
 			return PixelUI.KW_HEAL
 		"utility":
@@ -1199,10 +1221,67 @@ func _draw_band_strip() -> void:
 		if texture == null:
 			continue
 		# The pip's own colours, as the battle readout draws it (roll_up and
-		# cleanse carry their shared-glyph tint).
-		var fit: Vector2 = texture.get_size() * minf(float(BAND_ICON) / texture.get_size().x, float(BAND_ICON) / texture.get_size().y)
-		var at := Vector2(icon_x, icon_top) + ((Vector2(BAND_ICON, BAND_ICON) - fit) * 0.5).round()
-		_info_strip.draw_texture_rect(texture, Rect2(at, fit.round()), false, PixelUI.pip_tint_for_key(icon))
+		# cleanse carry their shared-glyph tint), in the info bar's lighter
+		# variant on the art grid (G-88).
+		var variant: Array = _band_icon_variant(icon, texture)
+		if variant.is_empty():
+			continue
+		var fit: Vector2 = (variant[0] as Texture2D).get_size() * ART_PX
+		var at := Vector2(icon_x, icon_top) + (((Vector2(BAND_ICON, BAND_ICON) - fit) * 0.5) / ART_PX).floor() * ART_PX
+		for offset: Vector2 in [Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1), Vector2(-1, 0), Vector2(1, 0), Vector2(-1, 1), Vector2(0, 1), Vector2(1, 1)]:
+			_info_strip.draw_texture_rect(variant[1], Rect2(at + offset * BAND_ICON_OUTLINE, fit.round()), false, BAND_ICON_OUTLINE_COLOR)
+		_info_strip.draw_texture_rect(variant[0], Rect2(at, fit.round()), false, PixelUI.pip_tint_for_key(icon))
+
+
+static var _band_icon_cache: Dictionary = {}
+
+## A pip icon's info bar variant (G-88), cached per key: [the lighter icon, its
+## white silhouette for the ring]. Pixels under BAND_ICON_ALPHA_FLOOR drop out,
+## the rest go opaque with their HSV value raised to BAND_ICON_VALUE_FLOOR. The
+## variant is BAND_ICON / ART_PX texels on its long side, drawn one texel per
+## art px.
+static func _band_icon_variant(key: String, texture: Texture2D) -> Array:
+	if _band_icon_cache.has(key):
+		return _band_icon_cache[key]
+	var img: Image = texture.get_image()
+	if img == null:
+		return []
+	img = img.duplicate()
+	if img.is_compressed():
+		img.decompress()
+	img.convert(Image.FORMAT_RGBA8)
+	# Averaged down to the icon's art px (12 on its long side) first, weighted
+	# by alpha so the faint art keeps its shape and hue instead of
+	# nearest-sampling to scattered texels.
+	var src: Image = img.get_region(img.get_used_rect())
+	var k: float = (float(BAND_ICON) / float(ART_PX)) / float(maxi(src.get_width(), src.get_height()))
+	var tw: int = maxi(1, roundi(src.get_width() * k))
+	var th: int = maxi(1, roundi(src.get_height() * k))
+	img = Image.create(tw, th, false, Image.FORMAT_RGBA8)
+	var mask: Image = Image.create(tw, th, false, Image.FORMAT_RGBA8)
+	for ty in th:
+		for tx in tw:
+			var x0: int = floori(float(tx) * src.get_width() / tw)
+			var x1: int = maxi(x0 + 1, floori(float(tx + 1) * src.get_width() / tw))
+			var y0: int = floori(float(ty) * src.get_height() / th)
+			var y1: int = maxi(y0 + 1, floori(float(ty + 1) * src.get_height() / th))
+			var rgb := Vector3.ZERO
+			var alpha := 0.0
+			for y in range(y0, y1):
+				for x in range(x0, x1):
+					var c: Color = src.get_pixel(x, y)
+					rgb += Vector3(c.r, c.g, c.b) * c.a
+					alpha += c.a
+			var coverage: float = alpha / float((x1 - x0) * (y1 - y0))
+			if coverage < BAND_ICON_ALPHA_FLOOR or alpha <= 0.0:
+				continue
+			var avg: Vector3 = rgb / alpha
+			var c2 := Color(avg.x, avg.y, avg.z)
+			img.set_pixel(tx, ty, Color.from_hsv(c2.h, c2.s, maxf(c2.v, BAND_ICON_VALUE_FLOOR), 1.0))
+			mask.set_pixel(tx, ty, Color.WHITE)
+	var out: Array = [ImageTexture.create_from_image(img), ImageTexture.create_from_image(mask)]
+	_band_icon_cache[key] = out
+	return out
 
 
 # ─── DEPLOY ───────────────────────────────────────────────────────────────────

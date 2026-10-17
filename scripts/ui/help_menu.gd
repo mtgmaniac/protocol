@@ -13,19 +13,48 @@ const MENU_LAYER := 135  # above InspectPopup (130) and the persistent header (8
 const MENU_LAYER_UNDER_POPUP := 125
 
 # Mobile-readable font scale (matches the inspect popup, not the old tiny help text).
-const TITLE_FONT := 48
 const TAB_FONT := 36  # Batch 3: 30 → 36 (category tabs read under duress too)
 const SECTION_FONT := 36
 const BODY_FONT := PixelUI.FONT_INFO_MIN  # table rows / stats (read under duress — floored, UI review S-1)
-const BODY_LONG_FONT := PixelUI.FONT_BODY_MIN  # long-form prose: bullets, keyword definitions (Polish Build A)
-const TERM_FONT := 33
 
+# Five tabs (G-89), SETTINGS first and open by default. The tab buttons are
+# narrow enough for all five plus X at 360: their labels at the SMALL size (m5x7
+# 48), 4 design px apart.
 const HELP_TABS := [
-	{"id": "basics", "label": "BASICS"},
-	{"id": "units", "label": "UNITS"},
-	{"id": "log", "label": "BATTLE LOG"},
 	{"id": "settings", "label": "SETTINGS"},
+	{"id": "basics", "label": "BASICS"},
+	{"id": "icons", "label": "ICONS"},
+	{"id": "units", "label": "UNITS"},
+	{"id": "log", "label": "LOG"},
 ]
+const DEFAULT_TAB := "settings"
+const TAB_STRIP_FONT := 34   # the strip's nominal size; drawn at SMALL (_set_strip_font)
+const TAB_STRIP_GAP := 4
+const TAB_HEIGHT := 100
+const CLOSE_BUTTON_SIZE := Vector2(64, 100)
+# Row text, as the SETTINGS rows draw it: the label (UI_TEXT) and its
+# description (UI_TEXT_DIM, BODY_FONT).
+const ROW_LABEL_FONT := 40
+# ICONS (G-89): one flat page, four panels. Every keyword sits in the panel that
+# fits what it does for the player; a keyword missing here falls back by its
+# data category (CATEGORY_PANEL), so a new one still shows.
+const ICON_PANELS := ["CORE", "OFFENSE", "DEFENSE", "CONTROL"]
+const ICON_PANEL_BY_KEYWORD := {
+	"shield": "CORE", "heal": "CORE",
+	"burn": "OFFENSE", "chain": "OFFENSE", "detonate": "OFFENSE", "execute": "OFFENSE",
+	"breach": "OFFENSE", "leech": "OFFENSE", "mark": "OFFENSE", "rampage": "OFFENSE",
+	"pack_bonus": "OFFENSE", "pierce": "OFFENSE", "wipe_shields": "OFFENSE",
+	"summon": "OFFENSE", "aoe": "OFFENSE", "siphon": "OFFENSE",
+	"spike": "DEFENSE", "cleanse": "DEFENSE", "revive": "DEFENSE", "ward": "DEFENSE",
+	"accrete": "DEFENSE", "cloak": "DEFENSE", "target_self": "DEFENSE", "target_lowest": "DEFENSE",
+	"roll_down": "CONTROL", "roll_up": "CONTROL", "jam": "CONTROL", "rewrite": "CONTROL",
+	"hijack": "CONTROL", "freeze": "CONTROL", "taunt": "CONTROL", "protocol_gain": "CONTROL",
+}
+const CATEGORY_PANEL := {"offense": "OFFENSE", "defense": "DEFENSE", "support": "DEFENSE",
+	"control": "CONTROL", "economy": "CONTROL"}
+const ICON_ROW_ICON := 64
+# UNITS rows: the keyword icons that replace the comma words.
+const ROW_KEYWORD_ICON := 48
 # Battle-log tab cap: plenty to review the fight without building 1000 labels.
 const LOG_MAX_LINES := 200
 # Each keyword now has its own pip icon (batch 155-179 + the 2026-07-10 icon
@@ -40,10 +69,9 @@ const HELP_KEYWORD_ICON := {
 	"protocol_gain": "protocol", "wipe_shields": "breach",
 	"rampage": "rampage", "pack_bonus": "pack_bonus", "summon": "summon",
 	"target_self": "self", "target_all": "aoe", "target_lowest": "target_lowest",
+	"cleanse": "cleanse",
 }
-const HELP_CATEGORY_ORDER := ["offense", "defense", "control", "support", "economy"]
 const BESTIARY_FACTION_ORDER := ["facility", "hive", "veil", "voidCirclet", "stellarMenagerie"]
-const SECTION_HEADER_COLOR := PixelUI.UI_TEXT
 
 static var _active: HelpMenu = null
 
@@ -58,7 +86,6 @@ var _active_tab: String = ""
 var _bestiary_detail: VBoxContainer = null
 var _bestiary_buttons: Dictionary = {}
 var _bestiary_faction: String = ""
-var _reference_section: String = ""
 
 
 static func toggle(host: Node) -> void:
@@ -155,26 +182,26 @@ func _build() -> void:
 	root.add_theme_constant_override("separation", 16)
 	panel_margin.add_child(root)
 
+	# One strip: the five tabs, equal width, then X (G-89).
 	var header_row := HBoxContainer.new()
 	header_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header_row.add_theme_constant_override("separation", 12)
+	header_row.add_theme_constant_override("separation", TAB_STRIP_GAP)
 	root.add_child(header_row)
 
 	var close_button := Button.new()
 	close_button.text = "X"
-	close_button.custom_minimum_size = Vector2(76, 70)
+	close_button.custom_minimum_size = CLOSE_BUTTON_SIZE
 	close_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_ui_tab(close_button, false, 38)
+	PixelUI.style_ui_tab(close_button, false, TAB_STRIP_FONT)
+	_set_strip_font(close_button)
 	close_button.pressed.connect(_with_click(HelpMenu.dismiss))
 
-	var tab_grid := GridContainer.new()
-	tab_grid.columns = 4
+	var tab_grid := HBoxContainer.new()
 	tab_grid.mouse_filter = Control.MOUSE_FILTER_PASS
 	tab_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tab_grid.add_theme_constant_override("h_separation", 8)
-	tab_grid.add_theme_constant_override("v_separation", 8)
+	tab_grid.add_theme_constant_override("separation", TAB_STRIP_GAP)
 	header_row.add_child(tab_grid)
 	header_row.add_child(close_button)
 
@@ -185,7 +212,9 @@ func _build() -> void:
 		var tab_button := Button.new()
 		tab_button.text = str(tab["label"])
 		tab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tab_button.custom_minimum_size = Vector2(0, 100)
+		tab_button.size_flags_stretch_ratio = 1.0
+		tab_button.clip_text = true
+		tab_button.custom_minimum_size = Vector2(0, TAB_HEIGHT)
 		tab_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		tab_button.pressed.connect(_with_click(_select_tab.bind(tab_id)))
 		tab_grid.add_child(tab_button)
@@ -222,7 +251,7 @@ func _build() -> void:
 	_content_scroll.add_child(content_margin)
 	content_margin.add_child(_content_host)
 
-	_select_tab("basics")
+	_select_tab(DEFAULT_TAB)
 
 
 func _on_catcher_input(event: InputEvent) -> void:
@@ -240,22 +269,24 @@ func _on_catcher_input(event: InputEvent) -> void:
 func _select_tab(tab_id: String) -> void:
 	if _content_host == null:
 		return
-	# Older links resolve into the player-facing Basics hierarchy.
-	var requested: String = tab_id
-	_reference_section = "reference" if requested in ["icons", "reference"] else ("keywords" if requested == "keywords" else "")
-	if requested in ["protocol", "rewards", "icons", "reference", "keywords"]:
+	# Older links resolve to the tab that now holds them.
+	if tab_id in ["protocol", "rewards"]:
 		tab_id = "basics"
+	elif tab_id in ["reference", "keywords"]:
+		tab_id = "icons"
 	elif tab_id == "bestiary":
 		tab_id = "units"
 	_active_tab = tab_id
 	for known_id in _tab_buttons.keys():
-		_style_tab_button(_tab_buttons[known_id], str(known_id) == tab_id)
+		_style_tab_button(_tab_buttons[known_id], str(known_id) == tab_id, TAB_STRIP_FONT)
 	for child in _content_host.get_children():
 		_content_host.remove_child(child)
 		child.queue_free()
 	match tab_id:
 		"basics":
-			_build_basics_page(_content_host)
+			_build_basics(_content_host)
+		"icons":
+			_build_icons(_content_host)
 		"units":
 			_build_bestiary(_content_host)
 		"log":
@@ -265,23 +296,6 @@ func _select_tab(tab_id: String) -> void:
 	if _content_scroll != null:
 		_content_scroll.scroll_vertical = 0
 	_refresh_hover.call_deferred()
-
-
-func _build_basics_page(host: VBoxContainer) -> void:
-	if _reference_section != "":
-		var back := Button.new()
-		back.text = "BACK TO BASICS"
-		back.custom_minimum_size.y = 100
-		PixelUI.style_ui_secondary_button(back, TAB_FONT)
-		back.pressed.connect(_with_click(_select_tab.bind("basics")))
-		host.add_child(back)
-		match _reference_section:
-			"keywords": _build_keywords(host)
-			"reference":
-				host.add_child(_make_label("COMBAT REFERENCE", SECTION_FONT, SECTION_HEADER_COLOR))
-				_build_icon_guide(host)
-		return
-	_build_basics(host)
 
 
 func _refresh_hover() -> void:
@@ -305,25 +319,32 @@ func _input(event: InputEvent) -> void:
 		if _breakdown_open and InspectPopup.is_open():
 			InspectPopup.dismiss()
 			_restore_layer_after_breakdown()
-		elif _reference_section != "":
-			_select_tab("basics")
 		else:
 			HelpMenu.dismiss()
 
 
-func _style_tab_button(button: Button, active: bool) -> void:
+func _style_tab_button(button: Button, active: bool, font_size: int = TAB_FONT) -> void:
 	if button == null:
 		return
 	# UI restyle A tab component: equal-width boxes, the active one solid accent.
-	PixelUI.style_ui_tab(button, active, TAB_FONT)
+	PixelUI.style_ui_tab(button, active, font_size)
+	if font_size == TAB_STRIP_FONT:
+		_set_strip_font(button)
 	_refresh_hover.call_deferred()
+
+
+# The top strip's labels at the SMALL size (48): at LABEL's 64 floor, SETTINGS
+# alone is 208 design px with its padding, and five of them plus X cannot fit
+# the 976 px the panel leaves at 360 (G-89).
+func _set_strip_font(button: Button) -> void:
+	button.add_theme_font_size_override("font_size", PixelUI.type_px(PixelUI.TYPE_SMALL))
 
 
 # ── Tab content ───────────────────────────────────────────────────────────────
 
-# BATTLE LOG (Kev 2026-07-10): the running combat log, newest first, so a
-# player can look back at what happened. Reads the live battle scene's
-# accumulated log; outside battle the tab says so.
+# LOG (Kev 2026-07-10; G-89 renamed the tab): the running combat log, newest
+# first, so a player can look back at what happened. Reads the live battle
+# scene's accumulated log; outside battle the tab says so.
 func _build_battle_log(host: VBoxContainer) -> void:
 	var log_text: String = ""
 	var scene: Node = get_tree().current_scene
@@ -342,6 +363,9 @@ func _build_battle_log(host: VBoxContainer) -> void:
 	_add_section(host, "BATTLE LOG - NEWEST FIRST", lines)
 
 
+# BASICS (G-89): each heading a section panel, each line a row; Spending
+# Protocol's rows are name, effect and the cost right-aligned. REPLAY TUTORIAL
+# closes the page. Copy unchanged.
 func _build_basics(host: VBoxContainer) -> void:
 	_add_section(host, "HOW A TURN WORKS", [
 		"Every unit - squad and hostile - rolls a D20 at the same time.",
@@ -371,19 +395,12 @@ func _build_basics(host: VBoxContainer) -> void:
 	# Replay the rigged onboarding encounter at any time.
 	var replay := Button.new()
 	replay.text = "REPLAY TUTORIAL"
-	replay.custom_minimum_size = Vector2(0, 84)
+	replay.custom_minimum_size = Vector2(0, 110)
+	replay.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	replay.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_ui_secondary_button(replay, 30)   # ui-unify: was a cyan legacy button
+	PixelUI.style_ui_secondary_button(replay, 44)   # as the SETTINGS buttons
 	replay.pressed.connect(_with_click(_replay_tutorial))
 	host.add_child(replay)
-
-	var reference := Button.new()
-	reference.text = "KEYWORDS / ICON GUIDE"
-	reference.custom_minimum_size = Vector2(0, 100)
-	reference.mouse_filter = Control.MOUSE_FILTER_STOP
-	PixelUI.style_ui_secondary_button(reference, TAB_FONT)
-	reference.pressed.connect(_with_click(_select_tab.bind("reference")))
-	host.add_child(reference)
 
 
 func _replay_tutorial() -> void:
@@ -396,188 +413,107 @@ func _replay_tutorial() -> void:
 		sm.call("go_to_battle")
 
 
-func _build_icon_guide(host: VBoxContainer) -> void:
-	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 12)
-	host.add_child(tabs)
-	var content := VBoxContainer.new()
-	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 24)
-	var buttons: Array[Button] = []
-	for title in ["ACTIONS", "EFFECTS"]:
-		var button := Button.new()
-		button.text = title
-		button.custom_minimum_size = Vector2(0, 112)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tabs.add_child(button)
-		buttons.append(button)
-	host.add_child(content)
-	buttons[0].pressed.connect(_with_click(_select_icon_guide_section.bind(false, content, buttons)))
-	buttons[1].pressed.connect(_with_click(_select_icon_guide_section.bind(true, content, buttons)))
-	_select_icon_guide_section(false, content, buttons)
-
-
-func _select_icon_guide_section(effects: bool, host: VBoxContainer, buttons: Array[Button]) -> void:
-	for child in host.get_children():
-		host.remove_child(child)
-		child.queue_free()
-	_style_tab_button(buttons[0], not effects)
-	_style_tab_button(buttons[1], effects)
-	if effects:
-		for entry in [
-			["damage", "DAMAGE", "The number is the damage amount."],
-			["heal", "HEAL", "The number is HP restored."],
-			["shield", "SHIELD", "Absorbs damage before HP."],
-		]:
-			_add_icon_guide_row(host, PixelUI.pip_texture_for_key(entry[0]), entry[1], entry[2])
-		# Use the canonical definitions, so this introduction cannot drift from Keywords.
-		for keyword in _dm().get_keywords().get("keywords", []):
-			if str(keyword.get("id", "")) in ["burn", "mark"]:
-				_add_keyword_row(host, keyword)
-		host.add_child(_make_body_label("Hold a unit to inspect its full effects.", PixelUI.TEXT_PRIMARY))
-		var more := Button.new()
-		more.text = "MORE EFFECTS"
-		more.custom_minimum_size = Vector2(0, 112)
-		PixelUI.style_ui_secondary_button(more, TAB_FONT)
-		more.pressed.connect(_with_click(_select_tab.bind("keywords")))
-		host.add_child(more)
-	else:
-		for entry in [
-			[PixelUI.ICON_INCREASE, "NUDGE - 1 PROTOCOL", "Add 3 to a hero's roll, once per die each turn."],
-			[PixelUI.ICON_REROLL, "REROLL - 2 PROTOCOL", "Roll one hero die again."],
-			[PixelUI.ICON_SET, "SET - 4 PROTOCOL", "Choose a hero die's value."],
-			[PixelUI.ICON_ITEM, "ITEM - 1 PROTOCOL", "Open inventory and choose an item."],
-		]:
-			_add_icon_guide_row(host, load(entry[0]) as Texture2D, entry[1], entry[2])
-		host.add_child(_make_body_label("Costs shown are the usual costs. Gear and relics can change them. Opening inventory is free.", PixelUI.TEXT_PRIMARY))
-	if _content_scroll != null:
-		_content_scroll.scroll_vertical = 0
-
-
-func _add_icon_guide_row(host: VBoxContainer, texture: Texture2D, title: String, description: String) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	host.add_child(row)
-	var icon := TextureRect.new()
-	icon.texture = texture
-	icon.custom_minimum_size = Vector2(88, 88)
-	icon.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(icon)
-	var text_box := VBoxContainer.new()
-	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_box.add_theme_constant_override("separation", 4)
-	row.add_child(text_box)
-	text_box.add_child(_make_wrap_label(title, SECTION_FONT, PixelUI.CHROME, 2))
-	text_box.add_child(_make_body_label(description, PixelUI.TEXT_PRIMARY))
-
-
 func _build_protocol(host: VBoxContainer) -> void:
 	_add_section(host, "THE PROTOCOL", [
 		"Protocol is a shared squad resource that starts at 0 each battle, +1 at the end of every turn, and caps at 10.",
 		"Spend it to manipulate dice and use items before you confirm the turn.",
 	])
-	_add_section(host, "SPENDING PROTOCOL", [
-		"Nudge (1): +3 to a die's effective roll (once per die per turn).",
-		"Reroll (2): reroll a single die.",
-		"Set (4): set a hero's die to any value.",
-	])
+	# The Basics lines split into name / effect / cost; ITEM and the cost note
+	# carry over from the retired icon guide's ACTIONS page.
+	var spending: VBoxContainer = PixelUI.make_ui_section(host, "SPENDING PROTOCOL")
+	for entry in [
+		["NUDGE", "+3 to a die's effective roll (once per die per turn).", 1],
+		["REROLL", "Reroll a single die.", 2],
+		["SET", "Set a hero's die to any value.", 4],
+		["ITEM", "Open inventory and choose an item.", 1],
+	]:
+		_add_cost_row(spending, str(entry[0]), str(entry[1]), int(entry[2]))
+	_add_text_row(spending, "Costs shown are the usual costs. Gear and relics can change them. Opening inventory is free.")
 
 
-func _build_rewards(host: VBoxContainer) -> void:
-	# Kev 2026-07-10: the icon-frame shape code and rarity color legend are
-	# gone — cards carry a boxed TYPE word and the rarity name in plain text.
-	_add_section(host, "ITEMS, GEAR & RELICS", [
-		"Items: one-use, spent in battle. The reward picker is single-select + confirm.",
-		"Gear: equipped passives that last for the run.",
-		"Relics: run-long global rules that affect every battle.",
-		"Rewards show their type and rarity.",
-	])
-
-
-func _build_keywords(host: VBoxContainer) -> void:
-	var data: Dictionary = _dm().get_keywords()
-	var keywords: Array = data.get("keywords", [])
-	var by_cat: Dictionary = {}
-	for kw_variant in keywords:
-		var kw: Dictionary = kw_variant
-		var cat: String = str(kw.get("category", "other"))
-		if not by_cat.has(cat):
-			by_cat[cat] = []
-		(by_cat[cat] as Array).append(kw)
-
-	var ordered: Array = HELP_CATEGORY_ORDER.duplicate()
-	for cat in by_cat.keys():
-		if not ordered.has(cat):
-			ordered.append(cat)
-
-	for cat in ordered:
-		if not by_cat.has(cat):
-			continue
-		host.add_child(_make_label(str(cat).to_upper(), SECTION_FONT, SECTION_HEADER_COLOR, HORIZONTAL_ALIGNMENT_LEFT, 3))
-		for kw_variant in by_cat[cat]:
-			_add_keyword_row(host, kw_variant)
-
-	var conventions: Dictionary = data.get("conventions", {})
-	var convention_lines: Array = []
-	if conventions.has("duration"):
-		convention_lines.append(str(conventions["duration"]))
-	if conventions.has("targeting"):
-		convention_lines.append(str(conventions["targeting"]))
-	if not convention_lines.is_empty():
-		_add_section(host, "CONVENTIONS", convention_lines)
-
-
-func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
+# A Spending Protocol row: the action's name over its effect, the cost
+# right-aligned in the Protocol colour (Protocol cost numbers, UI_STYLE).
+func _add_cost_row(parent: VBoxContainer, title: String, effect: String, cost: int) -> void:
+	var plate: PanelContainer = PixelUI.make_ui_row()
+	parent.add_child(plate)
 	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_PASS
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 12)
-	parent.add_child(row)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 16)
+	plate.add_child(row)
+	var text := VBoxContainer.new()
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	text.add_theme_constant_override("separation", 4)
+	row.add_child(text)
+	text.add_child(_make_wrap_label(title, ROW_LABEL_FONT, PixelUI.UI_TEXT, 0))
+	text.add_child(_make_wrap_label(effect, BODY_FONT, PixelUI.UI_TEXT_DIM, 0))
+	var cost_label := _make_label(str(cost), ROW_LABEL_FONT, PixelUI.PROTOCOL_ACCENT, HORIZONTAL_ALIGNMENT_RIGHT, 0)
+	cost_label.name = "CostLabel"
+	cost_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(cost_label)
 
-	var icon_frame := PanelContainer.new()
-	icon_frame.custom_minimum_size = Vector2(64, 64)
-	icon_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	icon_frame.mouse_filter = Control.MOUSE_FILTER_PASS
-	PixelUI.style_panel(icon_frame, PixelUI.INSPECT_BG, PixelUI.INSPECT_BORDER, 2, 0)
-	row.add_child(icon_frame)
 
-	var icon_key: String = str(HELP_KEYWORD_ICON.get(str(kw.get("id", "")), ""))
-	var icon_texture: Texture2D = PixelUI.pip_texture_for_key(icon_key)
-	if icon_texture != null:
+# ICONS (G-89): one flat page, the panels CORE, OFFENSE, DEFENSE and CONTROL.
+# A row: the in-game icon, the name, its one-line definition (the keyword's
+# canonical `def`, so this page cannot drift from the data). Damage has no
+# keyword entry, so CORE leads with the icon guide's damage line.
+func _build_icons(host: VBoxContainer) -> void:
+	var bodies: Dictionary = {}
+	for panel_title in ICON_PANELS:
+		bodies[panel_title] = PixelUI.make_ui_section(host, panel_title)
+	_add_icon_row(bodies["CORE"], "damage", "DAMAGE", "The number is the damage amount.")
+	for kw_variant in (_dm().get_keywords() as Dictionary).get("keywords", []):
+		var kw: Dictionary = kw_variant
+		var keyword_id: String = str(kw.get("id", ""))
+		var panel_title: String = str(ICON_PANEL_BY_KEYWORD.get(keyword_id,
+			CATEGORY_PANEL.get(str(kw.get("category", "")), "CONTROL")))
+		_add_icon_row(bodies[panel_title], str(HELP_KEYWORD_ICON.get(keyword_id, "")),
+			str(kw.get("term", "")).to_upper(), str(kw.get("def", "")), str(kw.get("code", "")))
+
+
+func _add_icon_row(parent: VBoxContainer, icon_key: String, title: String, description: String, code: String = "") -> void:
+	var plate: PanelContainer = PixelUI.make_ui_row()
+	parent.add_child(plate)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 16)
+	plate.add_child(row)
+	row.add_child(_make_keyword_icon(icon_key, ICON_ROW_ICON, code if code != "" else title.substr(0, 1)))
+	var text := VBoxContainer.new()
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	text.add_theme_constant_override("separation", 4)
+	row.add_child(text)
+	text.add_child(_make_wrap_label(title, ROW_LABEL_FONT, PixelUI.UI_TEXT, 0))
+	text.add_child(_make_wrap_label(description, BODY_FONT, PixelUI.UI_TEXT_DIM, 0))
+
+
+# A keyword's in-game pip icon at `box` design px, in its own colours
+# (pip_tint_for_key). A keyword with no icon shows its pip code (SI, CH ...).
+func _make_keyword_icon(icon_key: String, box: int, fallback: String) -> Control:
+	var texture: Texture2D = PixelUI.pip_texture_for_key(icon_key)
+	if texture != null:
 		var icon := TextureRect.new()
-		icon.texture = icon_texture
+		icon.name = "KeywordIcon"
+		icon.set_meta("keyword_icon", true)
+		icon.texture = texture
+		icon.modulate = PixelUI.pip_tint_for_key(icon_key)
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.custom_minimum_size = Vector2(50, 50)
-		icon.mouse_filter = Control.MOUSE_FILTER_PASS
-		icon_frame.add_child(icon)
-	else:
-		# fix-2.6: no pixel icon — show the keyword's canonical pip CODE from the
-		# registry (SI, CH, DT, ...), never a hand-derived first letter. Entries
-		# without a code (e.g. Protocol Gain) fall back to the initial.
-		var chip_text: String = str(kw.get("code", str(kw.get("term", "?")).substr(0, 1).to_upper()))
-		var chip_font: int = 36 if chip_text.length() <= 1 else 28
-		var letter := _make_label(chip_text, chip_font, PixelUI.CHROME, HORIZONTAL_ALIGNMENT_CENTER, 2)
-		letter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		letter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		icon_frame.add_child(letter)
-
-	var text_box := VBoxContainer.new()
-	text_box.mouse_filter = Control.MOUSE_FILTER_PASS
-	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_box.add_theme_constant_override("separation", 4)
-	row.add_child(text_box)
-
-	text_box.add_child(_make_label(str(kw.get("term", "")).to_upper(), TERM_FONT, PixelUI.CHROME, HORIZONTAL_ALIGNMENT_LEFT, 2))
-	text_box.add_child(_make_body_label(str(kw.get("def", "")), PixelUI.TEXT_PRIMARY))
-	# No trailing syntax line (Kev 2026-07-10): it just repeated the keyword
-	# name under its own definition.
+		icon.custom_minimum_size = Vector2(box, box)
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return icon
+	var chip := _make_label(fallback, 34, PixelUI.CHROME, HORIZONTAL_ALIGNMENT_CENTER, 0)
+	chip.name = "KeywordIcon"
+	chip.set_meta("keyword_icon", true)
+	chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	chip.custom_minimum_size = Vector2(box, box)
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return chip
 
 
 # ── UNITS codex ───────────────────────────────────────────────────────────────
@@ -587,19 +523,15 @@ func _add_keyword_row(parent: VBoxContainer, kw: Dictionary) -> void:
 # abilities with roll ranges, three times over, is a battle card's job, not a
 # reference screen's. The whole table is one long-press away on any row.
 func _build_codex(host: VBoxContainer) -> void:
-	var list := VBoxContainer.new()
-	list.mouse_filter = Control.MOUSE_FILTER_PASS
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 20)
-	host.add_child(list)
-
 	for unit_variant in _dm().units.values():
 		var unit: UnitData = unit_variant as UnitData
 		if unit == null:
 			continue
+		# G-89: each hero is one row plate; its evolutions nest inside it.
+		var list: VBoxContainer = _make_unit_plate(host)
 		_add_reference_row(
 			list, unit.portrait, unit.display_name.to_upper(), unit.max_hp,
-			_derive_keyword_line(unit.dice_ranges, "hero", 0), "hero", unit)
+			_derive_keyword_ids(unit.dice_ranges, "hero", 0), "hero", unit)
 		for evolution in _codex_evolution_groups(unit):
 			var group: Dictionary = evolution
 			# The battlefield card shows the CALLSIGN, so the reference screen
@@ -612,7 +544,7 @@ func _build_codex(host: VBoxContainer) -> void:
 			var evo_portrait: Texture2D = _dm().get_evolution_portrait(unit.id, str(group.get("id", "")))
 			_add_reference_row(
 				list, evo_portrait if evo_portrait != null else unit.portrait, evo_title, int(group["hp"]),
-				_derive_keyword_line(abilities, "hero", 0), "evolution", group, true)
+				_derive_keyword_ids(abilities, "hero", 0), "evolution", group, true)
 
 
 # evolution_paths is FLAT (one entry per ability) — regroup it into the two
@@ -699,18 +631,18 @@ func _select_bestiary_faction(faction: String) -> void:
 	for child in _bestiary_detail.get_children():
 		_bestiary_detail.remove_child(child)
 		child.queue_free()
+	# G-89: the list is a section panel, as SETTINGS draws its sections.
 	if faction == "squad":
-		_bestiary_detail.add_child(_make_label("PLAYER UNITS", SECTION_FONT, SECTION_HEADER_COLOR))
-		_build_codex(_bestiary_detail)
+		_build_codex(PixelUI.make_ui_section(_bestiary_detail, "PLAYER UNITS"))
 		return
-	_bestiary_detail.add_child(_make_label("HOSTILE UNITS", SECTION_FONT, SECTION_HEADER_COLOR))
+	var hostile: VBoxContainer = PixelUI.make_ui_section(_bestiary_detail, "HOSTILE UNITS")
 	for enemy_variant in _dm().enemies.values():
 		var enemy: EnemyData = enemy_variant as EnemyData
 		if enemy == null:
 			continue
 		var fac: String = enemy.faction if enemy.faction != "" else enemy.enemy_type
 		if fac == faction:
-			_add_bestiary_entry(_bestiary_detail, enemy)
+			_add_bestiary_entry(hostile, enemy)
 
 
 # The open bestiary page's ENCOUNTER color (data, G-83): each faction page is an
@@ -724,8 +656,21 @@ func _add_bestiary_entry(host: VBoxContainer, enemy: EnemyData) -> void:
 	# Same row shape as the Units list. The `role` sentence stays in the data
 	# and moves to the long-press breakdown: it never scanned as a list row.
 	_add_reference_row(
-		host, enemy.portrait, enemy.display_name.to_upper(), enemy.max_hp,
-		_derive_keyword_line(enemy.dice_ranges, "enemy", enemy.accrete), "enemy", enemy)
+		_make_unit_plate(host), enemy.portrait, enemy.display_name.to_upper(), enemy.max_hp,
+		_derive_keyword_ids(enemy.dice_ranges, "enemy", enemy.accrete), "enemy", enemy)
+
+
+# One unit's row plate (G-89): the unit's row, and a hero's evolution rows
+# under it. Returns the column the rows go in.
+func _make_unit_plate(host: VBoxContainer) -> VBoxContainer:
+	var plate: PanelContainer = PixelUI.make_ui_row()
+	host.add_child(plate)
+	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_PASS
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 12)
+	plate.add_child(column)
+	return column
 
 
 func _build_settings(host: VBoxContainer) -> void:
@@ -971,7 +916,7 @@ func _play_click() -> void:
 
 
 # Wraps a handler so the press clicks first. Connect-site only: _select_tab and
-# _select_icon_guide_section also run programmatically while building, silently.
+# _select_bestiary_faction also run programmatically while building, silently.
 func _with_click(action: Callable) -> Callable:
 	return func() -> void:
 		_play_click()
@@ -1123,37 +1068,18 @@ func _style_toggle_button(btn: Button) -> void:
 
 
 # ── Shared builders ─────────────────────────────────────────────────────────────
-func _add_section(parent: VBoxContainer, title_text: String, bullet_lines: Array) -> void:
-	var section := VBoxContainer.new()
-	section.mouse_filter = Control.MOUSE_FILTER_PASS
-	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	section.add_theme_constant_override("separation", 8)
-	parent.add_child(section)
-	var header := _make_wrap_label(title_text, SECTION_FONT, SECTION_HEADER_COLOR, 3)
-	PixelUI.apply_type(header, PixelUI.TYPE_LABEL)   # section headers: LABEL (ui-unify)
-	section.add_child(header)
-	for line_variant in bullet_lines:
-		_add_bullet(section, str(line_variant))
+func _add_section(parent: VBoxContainer, title_text: String, lines: Array) -> void:
+	# G-89: a section panel (header + rule) with each line on a row plate, as
+	# the SETTINGS tab draws its sections.
+	var body: VBoxContainer = PixelUI.make_ui_section(parent, title_text)
+	for line_variant in lines:
+		_add_text_row(body, str(line_variant))
 
 
-func _add_bullet(parent: VBoxContainer, text: String) -> void:
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_PASS
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 12)
-	parent.add_child(row)
-
-	# The chevron marks the entry's FIRST LINE, so it must not stretch to the
-	# row height and center itself against a wrapped bullet. SHRINK_BEGIN pins
-	# its one-line box to the top of the row; the body tier font matches the
-	# prose line box so the two first lines share a baseline.
-	var bullet := _make_label(">", BODY_LONG_FONT, PixelUI.CHROME, HORIZONTAL_ALIGNMENT_LEFT, 2)
-	bullet.custom_minimum_size = Vector2(30, 0)
-	bullet.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	bullet.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	row.add_child(bullet)
-
-	row.add_child(_make_body_label(text, PixelUI.TEXT_PRIMARY))
+func _add_text_row(parent: VBoxContainer, text: String) -> void:
+	var plate: PanelContainer = PixelUI.make_ui_row()
+	parent.add_child(plate)
+	plate.add_child(_make_wrap_label(text, BODY_FONT, PixelUI.UI_TEXT, 0))
 
 
 # Long-form reference prose (Tactical Reference bullets, keyword definitions):
@@ -1176,7 +1102,6 @@ func _make_body_label(text: String, color: Color) -> Label:
 const ROW_KEYWORD_CAP := 4
 const ROW_PORTRAIT_W := 96.0  # thumb width; PixelUI.make_portrait_frame owns the height
 const ROW_NAME_FONT := 44
-const ROW_DESCRIPTOR_FONT := 46
 const ROW_CHILD_INDENT := 34.0
 # m5x7 has no box-drawing glyphs (U+2514/U+251C are TOFU on device — the glyph
 # gate catches them), so the evolution connector is ASCII.
@@ -1291,12 +1216,12 @@ func _ability_keyword_ids(raw: Dictionary, side: String) -> Array:
 	return ids
 
 
-# The keyword line: every term the kit can produce, in canonical order, capped.
+# The keyword icons: every term the kit can produce, in canonical order, capped.
 # AoE is tagged from DAMAGE AoE (`blastAll`) only — a unit that hits the whole
 # enemy line. Squad-wide shields and heals are not what the tag is asking (a
 # Bulwark carrying three squad-shields is a shield unit, not an AoE one), which
 # is the shape Kev's reference table has.
-func _derive_keyword_line(dice_ranges: Array, side: String, accrete: int) -> String:
+func _derive_keyword_ids(dice_ranges: Array, side: String, accrete: int) -> Array:
 	var found: Dictionary = {}
 	var damage_aoe: int = 0
 	for entry_variant in dice_ranges:
@@ -1313,13 +1238,13 @@ func _derive_keyword_line(dice_ranges: Array, side: String, accrete: int) -> Str
 		found["accrete"] = true
 	if damage_aoe > 0:
 		found["aoe"] = true
-	var labels: Array = []
+	var ids: Array = []
 	for keyword_id in _canonical_keyword_ids():
-		if labels.size() >= ROW_KEYWORD_CAP:
+		if ids.size() >= ROW_KEYWORD_CAP:
 			break
 		if found.has(keyword_id):
-			labels.append(_keyword_row_label(keyword_id))
-	return ", ".join(labels)
+			ids.append(keyword_id)
+	return ids
 
 
 # ONE row, both screens. The breakdown is described, not built: `source_kind` +
@@ -1328,7 +1253,7 @@ func _derive_keyword_line(dice_ranges: Array, side: String, accrete: int) -> Str
 # resolver (pips, keyword definitions, gear lookups) for every row on every tab
 # open, to throw all but at most one away.
 func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
-		hp: int, keyword_line: String, source_kind: String, source_data: Variant,
+		hp: int, keyword_ids: Array, source_kind: String, source_data: Variant,
 		indented: bool = false) -> void:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -1380,10 +1305,17 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	head.add_child(hp_label)
 
-	# No "APPLIES:" label — the word is implied, and dropping it puts the terms
-	# themselves at the start of the line where they scan.
-	if keyword_line != "":
-		entry.add_child(_make_wrap_label(keyword_line, ROW_DESCRIPTOR_FONT, PixelUI.TEXT_PRIMARY, 2))
+	# The kit's keywords as their in-game icons (G-89; were comma words). The
+	# names are one long-press away, and on the ICONS tab.
+	if not keyword_ids.is_empty():
+		var icons := HBoxContainer.new()
+		icons.name = "KeywordIcons"
+		icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icons.add_theme_constant_override("separation", 12)
+		entry.add_child(icons)
+		for keyword_id in keyword_ids:
+			icons.add_child(_make_keyword_icon(str(HELP_KEYWORD_ICON.get(str(keyword_id), "")),
+				ROW_KEYWORD_ICON, _keyword_row_label(str(keyword_id)).substr(0, 2).to_upper()))
 
 	if source_kind != "":
 		var long_press := LongPressInput.new()

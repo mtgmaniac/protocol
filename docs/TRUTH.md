@@ -27,6 +27,18 @@ band bar gives each band one effect type, ATTACK / SHIELD / HEAL / UTILITY,
 lit in KW_DAMAGE / the shield status colour / KW_HEAL / UTILITY_SEGMENT, with
 the in-game pip icon under it.
 
+**Release v0.4 UI pass (Kev, 2026-10-17, DECISIONS_RESOLVED G-88 / G-89;
+supersedes the entries below where they differ, the 2026-09-20 Help tabs and the
+G-17 Icon Guide included):** squad select's info bar sits one GAP under the
+roster (its share of the height goes to the two section gaps above), the band
+bar's SHIELD segment is the effect-pip shield blue `6ba8e0`, and the info bar
+draws its band icons as a lighter variant in a thin ring so Ghost's cloak reads.
+Help has five tabs, SETTINGS (the default), BASICS, ICONS, UNITS, LOG (was
+BATTLE LOG), every page in the SETTINGS panel-and-row style; ICONS is one flat
+page of CORE / OFFENSE / DEFENSE / CONTROL keyword rows, UNITS shows keyword
+icons and nests a hero's evolutions in its row; the KEYWORDS / ICON GUIDE
+button is gone.
+
 **UI batch A5 (Kev, 2026-10-17, DECISIONS_RESOLVED G-79 / G-80 / G-81 / G-82; supersedes
 the entries below where they differ):** the dice tray floor is one reticle image
 (`assets/battle_tray/tray_floor_reticle.png`, the `tray_floors.reticle` entry),

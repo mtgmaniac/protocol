@@ -97,6 +97,8 @@ func _parse_args() -> Dictionary:
 			# Opens the HelpMenu on one tab (basics / units / log / settings).
 			config["help"] = true
 			config["help_tab"] = arg.get_slice("=", 1).strip_edges()
+		elif arg.begins_with("--capture-help-scroll="):
+			config["help_scroll"] = float(arg.get_slice("=", 1))
 		elif arg == "--capture-encounter-inspect":
 			# Drives the banner's long-press handler (squad-select redesign: the
 			# encounter blurb lives in the InspectPopup, not on the screen).
@@ -167,6 +169,15 @@ func _wait_for_scene(config: Dictionary) -> void:
 					if str(config.get("help_faction", "")) != "":
 						child.call("_select_bestiary_faction", str(config["help_faction"]))
 			await process_frame
+			await process_frame
+			# Release v0.4: scroll the page to a share of its length (0..1, 1 = end).
+			if config.has("help_scroll"):
+				for child: Node in root.get_children():
+					if child.get_script() == help_script:
+						var scroll: ScrollContainer = child.get("_content_scroll")
+						var bar: VScrollBar = scroll.get_v_scroll_bar()
+						scroll.scroll_vertical = int(float(config["help_scroll"]) * (bar.max_value - bar.page))
+				await process_frame
 		await process_frame
 		await process_frame
 	var pages: int = int(config.get("encounter_page", 0))
