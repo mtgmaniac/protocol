@@ -105,7 +105,18 @@ skips container children). Used by the run-end report (font pixel 5 to 6:
 layout 96, 2 screen px per font pixel on phones, 3 at the 540 preview) and its
 feedback line (3 to 3: 1 screen px per font pixel at 360 and 390).
 
-**Audit (2026-10-17): every other m5x7 text is uneven on phones.** One m5x7
+**Type size ruling (G-82, Kev 2026-10-17): keep the sizes, rely on hiDPI.**
+The web page renders at the device pixel ratio, so a phone draws the 1080-wide
+canvas at about 1x, not at the 1/3 the audit below measured. On a 1080-wide
+phone every lattice size is exact; on a 1170 x 2532 iPhone strokes mix one
+physical pixel (4 / 5 px BODY, 3 / 4 px SMALL), accepted. Every text size is a
+multiple of 16 when it reaches the font: a screen's off-lattice constant (36,
+44, 56 ...) is a nominal input to `style_label` / `style_ui_*` (x1.35, then the
+48 / 64 / 80 ladder) or a raw design px size rounded by `text_px`, never drawn
+as written. Write new raw design px sizes on the lattice. See
+`docs/TYPE_SIZE_OPTIONS_2026-10-17.md`.
+
+**Audit (2026-10-17, 1x captures): every other m5x7 text is uneven at 1x.** One m5x7
 font pixel is size / 16 design px, so a fixed size is whole screen px only
 where size x scale / 16 is whole: at 360 (scale 1/3) only 48 and 96; at 390
 (0.361) no lattice size at all. LABEL / BODY / NUMERAL 64 draw 1.33 px at 360
@@ -191,17 +202,20 @@ DESTRUCTIVE, never notched. The notch never moves.
 
 ## Squad select ("A5", G-81)
 
-MISSION and SQUAD subheaders are LABEL in CHROME_DIM. The mission card: an
-8 design px ENCOUNTER_ACCENT frame over a 10% tint, the boss through the shared
-portrait frame at the roster tile width (same height as the tiles), the name in
-CARD_NAME, level pips + LV + a CLEARED (cobalt outline) or LOCKED (line
-outline) tag, the threats as SMALL text in MIN_STROKE accent-outlined tags. The
+Content starts one GAP under the header; the leftover height sits between the
+info bar and DEPLOY. MISSION and SQUAD subheaders are LABEL in CHROME_DIM. The
+mission card: an 8 design px ENCOUNTER_ACCENT frame over a 10% tint, the boss
+through the shared portrait frame at the roster tile width (same height as the
+tiles), the name in CARD_NAME, level pips + LV + CLEARED (light cobalt) or
+LOCKED (CHROME_DIM) as plain SMALL text, the threats as one plain SMALL line
+("SHIELDS · JAM · REBUILD"). No frames inside the card: the screen holds 11
+framed panels (card, boss, 8 tiles, info bar; the `panel count` gate). The
 unit info bar: cobalt frame, UI_PANEL fill, callsign LABEL in light cobalt, HP
-and status SMALL, the one-line `blurb` SMALL, the roll band bar (segments sized
+and status plain SMALL, the one-line `blurb` SMALL, the roll band bar (segments sized
 by roll windows, fill = the effect's keyword colour darkened 60% or UI_ROW, one
 7 x 7 art px glyph each: attack KW_DAMAGE, heal KW_HEAL, shield KW_SHIELD,
 neutral dot CHROME_DIM), the hint SMALL CHROME_DIM (WARNING for the squad-full
-hint). The unit in the info bar gets a CHROME outline outside its tile frame.
+hint). The unit in the info bar has its own tile border in CHROME (bone).
 Short of three picks DEPLOY is disabled as "PICK n MORE".
 
 ## Protocol color

@@ -53,6 +53,15 @@ sizes (60, 56, 52, 44, 40, 36, 84, 76) are uneven on every phone. So resizing is
 not made unnecessary by hiDPI, but the remaining error is small and only on
 non-1080 canvases.
 
+**Correction (2026-10-17, after the census in G-82).** The off-lattice sizes
+named above (60, 56, 52, 44, 40, 36, 84, 76) are constants in the screen code,
+not sizes that render: every path snaps them (`style_label` / `style_ui_*`: x1.35
+then the 48 / 64 / 80 ladder; raw design px: `text_px`). A census of 275 live
+text nodes finds only m5x7 48 / 64 / 80 / 96 / 112 and Battle Block 96 / 144, so
+nothing renders off the lattice and the "uneven on every phone" claim was wrong.
+
+**Ruling: A** (Kev, 2026-10-17, DECISIONS_RESOLVED G-82).
+
 Note: this assumes the page keeps hidpi on. A desktop browser at DPR 1 (the
 540 x 1200 preview, scale 0.5) shows m5x7 64 at exactly 2 px per font pixel.
 
@@ -61,10 +70,8 @@ Note: this assumes the page keeps hidpi on. A desktop browser at DPR 1 (the
 ### A. Keep sizes, rely on hiDPI (no change)
 - Look: unchanged. Strokes exact on 1080-wide phones; 4/5 px (BODY) and 3/4 px
   (SMALL) mixes on iPhones; off-lattice sizes uneven everywhere.
-- Cost: none. Optionally a cleanup pass moving the off-lattice sizes (60, 56,
-  52, 44, 40, 36, 84, 76; mostly squad select, the title prompts and DEPLOY)
-  onto the 16 lattice, which makes 1080 canvases fully exact. That is a few
-  hours, with text-fit checks.
+- Cost: none. (This draft offered a pass moving the off-lattice sizes onto the
+  16 lattice; see the correction above: they already render on it.)
 
 ### B. Snap every m5x7 label to a whole k per phone
 Each m5x7 label keeps its layout size and is drawn at the largest whole

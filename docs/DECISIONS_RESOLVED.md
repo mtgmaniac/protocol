@@ -15,6 +15,33 @@ the live game. Implementing these needs its own task.
   heal above); remaining summons are full HP.
 - **Supersedes the G-54 summons hold once implemented.** Until then G-54 stands.
 
+## G-82. Type size: keep the sizes, rely on hiDPI (Kev, 2026-10-17)
+
+Option A of `docs/TYPE_SIZE_OPTIONS_2026-10-17.md`. The type roles keep their
+sizes (m5x7 48 / 64 / 80 / 96 / 112, Battle Block per BLOCK_FONT_PX) and the
+web page keeps rendering at the device pixel ratio (`allow_hidpi` on, the
+default). On a 1080-wide phone every lattice size is exact; on a 1170 x 2532
+iPhone strokes mix one physical pixel (BODY 4 / 5 px, SMALL 3 / 4 px), which is
+accepted. Options B (snap every m5x7 label per phone) and C (a fixed 1080 x 2400
+frame at a whole scale) are not taken.
+
+Every text size is a multiple of 16 when it reaches the font. A census of the
+live screens (title and its NEW GAME confirm, squad select, Help, the unit and
+relic pop-ups, route fork, intercept, reward, battle and loadout, run end,
+evolution: 275 text nodes) finds only m5x7 48 / 64 / 80 / 96 / 112 and Battle
+Block 96 / 144. The screens' off-lattice constants (36, 44, 46, 56, 60, 76, 84,
+...) are inputs, not sizes: `style_label`, `style_body_label` and the
+`style_ui_*` buttons take a nominal size, multiply it by 1.35 and snap it to the
+48 / 64 / 80 ladder or the 16 lattice (`scale_font_size`, `lattice_px`), and
+the raw design px helpers round through `text_px`. Rewriting a nominal input as
+a multiple of 16 would change what draws (36 -> 32 drops a label from 64 to
+48), so they stay. Squad select's two raw design px constants are now written
+as what they draw (TILE_NAME_FONT 60 -> 64, DETAIL_NAME_FONT 76 -> 80) and six
+unused off-lattice constants are removed. Not on the lattice and left: the dice
+tray's `Label3D` markers (frozen 56, jam cap 50, billboard text sized in world
+units, not design px) and the landscape battle style (protocol 100, cost 72;
+landscape is off, `LANDSCAPE_BATTLE_ENABLED = false`).
+
 ## G-81. Squad select "A5": mission card, unit info bar, PICK n MORE (Kev, 2026-10-17)
 
 Branch `ui/batch-a5`. **Supersedes** UI batch 2026-09-27 B3's site line,
@@ -24,28 +51,31 @@ headers and "DEPLOY SQUAD (N MORE)" gate, and G-75's "the encounter colour is
 the header and enemy frames, nothing else" for this one card. G-16's hidden
 locked hero names stand.
 
-Top to bottom, every block one GAP apart, the cluster centred between the
-header (? and back only, no title) and DEPLOY:
+Top to bottom, every block one GAP apart, starting one GAP under the header
+(? and back only, no title); the leftover height sits between the info bar and
+DEPLOY:
 - **MISSION** subheader (LABEL, CHROME_DIM).
 - **Mission card** between small prev / next arrows (72 x 144): an 8 design px
   ("3 px" on a 390 phone) ENCOUNTER_ACCENT frame over a 10% tint of it; the boss
   portrait at the left through the shared portrait frame at the roster tile
   width (230 window, 238 x 274 framed, the tiles' height), framed in the
   accent; the operation name (CARD_NAME, accent); a row of five level pips
-  (accent / empty) + "LV n" + a CLEARED tag (cobalt outline) when won, or a
-  LOCKED tag (line outline) when locked; the THREATS (the existing briefing
-  data) as small outlined tags in the accent, or a locked operation's "Clear
-  X to unlock" in their slot. Nothing else: the flavor paragraph leaves the
-  screen (it stays in data, Help and the card's long-press).
+  (accent / empty) + "LV n" + CLEARED (SMALL, light cobalt) when won or LOCKED
+  (SMALL, CHROME_DIM) when locked, plain text; the THREATS (the existing
+  briefing data) as one plain SMALL line, "SHIELDS · JAM · REBUILD", or a
+  locked operation's "Clear X to unlock" in its slot. No frames inside the
+  card. Nothing else: the flavor paragraph leaves the screen (it stays in data,
+  Help and the card's long-press).
 - Page dots under the card, the current one in the accent.
 - A thin separator (UI_LINE, MIN_STROKE).
 - **SQUAD** subheader with "n / 3" right-aligned; the 4-column roster
   unchanged (tiles, picks' cobalt frame and 1-3 badge, locked silhouettes). The
-  unit in the info bar gets a bone (CHROME) outline drawn just outside its
-  frame (an expand margin: the grid does not move).
+  unit in the info bar has its own tile border in bone (CHROME,
+  `player_tile_style(picked, viewing)`), over a pick's cobalt; the badge and
+  the light-cobalt name still mark a pick.
 - **Unit info bar**, always present at one height: cobalt frame, UI_PANEL fill;
   the callsign (light cobalt), "HP n" and IN SQUAD / ON BENCH / LOCKED
-  right-aligned (SMALL); the one-line `blurb` (SMALL); a roll band bar of five
+  right-aligned (SMALL, plain text); the one-line `blurb` (SMALL); a roll band bar of five
   segments sized by the unit's real roll windows (whole art px, largest
   remainder), each with a 7 x 7 art px glyph for its main effect: attack
   (KW_DAMAGE), heal (KW_HEAL), shield (KW_SHIELD) by the largest of its damage /
@@ -63,14 +93,15 @@ nothing, as before). The info bar opens on pick 1. The last operation and
 squad deployed come back (profile `last_deploy`, healed to empty on older
 saves, no version bump) when still playable.
 
-Data: a one-line `blurb` per hero (role + signature effect, <= 60 chars),
-`blurbStatus: "draft"` until Kev approves the copy. Evolutions are not shown
-on this screen and have none.
+Data: a one-line `blurb` per hero (role + signature effect, <= 60 chars).
+Kev approved the drafted copy (2026-10-17). Evolutions are not shown on this
+screen and have none.
 
-**Open:** the `panel count` gate pins 11 framed panels on this screen; A5 draws
-15 (16 worst case: card, boss, 8 tiles, focus ring, info bar, 3 threat tags, a
-status tag). Raising the pin needs Kev's sign-off (ratchet hook), so the gate
-fails on the branch until then.
+**Panel count (Kev, 2026-10-17): the limit stays 11.** The first A5 build drew
+15 framed panels (threat tags, a status tag and a separate focus ring); the
+threats and status went to plain text and the focus ring to the tile's own
+border, so the screen draws exactly 11: the mission card, the boss portrait,
+the 8 tiles and the info bar. The `panel count` gate passes at its pin.
 
 ## G-80. Title menu: CONTINUE / NEW GAME / FEEDBACK; NEW GAME asks over a run (Kev, 2026-10-17)
 
