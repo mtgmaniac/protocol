@@ -201,7 +201,7 @@ ruling covers the relic cache, and the cache gets the ceremonial cards back.
 ### Governance edits (complete list)
 
 1. `docs/DECISIONS_RESOLVED.md`, top: new **G-75** (color ownership, constant
-   dice colors, notch rule, solid primary / outlined secondary / amber
+   dice colors, notch rule, primary (solid, reverted 2026-10-17 to outlined cobalt with the notch) / outlined secondary / amber
    destructive with no stripes, type roles incl. CARD, GAP rule, Protocol
    color, rarity ladder, relic cache cards, debug-only ^/^^), with
    **Overrides**: #18 and INVARIANTS #7, each "overridden by Kev, 2026-10-16"
@@ -271,3 +271,58 @@ unfinished telemetry client with draft TRUTH/DECISIONS text).
     git checkout main
     git merge --ff-only integration/ui-merge
     git push origin main
+
+## Phase 4: final fixes (2026-10-17)
+
+- **Buttons.** The primary button is back to the pre-`83f3aaf` style: dark
+  fill, cobalt border and thick left edge, light-cobalt text, the notch;
+  pressed is a cobalt fill with ink text. One helper
+  (`PixelUI.style_ui_primary_button`) serves every primary (ROLL / END TURN,
+  CONFIRM, DEPLOY SQUAD, title CONTINUE / BEGIN, pop-up confirms).
+  `PLAYER_FILL_TEXT` is deleted. Secondary and destructive unchanged.
+- **HP numerals, diagnosis** (390 and 360 captures, 3x crops):
+  a. *Glyph design:* Battle Block's digits are a classic 5x7 set. None thins;
+     every stroke is one font pixel. Some are narrower at the bottom by
+     design: 5 (5 wide on top, 4 at the bottom), 4 and 7 (end in one column),
+     "/" (ends bottom-left). 0, 3, 6, 8 and 9 are symmetric.
+  b. *Clipping:* none. Every font pixel was a whole 2x2 screen block, all 7
+     rows present, with 2 screen px of bar left below.
+  c. *Scaling / position:* the scale is uniform (f, f), but the label is laid
+     out at 96 in a 78 bar. It grew downward only, and the snap scales about
+     the label's own centre, so the numerals sat about 8 design px low: 8
+     screen px of bar above them and 2 below at 390 (7 / 2 at 360). The low
+     seat plus the narrow bottoms of 5 / 7 read as "melting".
+  **Fix:** the HP label grows both ways, so it and its snap pivot are
+  centred on the bar. Now 5 / 5 at 390 and 4 / 4 at 360. `stroke_runs`: every
+  HP ink run a multiple of 2 at both widths.
+- **HP options** (`CompactUnitCard.HP_NUMERAL_OPTION`, captures pass
+  `--hp-numeral=A|B|C`; `debug_artifacts/ui_fix/hp_font_comparison.png`):
+  **A chosen**, Battle Block at CARD, centred. It has even strokes, no
+  render taper, clear gaps, and the same size on every card. B (one font pixel
+  larger, "60/60") is bigger, but the digits and slash run together and sit 1
+  font px from the bar edges. Three-digit boss HP does not fit at B, so a
+  boss card would fall back to A's size beside larger numbers. C (m5x7 with
+  the dice's own-colour outline and dark edge) draws blobby, uneven strokes.
+- **Trait colours.** Before: every trait title was amber (`DT_AMBER`), and a
+  trait flagged `warning` (only Volt Enforcer's VOLATILE: its death deals 4
+  damage to each hero) was the damage red, per Kev's G-63 ("a warning color
+  distinct from the other traits' amber"). Now every trait name is its card's
+  name colour (enemy: the encounter-derived name; hero: the hero name). The
+  `warning` flag stays in data (`UnitTraits.is_warning`) but no longer colours
+  anything. Recorded in G-75; one line under G-63.
+- **Housekeeping:** `assets/fonts/battle_block.svg.import` restored.
+- **Gates (targeted):** layout rhythm, component contract, boss nameplate,
+  traits, caps law PASS; also battle layout, text legibility, trait preview,
+  preview accuracy, feedback honesty, wording fit, reward model PASS.
+  `stroke_runs`: HP and callsigns k=2 at 390 and 360. Boot check: title,
+  squad select, battle, reward, intercept, route fork, evolution, unlock, run
+  end load with zero new errors; battle also boots with options B and C.
+- **Found, not fixed:** at 360x800 the AVALANCHE callsign's first "A" loses its
+  leftmost screen px column to the name strip edge (one-px runs in
+  `stroke_runs`). It is the name label, not HP, and it predates this pass.
+  The trait title line (m5x7 SMALL 48) is unsnapped by design, so its runs are
+  uneven.
+- **Deliverables** (`debug_artifacts/ui_fix/`): `hp_font_comparison.png`,
+  `battle_facility.png`, `battle_360.png`, `battle_trait_card.png` (3x crop of
+  `battle_trait_full.png`), `reward.png`, `title.png` (scratch profile with a
+  run save: CONTINUE primary).
