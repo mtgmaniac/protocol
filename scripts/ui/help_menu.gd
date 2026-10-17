@@ -368,6 +368,7 @@ func _build_battle_log(host: VBoxContainer) -> void:
 # Protocol's rows are name, effect and the cost right-aligned. REPLAY TUTORIAL
 # closes the page. Copy unchanged.
 func _build_basics(host: VBoxContainer) -> void:
+	_add_section(host, "ANONYMOUS GAMEPLAY DATA", ["Anonymous run and choice data helps balance the game; turn sharing off in SETTINGS."])
 	_add_section(host, "HOW A TURN WORKS", [
 		"Every unit - squad and hostile - rolls a D20 at the same time.",
 		"Assign targets, then END TURN: heroes act before enemies.",
@@ -708,6 +709,11 @@ func _build_settings(host: VBoxContainer) -> void:
 	_add_toggle_row(access, "Auto-select sole valid target", _setting_on(AutoPick.SETTING),
 		_on_toggle_setting.bind(AutoPick.SETTING),
 		"When an action has only one valid target, it is picked for you.").name = "AutoSelectToggleRow"
+
+	var privacy: VBoxContainer = PixelUI.make_ui_section(host, "PRIVACY")
+	var save: Variant = _save_manager()
+	_add_toggle_row(privacy, "Share anonymous gameplay data", save == null or bool(save.get_setting("telemetry_enabled", true)),
+		_on_toggle_setting.bind("telemetry_enabled"), "Shares anonymous runs and choices to help balance the game.").name = "TelemetryToggleRow"
 
 	# --- Tutorials (Kev 2026-07-10) ---
 	var tutorials: VBoxContainer = PixelUI.make_ui_section(host, "TUTORIALS")

@@ -11,6 +11,7 @@ extends Node
 const SaveIO = preload("res://scripts/autoloads/save_io.gd")
 
 signal setting_changed(key: String, value: Variant)
+signal run_resumed(screen: String)
 
 const SAVE_PATH := "user://save.json"
 const DEV_SAVE_PATH := "user://dev_profile_save.json"  # rigs/tests land here, never the real profile
@@ -504,6 +505,7 @@ func resume_run() -> String:
 		"round": int(_pending_battle_restore.get("round", 0)),
 		"run_seed": ResumeGuard.run_seed_of(loaded),
 	}
+	run_resumed.emit(screen)
 	return screen
 
 

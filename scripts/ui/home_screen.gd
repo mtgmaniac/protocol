@@ -1353,6 +1353,7 @@ func _launch_run(directive_relic_id: String) -> void:
 	MusicManager.play_for_faction(GameState.selected_operation_id)
 	if directive_relic_id != "":
 		GameState.set_starting_directive(directive_relic_id)
+		GameState.reward_picked.emit("starting_relic", SaveManager.get_unlocked_boss_relics(), directive_relic_id)
 	GameState.advance_to_next_battle()
 	SceneManager.go_to_battle()
 

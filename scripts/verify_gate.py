@@ -51,6 +51,7 @@ GODOT = os.environ.get(
 AUDIT_MIN_PASSED = 282
 
 GATES = [
+    ("player telemetry", [sys.executable, str(ROOT / "scripts" / "checks" / "telemetry_gate.py")], "[TELEMETRY_GATE] PASS", False),
     ("validate-data", ["npm", "run", "validate-data"], "validates against schemas", True),
     # Anti-drift gates (pure-python, fast): a duplicated constant is a bug with a
     # delay fuse — check the copies instead of trusting them to stay in sync.
@@ -423,6 +424,7 @@ def check_profile_isolation(before: dict) -> bool:
 # its elapsed seconds so tightening is data, not guesswork.
 GATE_TIMEOUT_DEFAULT = 90
 GATE_TIMEOUT_OVERRIDES = {
+    "portrait width": 180,     # 32 rendered captures across four window sizes
     "validate-data": 180,       # npm cold start
     "ability audit": 420,       # 228+ recorded regressions, one process
     "flow smoke": 300,          # walks the entire scene flow twice

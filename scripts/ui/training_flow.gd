@@ -2,7 +2,8 @@ extends RefCounted
 
 const Prompt := preload("res://scripts/ui/training_prompt.gd")
 
-static func finish(parent: Node) -> void:
+static func finish(parent: Node, action: String = "completed") -> void:
+	parent.get_node("/root/Telemetry").tutorial(action)
 	var gs = parent.get_node("/root/GameState")
 	var sm = parent.get_node("/root/SceneManager")
 	parent.get_node("/root/SaveManager").mark_tutorial_done()
@@ -30,7 +31,7 @@ static func defeat(parent: Node) -> void:
 	var choice: int = await prompt.chosen
 	prompt.queue_free()
 	if choice == 1:
-		finish(parent)
+		finish(parent, "skipped")
 		return
 	var gs = parent.get_node("/root/GameState")
 	var second: bool = gs.current_battle == 2

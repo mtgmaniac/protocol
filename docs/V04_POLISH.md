@@ -8,12 +8,27 @@ The full gate runs once at final release, per the task's explicit instruction.
 |---|---|
 | Width cap | Shared 1080-design-pixel centered column; existing inner margins and vertical spacing retained |
 | Screens | Squad select, title, Help, battle (board/tray/footer), reward, victory and defeat; shared header aligned |
-| Captures | 28 PNGs in `debug_artifacts/v04_polish`: each screen at 360x800, 390x867, 540x1200, 1280x900 |
+| Captures | 32 PNGs in `debug_artifacts/v04_polish`: each screen plus Help Settings at 360x800, 390x867, 540x1200, 1280x900 |
 | Relevant gates | Layout rhythm 68/68; component contract PASS; panel count PASS; portrait width PASS |
 
 No combat or balance implementation changes. The width regression checks live
 centering and maximum width and captures every requested screen. Backgrounds
 and modal scrims retain their existing full-window layout.
+
+## Gate debt and analytics
+
+| Area | Result |
+|---|---|
+| Title/unlock | Clears the inherited dev run save; NEW GAME behavior unchanged |
+| Framing | Removed constant replaced by current TILE_PORTRAIT_W; editor 34/34 and sheet 25/25 pass; dev directory excluded from exports |
+| Size-break stamp | Refreshed against G-74. Old test-only +8% Hive damage moved -7.9 pp, below the unchanged 8 pp limit. +16% fixture moves -14.6 pp and flags Hive; no live data/pin change |
+| Analytics | Adapted WIP e8835cb; five requested event types, UUID, opt-out, persisted retry queue, editor/debug suppression |
+| Focused gates | 10/10: telemetry, validate-data, component contract, text legibility, flow smoke and five save gates |
+| Local HTML5 | Actual HTTPRequest client received 7/7 accepted responses from Vercel; no browser errors; no server credentials in client |
+| Independent row count | Pending approval: protected Vercel secrets cannot be exported; dashboard access was blocked by automatic review |
+
+G-92 records the privacy ruling and supersedes the earlier no-telemetry scope.
+See `TELEMETRY.md` for verified backend fields, retry limits and test UUID.
 
 ## Matched balance (report only)
 

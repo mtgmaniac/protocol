@@ -4,7 +4,7 @@ extends SceneTree
 var failures: Array[String] = []
 const OUT := "res://debug_artifacts/v04_polish"
 const SCREENS := {
-	"squad": "UnitSelect", "title": "MainMenu", "help": "UnitSelect",
+	"squad": "UnitSelect", "title": "MainMenu", "help": "UnitSelect", "settings": "UnitSelect",
 	"reward": "RewardScreen", "victory": "RunEndScreen", "defeat": "RunEndScreen",
 	"battle": "../battle/BattleScene",
 }
@@ -41,9 +41,17 @@ func _run() -> void:
 				gs.run_hero_deaths = ["medic"] if screen == "victory" else ["combat", "avalanche", "medic"]
 			change_scene_to_file("res://scenes/ui/%s.tscn" % SCREENS[screen])
 			await create_timer(0.7).timeout
-			if screen == "help":
+			if screen in ["help", "settings"]:
 				load("res://scripts/ui/help_menu.gd").open(current_scene)
+				await create_timer(0.2).timeout # Let deferred row input setup finish.
+				if screen == "help":
+					var menu = load("res://scripts/ui/help_menu.gd")._active
+					menu._select_tab("basics")
 			await create_timer(0.7).timeout
+			if screen == "settings":
+				var menu = load("res://scripts/ui/help_menu.gd")._active
+				menu._content_scroll.ensure_control_visible(menu.find_child("TelemetryToggleRow", true, false))
+				await process_frame
 			var caps := root.find_children("PortraitWidthCap", "", true, false)
 			for cap: Node in caps:
 				var content: Control = cap.get_parent()
@@ -55,10 +63,10 @@ func _run() -> void:
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png("%s/%s_%dx%d.png" % [OUT, screen, dimensions.x, dimensions.y])
 			print("[PORTRAIT_WIDTH] captured ", screen)
-			if screen == "help":
+			if screen in ["help", "settings"]:
 				load("res://scripts/ui/help_menu.gd").dismiss()
 	for failure in failures:
 		push_error(failure)
-	print("[PORTRAIT_WIDTH] %s: 28 captures at four window sizes" % ("PASS" if failures.is_empty() else "FAIL"))
+	print("[PORTRAIT_WIDTH] %s: 32 captures at four window sizes" % ("PASS" if failures.is_empty() else "FAIL"))
 	quit(0 if failures.is_empty() else 1)
 

@@ -1,5 +1,26 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-92. Anonymous gameplay analytics (Kev, 2026-10-17)
+
+Finish the client from `codex/godot-telemetry` on the v0.4 polish branch.
+This supersedes G-90's no-telemetry build scope and the unfinished WIP design.
+Collect only run_start (operation, squad IDs, levels), battle_end (battle,
+win/loss, turns, surviving hero IDs), run_end (cleared/wiped/abandoned, battle
+reached, operation, elapsed time, relic IDs), reward_pick (offered/picked IDs
+for items, relics, evolutions and traits), and tutorial started/completed/skipped.
+Every event carries a random profile-local install UUID, game version, UTC
+timestamp and run ID. No names, emails, IPs stored by our code/database,
+fingerprints or account links. No database key in the game.
+
+Settings: “Share anonymous gameplay data”, ON by default, with explanatory
+copy; BASICS also explains it. OFF cancels delivery and clears the memory and
+profile queue. Editor/debug builds send nothing unless --telemetry-debug is
+explicitly set. Queue small events in memory/profile, flush in small groups,
+retry later, fail silently offline and never await delivery in gameplay.
+Use the existing Vercel endpoint/schema, verified from the backend project;
+test a real local HTML5 batch and count only its synthetic rows. Server-side
+credentials remain on the backend. See `docs/TELEMETRY.md` for field mapping.
+
 ## G-91. v0.4 wide-window cap (Kev, 2026-10-17)
 
 Cap the squad select content as one centered column at the 1080 design-pixel

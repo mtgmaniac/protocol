@@ -2069,6 +2069,7 @@ func _capture_battle_victory_for_xp() -> void:
 
 func _finish_battle_victory() -> void:
 	battle_over = true
+	get_node("/root/Telemetry").battle_finished("victory", _round_number, combat_manager.get_hero_states())
 	# A finished encounter must never be restorable.
 	SaveManager.clear_battle_checkpoint()
 	MusicManager.set_combat(false)
@@ -2094,6 +2095,7 @@ func _finish_battle_victory() -> void:
 
 func _finish_battle_defeat() -> void:
 	battle_over = true
+	get_node("/root/Telemetry").battle_finished("defeat", _round_number, combat_manager.get_hero_states())
 	MusicManager.set_combat(false)
 	_game_state().record_battle_turns(_round_number)
 	_disable_combat_actions()

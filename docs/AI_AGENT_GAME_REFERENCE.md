@@ -34,6 +34,12 @@ Important workspace rules:
 
 ## 2. Global Autoloads
 
+Anonymous telemetry (G-92): `Telemetry` after `SaveManager` observes run,
+reward and tutorial lifecycle hooks. Editor/debug builds send nothing without
+the explicit telemetry debug flag. Settings provides the default-ON opt-out.
+See [TELEMETRY.md](TELEMETRY.md) for privacy, queue/retry and web verification;
+balance-sim `SimTelemetry` is unrelated and unchanged.
+
 These are live global singletons:
 
 - `GameState`

@@ -380,6 +380,7 @@ func _on_first_run_tutorial_pressed() -> void:
 
 func _on_first_run_skip_pressed() -> void:
 	AudioManager.play_select()
+	get_node("/root/Telemetry").tutorial("skipped")
 	SaveManager.mark_tutorial_done()
 	SceneManager.go_to_unit_select()
 

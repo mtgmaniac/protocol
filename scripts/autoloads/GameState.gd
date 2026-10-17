@@ -1,6 +1,11 @@
 # Stores run-level state that persists while the player moves between scenes.
 extends Node
 
+signal run_started
+signal run_finished(result: String)
+signal reward_picked(kind: String, offered: Array, picked: String)
+signal run_resetting
+
 const SaveIO = preload("res://scripts/autoloads/save_io.gd")
 const UnitTraits = preload("res://scripts/battle/unit_traits.gd")
 
@@ -244,6 +249,7 @@ func start_run(unit_ids: Array, operation_id: String = "", rng_seed: int = -1, t
 	# runs keep their count (grandfathered).
 	if not tutorial_mode:
 		SaveManager.record_run_started()
+	run_started.emit()
 
 
 # Launch the rigged onboarding encounter: the STARTING trio the player actually owns
@@ -256,6 +262,7 @@ func start_tutorial_run(continue_to_play: bool = false) -> void:
 	var op_id: String = str(op_ids[0]) if not op_ids.is_empty() else ""
 	start_run(["combat", "engineer", "medic"], op_id, -1, true)
 	current_battle = 1
+	get_node("/root/Telemetry").tutorial("started")
 	# Prompt-5 delta: NO consumable grant — the item lesson is a signpost beat
 	# (the drill's kill closes on dice alone) and the empty loadout keeps the
 	# item economy honest (a granted freebie taught a cost that wasn't paid).
@@ -1040,6 +1047,7 @@ func complete_intercept_item_choice(selection_id: String, target_unit_id: String
 		if not _claim_choice_item(item_id, target_unit_id, swap_consumable_id):
 			return false
 		pending_intercept_state["drafted_item_id"] = item_id
+		reward_picked.emit("intercept", get_pending_choice_offers().map(func(o): return str(o.get("item_id", ""))), item_id)
 	pending_choice_request.clear()
 	pending_intercept_state["stage"] = "result_pending"
 	return true
@@ -1211,6 +1219,7 @@ func advance_to_next_battle() -> void:
 
 
 func reset_run() -> void:
+	run_resetting.emit()
 	tutorial_mode = false
 	tutorial_reward_item_id = ""
 	tutorial_continue_to_play = false
@@ -1313,6 +1322,7 @@ func claim_reward(item_id: String, target_unit_id: String = "", swap_consumable_
 		_:
 			return false
 
+	reward_picked.emit(item.item_type, pending_reward_item_ids.duplicate(), item_id)
 	claimed_reward_item_id = item_id
 	pending_reward_item_ids.clear()
 	return true
@@ -1347,6 +1357,7 @@ func finish_run(result: String) -> void:
 	# leave a CONTINUE that resumes an already-finished run.
 	SaveManager.clear_run_save()
 	SaveManager.record_run_finished(result, selected_operation_id, current_battle)
+	run_finished.emit(result)
 
 
 # Elapsed wall-clock seconds since start_run (0 when no run timestamp exists,
@@ -1408,6 +1419,7 @@ func apply_pending_trait(trait_id: String) -> bool:
 			valid = true
 	if not valid:
 		return false
+	reward_picked.emit("trait", get_pending_trait_choices().map(func(c): return str(c.get("id", ""))), trait_id)
 	unit_directives[pending_evolution_unit_id] = trait_id
 	pending_evolution_unit_id = ""
 	return true
@@ -1564,6 +1576,14 @@ func apply_pending_evolution(path_name: String) -> bool:
 	if path_name == "":
 		return false
 
+	var offered: Array = []
+	var picked := path_name
+	for path: Dictionary in get_pending_evolution_paths():
+		var id := str(path.get("id", path.get("name", "")))
+		offered.append(id)
+		if str(path.get("name", "")) == path_name:
+			picked = id
+	reward_picked.emit("evolution", offered, picked)
 	unit_evolutions[pending_evolution_unit_id] = path_name
 	pending_evolution_unit_id = ""
 	return true

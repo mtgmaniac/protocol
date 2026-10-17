@@ -32,6 +32,7 @@ AudioManager="*res://scripts/autoloads/AudioManager.gd"
 DiceAudio="*res://scripts/autoloads/DiceAudio.gd"
 MusicManager="*res://scripts/autoloads/MusicManager.gd"
 SaveManager="*res://scripts/autoloads/SaveManager.gd"
+Telemetry="*res://scripts/autoloads/Telemetry.gd"
 PersistentHeader="*res://scenes/ui/PersistentHeader.tscn"
 TransitionManager="*res://scripts/autoloads/TransitionManager.gd"
 DebugBattleLauncher="*res://scripts/debug/DebugBattleLauncher.gd"
@@ -56,6 +57,7 @@ theme/custom="res://assets/ui/theme_overload.tres"
 [overload]
 
 debug/safe_area_overlay=false
+telemetry/enabled=true
 
 [physics]
 

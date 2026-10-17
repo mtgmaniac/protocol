@@ -31,7 +31,13 @@ static func is_isolated() -> bool:
 	for i in range(args.size()):
 		if args[i] == "-s" or args[i] == "--script":
 			return true
+		# Dev scenes can be launched windowed without -s (the framing-sheet
+		# gate does this). They must not initialize player telemetry or saves.
+		if args[i].begins_with("res://dev/") or args[i].begins_with("dev/") or args[i].begins_with("--framing-sheet="):
+			return true
 	for arg in OS.get_cmdline_user_args():
+		if arg == "--send-telemetry-smoke":
+			return true
 		if arg == "--debug-battle" or arg == "--debug-screen" or arg.begins_with("--debug-screen="):
 			return true
 		# A pasted state code (StateCode) is somebody else's save: it lands in

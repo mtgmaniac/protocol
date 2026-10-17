@@ -1,5 +1,13 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Anonymous gameplay analytics (G-92, Kev 2026-10-17):** the v0.4 client sends
+only run, battle, reward-choice and tutorial events through the existing Vercel
+endpoint. One random install UUID in the profile, no PII or fingerprints;
+Settings' default-ON “Share anonymous gameplay data” opt-out clears the queue
+and cancels delivery immediately. Debug/editor play sends nothing without an
+explicit flag. Bounded profile queue, asynchronous delivery, silent retry.
+Exact schema and privacy contract: `docs/TELEMETRY.md`.
+
 **v0.4 copy and matched balance (2026-10-17):** Hive's threats read
 `BURN · SWARM · LEECH` (was SIPHON), matching its enemy `lifestealPct` abilities.
 1,500 matched seeds per operation against G-74 reproduce all 7,500 JSONL traces
