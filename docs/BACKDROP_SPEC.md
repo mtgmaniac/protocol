@@ -12,7 +12,7 @@ Placeholder example: `assets/battle_backdrops/placeholder_facility_backdrop_01.p
 | | value |
 |---|---|
 | Canvas | **270 x 600 px** (required) |
-| Scale | **1 image px = 4 design px** (the battle scene's art grid, same as the tray and the title backdrop) |
+| Scale | **1 image px = 4 design px** (the battle scene's art grid, same as the tray and the title backdrop; the one art-pixel rule of `docs/ART_SPEC.md`, confirmed 2026-10-17) |
 | Covers | 1080 x 2400 design px, the whole portrait screen |
 | On screen | 2 px per image px in the 540 x 1200 desktop preview; about 1.44 px on a 390 px wide phone |
 | Optional bleed | up to **270 x 660** for phones taller than 20:9 (the board's card rows stretch on taller screens). The image is drawn **centred**; anything it does not cover shows the plain dark tile. |
@@ -23,30 +23,33 @@ would be drawn 4x too large.
 
 ## Safe zones (design px at 1080 x 2400; divide by 4 for image px)
 
-Measured from the shipped layout (±4 px). On taller phones the two card rows grow
-and the tray stays put.
+Measured from the live layout on 2026-10-17 (cards 578 tall after the name-row
+step-up, tray 892). On taller phones the two card rows grow and the tray stays
+put. One GAP (16) separates each band.
 
 | Zone | Design px (y) | Image px (y) | What covers it |
 |---|---|---|---|
 | Header | 0 - 144 | 0 - 36 | Opaque header band. Fully hidden. |
-| Strip under the header | 144 - 158 | 36 - 40 | Visible, full width (thin). |
-| **Enemy row** | 158 - 726 | 40 - 182 | Enemy cards. **The main visible area**: see below. |
-| Gutter | 726 - 742 | 182 - 186 | Visible, full width (thin). |
-| Tray | 742 - 1690 | 186 - 423 | The tray floor is opaque. Hidden except about 10 px each side. |
-| Hero row | 1704 - 2272 | 426 - 568 | Hero cards, edge to edge (x 22 - 1058). Hidden except slivers. |
+| Strip under the header | 144 - 160 | 36 - 40 | Visible, full width (thin). |
+| **Enemy row** | 160 - 738 | 40 - 184 | Enemy cards. **The main visible area**: see below. |
+| Gutter | 738 - 754 | 184 - 188 | Visible, full width (thin). |
+| Tray | 754 - 1646 | 188 - 412 | The tray floor and its 8 px rim are opaque (x 12 - 1068). Hidden except 3 image px each side. |
+| Gutter | 1646 - 1662 | 412 - 416 | Visible, full width (thin). |
+| Hero row | 1662 - 2240 | 416 - 560 | Hero cards, x 18 - 362, 368 - 712, 718 - 1062. Hidden except slivers. |
+| Gutter | 2240 - 2256 | 560 - 564 | Visible, full width (thin). |
 | Footer | 2256 - 2400 | 564 - 600 | Opaque footer. Fully hidden. |
 
 Enemy row, by enemy count (x, design px; image px = / 4):
 
 | Enemies | Cards at | Backdrop shows at |
 |---|---|---|
-| 1 | 374 - 706 | 0 - 374 and 706 - 1080 (two wide columns) |
-| 2 | 105 - 443, 631 - 969 | 0 - 105, **443 - 631 (centre)**, 969 - 1080 |
-| 3 | 22 - 354, 374 - 706, 726 - 1058 | slivers only |
+| 1 | 368 - 712 | 0 - 368 and 712 - 1080 (two wide columns) |
+| 2 | 105 - 449, 630 - 974 | 0 - 105, **449 - 630 (centre)**, 974 - 1080 |
+| 3 | 18 - 362, 368 - 712, 718 - 1062 | slivers only |
 
 So: put the operation's landmark (a machine, a hive wall, a relay mast) in the
-enemy-row band, image y 36 - 186, either centred (shows with 2 enemies) or on both
-sides (shows with 1). Keep everything below image y 186 a calm, continuous texture:
+enemy-row band, image y 36 - 188, either centred (shows with 2 enemies) or on both
+sides (shows with 1). Keep everything below image y 188 a calm, continuous texture:
 it is almost all covered, and what peeks out should not look cut off.
 
 ## Values (keep it dark)

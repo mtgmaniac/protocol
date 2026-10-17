@@ -199,7 +199,8 @@ whole button at `UNAFFORDABLE_ALPHA` 0.45.
   (`make_integer_icon`); portraits only through `make_portrait_frame`.
 - Strokes and 1 px elements snap to physical pixels (INVARIANTS #14).
 - Scene art (title backdrop, battle backdrops, tray) is drawn on the quarter-res
-  grid: 1 art px = 4 design px. Backdrop spec: `docs/BACKDROP_SPEC.md`.
+  grid: 1 art px = 4 design px. Backdrop spec: `docs/BACKDROP_SPEC.md`; sizes for
+  every external art asset (portraits, items, relics, backdrops): `docs/ART_SPEC.md`.
 
 ## Keyword colors
 
