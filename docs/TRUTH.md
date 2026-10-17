@@ -15,8 +15,9 @@ floor patterns, rim and floor decal; a space backdrop on the title screen
 (`assets/ui/title/title_backdrop.png`, `title_backdrop.gd`); an OPERATION CLEARED
 victory screen with one image per operation (`victoryBackdrop`, Facility first)
 and a report panel of tracked stats (battles won, survivors, XP earned, relics,
-turns, time). The defeat screen is unchanged and keeps the THIS RUN block. The
-F9 v3 perspective scene stays a debug A/B. Sizes and the raw-art pipeline
+turns, time). Since G-78 a defeat has the same screen (OPERATION FAILED, the
+same image darkened and desaturated, "SQUAD LOST AT BATTLE X/10" and its own
+tracked rows); the THIS RUN / SERVICE RECORD block is gone. The F9 v3 perspective scene stays a debug A/B. Sizes and the raw-art pipeline
 (`assets/art_incoming/`, `tools/pixelize.py`): `docs/ART_SPEC.md`. The portrait
 region is re-ruled to 320 x 384 (G-77) but not yet applied: `HERO_PORTRAIT_REGION`
 is still 328 x 380.
@@ -2575,9 +2576,9 @@ ruling: "AUTO TURN" / "AUTO BATTLE" (not "1X"/"2X" — they are not speeds).
 
 ## Run report + feedback channel (2026-07-30, stranger-readiness)
 
-**Run report parity** (since G-76, 2026-10-17, a victory has its own OPERATION
-CLEARED layout and report rows; the THIS RUN block below is the defeat
-screen's): victory and defeat share ONE run-end screen
+**Run report parity** (HISTORY: superseded by G-76 / G-78, 2026-10-17. Both
+results now share the OPERATION CLEARED / FAILED screen and its report rows;
+the THIS RUN block and SERVICE RECORD below are gone): victory and defeat share ONE run-end screen
 (`run_end_screen.gd`) and ONE compact THIS RUN block (`_run_report_text` — the
 old defeat structure is the template): battle progress, `Duration | Turns`,
 inventory counts, `Fallen: <full hero names | none>`. Per-run sources are

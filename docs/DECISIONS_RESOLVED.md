@@ -15,6 +15,35 @@ the live game. Implementing these needs its own task.
   heal above); remaining summons are full HP.
 - **Supersedes the G-54 summons hold once implemented.** Until then G-54 stands.
 
+## G-78. The defeat screen shares the victory design; run-end text steps up (Kev, 2026-10-17)
+
+Branch `art/backdrops-v1`. **Supersedes G-76's line that the defeat screen
+keeps the shared THIS RUN block and SERVICE RECORD** (and with it TRUTH's
+"Run report parity"): both results now have the same screen.
+
+- **OPERATION FAILED.** A defeat uses the victory layout: the shared operation
+  header; OPERATION FAILED (HEADER role, CHROME) over the sky; the operation's
+  name (ENCOUNTER_ACCENT); a report panel with "SQUAD LOST AT BATTLE X/10" (the
+  real wipe point, `current_battle`) in the damage red (`KW_DAMAGE`), a
+  divider and label / value rows of stats the run already tracks: battles won
+  (the ones before the wipe), turns, time, XP earned, relics, fallen heroes
+  (callsigns, in the order they fell). The FEEDBACK pointer stays as one short
+  line in the panel, above CONTINUE; CONTINUE stays the one primary.
+- **The same image, darker and grayer.** A defeat draws the operation's
+  `victoryBackdrop` darkened 30% and desaturated 50%
+  (`PixelUI.DEFEAT_BACKDROP_DARKEN` / `DEFEAT_BACKDROP_DESATURATE`; 0 turns
+  either off). An operation without an image shows the plain dark background,
+  as a victory does.
+- **Removed:** the defeat banner art (`assets/ui/events/defeat.png`), the THIS
+  RUN / SERVICE RECORD layout and the RunEndScreen scene's authored content
+  (the screen is built in code; the scene holds only the background).
+- **Text sizes, both results.** The operation name is CARD_NAME (Battle Block
+  x3). The boss / wipe line and the rows go one clean step up from LABEL (m5x7
+  64, 1.33 / 1.44 screen px per font pixel on phones): laid out at 96 and drawn
+  pixel-exact at 2 screen px per font pixel on phones (3 at the 540 preview)
+  through `PixelUI.bind_m5x7_snap`. Time reads as a clock (25:20): the rows are
+  capitals and "25M 20S" misread.
+
 ## G-77. The portrait region is re-ruled to the battle card's visible window (Kev, 2026-10-17)
 
 **Ruling:** the portrait region is the battle card's visible window, **320 x 384
@@ -83,7 +112,8 @@ physics, tray bounds and copy outside the victory screen are unchanged.
   already tracks: battles won, survivors (heroes standing at the final battle's
   end), XP earned, relics, turns, time. **This ends run report parity for a
   victory** (TRUTH "Run report parity"): the defeat screen keeps the shared THIS
-  RUN block and SERVICE RECORD, unchanged.
+  RUN block and SERVICE RECORD, unchanged. *(Superseded by G-78, 2026-10-17:
+  the defeat screen now shares this design.)*
 - **Raw art and the downscale exception.** Raw AI-generated sources sit in
   `assets/art_incoming/` (a `.gdignore`: never imported, never shipped).
   `tools/pixelize.py` (area downscale to the exact final size, median-cut

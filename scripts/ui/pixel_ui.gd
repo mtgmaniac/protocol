@@ -351,6 +351,30 @@ static func _apply_block_snap(label_ref: Variant) -> void:
 		_snap_block_ink(label as Label)
 
 
+## m5x7 drawn pixel-exact (G-78, the run-end report). m5x7 is a dynamic
+## TrueType font, which Godot rasterizes at the viewport's scale while ignoring
+## a label's own scale: the scale bind_block_snap uses for Battle Block (a bitmap
+## font) would resample the glyphs (strokes 1 and 3 px wide at 390 px), and a
+## whole font size cannot land on the window either (390: 88.6). So these labels
+## use a copy of m5x7 rasterized at its layout size (oversampling 1, like a
+## bitmap), then take Battle Block's own snap: a font pixel (size / 16 design
+## px) between min_px and max_px on a whole number of screen px, and the text
+## origin on a whole screen px (the label must sit in a plain Control).
+static var _pixel_font_exact: Font = null
+static func bind_m5x7_snap(label: Label, min_px: float, max_px: float) -> void:
+	if _pixel_font_exact == null:
+		var base: Font = get_pixel_font()
+		if base is FontFile:
+			var exact: FontFile = (base as FontFile).duplicate() as FontFile
+			exact.oversampling = 1.0
+			_pixel_font_exact = exact
+		else:
+			_pixel_font_exact = base
+	label.add_theme_font_override("font", _pixel_font_exact)
+	bind_block_snap(label, min_px, max_px)
+	set_block_ink_snap(label)
+
+
 ## Opt-in (the battle card callsign, ui-fix 2026-10-17): keep the label's text
 ## origin on a whole screen px. A whole k per font pixel is not enough alone:
 ## when the text starts on a HALF screen px every texel edge sits on a pixel
@@ -2952,12 +2976,17 @@ static func _ui_focus_style() -> StyleBoxFlat:
 	return style
 
 
-## The victory screen's report panel (G-76): a dark fill at VICTORY_REPORT_ALPHA
-## over the Operation Cleared art, with the thin neutral border.
-const VICTORY_REPORT_ALPHA := 0.88
-static func victory_report_style() -> StyleBoxFlat:
+## The run-end report panel, victory and defeat (G-76, G-78): a dark fill at
+## RESULT_REPORT_ALPHA over the operation's art, with the thin neutral border.
+const RESULT_REPORT_ALPHA := 0.88
+## A defeat draws the operation's image darker and grayer than a victory (G-78):
+## the share of brightness taken off and of saturation taken out. 0 turns
+## either off.
+const DEFEAT_BACKDROP_DARKEN := 0.30
+const DEFEAT_BACKDROP_DESATURATE := 0.50
+static func result_report_style() -> StyleBoxFlat:
 	var fill: Color = UI_PANEL
-	fill.a = VICTORY_REPORT_ALPHA
+	fill.a = RESULT_REPORT_ALPHA
 	var style: StyleBoxFlat = make_hard_style(fill, UI_LINE, MIN_STROKE)
 	style.set_content_margin_all(float(GAP * 2))
 	return style

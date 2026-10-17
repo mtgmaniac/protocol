@@ -246,14 +246,17 @@ Check it at 360 x 800, 390 x 867, 540 x 1200, a 16:9 window (360 x 640) and a
 
 One per operation (Kev, 2026-10-17, G-76), named by the operation's
 `victoryBackdrop` in `data/raw/battle-modes.json` (Facility:
-`assets/ui/victory/victory_facility.png`). Same canvas as the title: the 270 x
+`assets/ui/victory/victory_facility.png`). The defeat screen shows the same
+image darkened 30% and desaturated 50% (G-78, `PixelUI.DEFEAT_BACKDROP_*`), so
+draw it to read both as a won and as a lost field. Same canvas as the title: the 270 x
 600 core in a 338 x 660 bleed, drawn one texel per art pixel, centred (the
 victory screen reuses `title_backdrop.gd`). An operation without one shows the
 plain dark background.
 
-What sits on it (core art px): the header band (y 0 - 36); OPERATION CLEARED and
-the operation's name over the sky (about y 60 - 105); the report panel and
-CONTINUE in the bottom third (about y 380 - 588 at 20:9). Keep the sky behind the
+What sits on it (core art px): the header band (y 0 - 36); OPERATION CLEARED /
+FAILED and the operation's name over the sky (about y 60 - 110); the report
+panel and CONTINUE in the bottom third (victory about y 392 - 588, defeat about
+y 359 - 588 at 20:9: its panel has a wrapped FALLEN row and the feedback line). Keep the sky behind the
 title calm and put the busy foreground where the panel covers it (the panel is
 88% opaque). No brightness limits beyond the global ones: it is a ceremony
 screen, not a play surface. Lossless import.

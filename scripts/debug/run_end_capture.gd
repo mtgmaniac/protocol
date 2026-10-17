@@ -41,11 +41,11 @@ func _run_capture() -> void:
 		gs.set("run_hero_deaths", ["combat", "avalanche", "medic"])
 	else:
 		gs.set("run_hero_deaths", ["medic"])
-		# The victory report rows (G-76): one hero down at the boss's end, some
-		# run XP, one relic.
+		# Victory: one hero down at the boss's end (G-76).
 		gs.set("deaths_last_battle", ["medic"])
-		gs.set("unit_xp", {"combat": 240, "avalanche": 210, "medic": 185})
-		gs.set("relics", ["scrapConverter"])
+	# The report rows (G-76, G-78): some run XP and one relic on either result.
+	gs.set("unit_xp", {"combat": 240, "avalanche": 210, "medic": 185} if result == "victory" else {"combat": 120, "avalanche": 95, "medic": 80})
+	gs.set("relics", ["scrapConverter"])
 	if bool(config.get("unlock", false)):
 		save_manager.call("record_run_finished", result, operation_id, 10)
 		save_manager.call("acknowledge_operation_origin", "hive")

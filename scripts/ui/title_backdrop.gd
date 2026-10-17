@@ -7,8 +7,9 @@ extends Control
 ## only on phones that are not 20:9. Built by tools/build_backdrops.py.
 ## A missing file draws the plain dark screen colour.
 ##
-## The victory screen (run_end_screen.gd) reuses this painter for its Operation
-## Cleared image, the same canvas and placement, through `image_path`.
+## The run-end screen (run_end_screen.gd) reuses this painter for the operation's
+## image, the same canvas and placement, through `image_path`; a defeat sets
+## `darken` and `desaturate`.
 
 const ART_PX := float(PixelUI.UI_ART_PX)
 const BACKDROP_PATH := "res://assets/ui/title/title_backdrop.png"
@@ -16,6 +17,9 @@ const BACKDROP_PATH := "res://assets/ui/title/title_backdrop.png"
 ## The image to draw; set before the node enters the tree. "" draws the plain
 ## dark screen colour.
 var image_path: String = BACKDROP_PATH
+## Shares of brightness taken off and of saturation taken out (0 = as drawn).
+var darken: float = 0.0
+var desaturate: float = 0.0
 var _image: Texture2D = null
 
 
@@ -24,6 +28,12 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	if image_path != "" and ResourceLoader.exists(image_path):
 		_image = load(image_path) as Texture2D
+	if _image != null and (darken > 0.0 or desaturate > 0.0):
+		var adjusted: Image = _image.get_image()
+		if adjusted.is_compressed():
+			adjusted.decompress()
+		adjusted.adjust_bcs(1.0 - darken, 1.0, 1.0 - desaturate)
+		_image = ImageTexture.create_from_image(adjusted)
 	resized.connect(queue_redraw)
 
 

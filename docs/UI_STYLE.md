@@ -55,9 +55,9 @@ digits only). Sizes are whole multiples of the native size only
 
 | Role | Font | Size | Use | Case |
 |---|---|---|---|---|
-| HEADER | Battle Block | 128 (x4) to 144, drawn pixel-exact (below) | the shared header's operation name and battle count, on battle and every in-run screen; the victory screen's OPERATION CLEARED (G-76) | caps |
+| HEADER | Battle Block | 128 (x4) to 144, drawn pixel-exact (below) | the shared header's operation name and battle count, on battle and every in-run screen; the run-end title, OPERATION CLEARED / FAILED (G-76, G-78) | caps |
 | DISPLAY | Battle Block | 96 (x3), drawn pixel-exact (below) | screen titles; the header while the dev-mode buttons are up | caps |
-| CARD_NAME | Battle Block | 96 (x3), drawn pixel-exact (below) | battle card unit callsigns | caps |
+| CARD_NAME | Battle Block | 96 (x3), drawn pixel-exact (below) | battle card unit callsigns; the run-end screen's operation name (G-78) | caps |
 | CARD | Battle Block | 64 to 96, drawn pixel-exact (below) | battle card HP numbers | caps |
 | LABEL | m5x7 | 64 (full-width primaries up to 112) | buttons, tabs, section headers, unit names off the battle card, the footer PROTOCOL label | caps |
 | BODY | m5x7 | 64, line spacing 10 | descriptions, help, battle log | sentence |
@@ -91,6 +91,15 @@ centres and strokes come out 2 and 3 px wide: the callsign opts into
 `PixelUI.set_block_ink_snap`, which puts its text origin on a whole screen px.
 Never set a Battle Block label's font size directly; check with
 `scripts/checks/stroke_runs.py` on a capture (every ink run a multiple of k).
+
+**m5x7 pixel-exact (G-78).** m5x7 is a dynamic TrueType font: Godot rasterizes
+it at the window's scale and ignores the label's own scale, so the Battle Block
+snap would resample it (strokes 1 and 3 px at 390), and no whole font size lands
+on 390's scale. `PixelUI.bind_m5x7_snap(label, min, max)` gives the label an
+m5x7 copy rasterized at its layout size (oversampling 1) and then the Battle
+Block snap and ink snap; the label must sit in a plain Control (the ink snap
+skips container children). Used by the run-end report (font pixel 5 to 6:
+layout 96, 2 screen px per font pixel on phones, 3 at the 540 preview).
 
 **HP numerals (Kev, 2026-10-17).** CARD Battle Block, "60 / 60", centred on the
 78 px bar: the line is laid out at 96, so the label grows both ways and the
@@ -150,9 +159,11 @@ font settings.
 - One border weight: 4 design px (`MIN_STROKE`). Square corners only, no corner
   brackets or four-corner notches.
 - Focus: a PLAYER outline 8 px outside the button (`_ui_focus_style`).
-- **Victory report panel** (`victory_report_style`, G-76): `UI_PANEL` at 88%
-  over the Operation Cleared art, a thin `UI_LINE` border; boss line in
-  ENCOUNTER_ACCENT, labels `CHROME_DIM`, values `CHROME` right-aligned.
+- **Run-end report panel** (`result_report_style`, G-76 / G-78): `UI_PANEL` at
+  88% over the operation's art, a thin `UI_LINE` border; the headline (victory:
+  "<BOSS> DESTROYED" in ENCOUNTER_ACCENT; defeat: "SQUAD LOST AT BATTLE X/10" in
+  `KW_DAMAGE`), labels `CHROME_DIM`, values `CHROME` right-aligned. Headline and
+  rows are m5x7 one step above LABEL, pixel-exact (`bind_m5x7_snap`, below).
 
 ## The notch rule
 
