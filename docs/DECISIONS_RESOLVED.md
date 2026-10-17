@@ -30,9 +30,10 @@ which TRUTH names as the UI authority.
 - **The notch rule.** One top-left notch marks a screen's one primary action and
   a pop-up's main confirm. A choice between equals is secondary; a destructive
   confirm is never notched; the notch never moves.
-- **Buttons.** Primary is a solid PLAYER fill with light text and the notch;
-  secondary is outlined (neutral border); destructive is an amber (WARNING)
-  border and text, with no stripes and no notch.
+- **Buttons.** Primary is a dark fill with a PLAYER (cobalt) border, cobalt
+  text and the notch (Kev, 2026-10-17: the solid fill is reverted); secondary
+  is outlined (neutral border); destructive is an amber (WARNING) border and
+  text, with no stripes and no notch.
 - **Type roles:** DISPLAY, CARD, LABEL, BODY, SMALL, NUMERAL, at whole
   multiples of the font's native size. CARD (Battle Block, 64 to 96, drawn
   pixel-exact) is the battle card's unit names and HP numbers.
@@ -45,6 +46,11 @@ which TRUTH names as the UI authority.
 - **Rarity ladder:** common muted gray `8a8f94`, uncommon leaf green `84b84a`,
   rare violet `9d52d8`, legendary gold `edb03e`. The uncommon green leans yellow
   (hue ~88), apart from the heal greens (hue ~136-141).
+- **HP numerals:** Battle Block at CARD, centred on the bar (Kev, 2026-10-17;
+  options B and C stay switchable by `CompactUnitCard.HP_NUMERAL_OPTION`).
+- **Trait names take the unit's home colour** (Kev, 2026-10-17): the card's name
+  colour, enemy or hero. No per-trait colour; VOLATILE's warning red is removed
+  (overrides G-63 reading 2).
 - **Relic cache cards (Build B kept).** Battle 5's two relic offers stay
   ceremonial Major-event cards, without the "RELIC" type label and without
   effect pips. Boss relics are never reward offers; their ceremonial card is on
@@ -817,6 +823,7 @@ Volt Enforcer, a trait with no `needs`) and two weakened rules (every need
 met; `none` ignored); it refused all five.
 
 ## G-63. Trait names are titles (Kev, 2026-10-09)
+**Overridden by Kev, 2026-10-17 (G-75), for colour only:** VOLATILE's warning red and the other traits' amber are gone; every trait name takes its card's name colour.
 
 **Ruling (Kev, transcribed).**
 

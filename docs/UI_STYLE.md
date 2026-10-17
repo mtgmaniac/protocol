@@ -24,11 +24,10 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 | `CHROME` | `e6dec8` (bone; F10 cycles candidates) | neutral bright: titles, labels, secondary text |
 | `CHROME_DIM` | `837d6e` | eyebrows, section heads, inactive |
 | `CHROME_INK` | `15130e` | text on a CHROME fill |
-| `PLAYER_ACCENT` | `2a6ae6` | primary button fill, selection, picks, friendly frames when targetable |
+| `PLAYER_ACCENT` | `2a6ae6` | primary buttons, selection, picks, friendly frames when targetable |
 | `PLAYER_ACCENT_LIGHT` | `9cbcff` | player text and icons on dark |
 | `PLAYER_ACCENT_DIM` | `1c3f82` | resting friendly frames |
-| `PLAYER_ACCENT_INK` | `060d1c` | dark text on a PLAYER fill (active tab) |
-| `PLAYER_FILL_TEXT` | `f2f6ff` | light text on the solid primary button (4.5:1 on `PLAYER_ACCENT`) |
+| `PLAYER_ACCENT_INK` | `060d1c` | text on a PLAYER fill (active tab, pressed primary) |
 | `PROTOCOL_ACCENT` | `66e0ff` (electric cyan-blue) | Protocol: meter cells, cost numbers, the keyword; the logo core's light centre |
 | `ENCOUNTER_FACILITY` / `_HIVE` / `_VEIL` / `_SIGNAL` / `_MANTLE` | `cf9a36` / `c8404a` / `8f7ae0` / `b653c8` / `d89b4a` | per operation, named in `data/raw/battle-tray-scenes.json` (`accent`); `ENCOUNTER_ACCENT` holds the current battle's |
 | `ENEMY_DEFAULT` | `c9755a` (rust) | enemy UI outside any operation (Help's bestiary rows: name, and the frame darkened 0.3 as in battle) |
@@ -76,6 +75,19 @@ DISPLAY 6 (96): 96 at 360, 88.6 at 390, 96 at 540. Never set a Battle Block
 label's font size directly; check with `scripts/checks/stroke_runs.py` on a
 capture (every ink run a multiple of k).
 
+**HP numerals (Kev, 2026-10-17).** CARD Battle Block, "60 / 60", centred on the
+78 px bar: the line is laid out at 96, so the label grows both ways and the
+snap scales about the bar's centre (it used to grow down and sat a font pixel
+low). Options B (one font pixel larger, "60/60", falls back where it overruns)
+and C (m5x7 thickened like the dice numerals) stay switchable by
+`CompactUnitCard.HP_NUMERAL_OPTION`; A is the default. Comparison:
+`debug_artifacts/ui_fix/hp_font_comparison.png`. The glyphs are a classic 5x7
+set: 5 is narrower at the bottom than the top, 4 and 7 end in one column; that
+is the design, not the render.
+
+**Trait names take the unit's home colour:** the card's name colour (the
+encounter-derived enemy name, the hero name), no per-trait colour.
+
 **Card name row (88 design px).** A trait title or the BOSS tag (SMALL, m5x7 48,
 the text floor) sits fully above the callsign: both are placed by glyph
 extents, clear of the 3 px the card shell covers at the row's top and the 8 px
@@ -97,7 +109,7 @@ font settings.
 
 | Component | Helper | Look |
 |---|---|---|
-| Primary button | `style_ui_primary_button` | **solid PLAYER fill**, `PLAYER_FILL_TEXT` (light) text, **the notch**; hover lighter, pressed `PLAYER_ACCENT_DIM` |
+| Primary button | `style_ui_primary_button` | dark fill, PLAYER border and thick left edge, `PLAYER_ACCENT_LIGHT` text, **the notch**; pressed PLAYER fill + INK text (the 2026-10-16 solid fill is reverted, Kev 2026-10-17) |
 | Secondary | `style_ui_secondary_button` | neutral border, steel left bar, UI_TEXT |
 | Disabled | (state of both) | the secondary shape, dimmed |
 | Destructive | `style_ui_destructive_button` | WARNING (amber) border and WARNING text on the button fill; **no stripes, no notch** |
