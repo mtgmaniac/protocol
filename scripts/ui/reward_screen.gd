@@ -29,8 +29,15 @@ const ROW_META_SLOT_HEIGHT := 42.0
 const ROW_EFFECT_SLOT_HEIGHT := 112.0
 const ROW_META_FONT := 32      # "UNCOMMON GEAR" — metadata tier, ALL CAPS
 
-# Reward list geometry.
+# Relic ceremonial card geometry (Major-event tier — deliberately larger).
+const CARD_WIDTH_FRACTION := 0.94
+const CARD_MIN_WIDTH := 480.0
+const CARD_MAX_WIDTH := 1000.0
 const CARD_TOP_SPACER_HEIGHT := 24.0
+const CARD_PADDING := 18
+const CARD_SEP := 9
+const RELIC_ICON_BOX := 256.0  # standard 128px relic art renders at 2x
+const RELIC_DESC_MIN_HEIGHT := 112.0
 
 # Corner-bracket selection indicator (L per corner = horizontal arm + vertical arm).
 const BRACKET_LEN := 46.0
@@ -38,6 +45,7 @@ const BRACKET_THICK := 8.0
 const BRACKET_INSET := 8.0
 
 # Fonts.
+const NAME_FONT_SIZE := 46
 const LABEL_FONT_SIZE := PixelUI.FONT_INFO_MIN  # rarity+type line — a pick signal (UI review S-1)
 const BODY_FONT_SIZE := 36
 # Footer read-back ("EQUIP TO: AVALANCHE") — the commit cue, sized well above
@@ -52,7 +60,6 @@ const GEAR_TARGET_BUTTON_HEIGHT := 132
 const GEAR_TARGET_WIDTH_FRACTION := 0.92
 const GEAR_TARGET_MIN_WIDTH := 480.0
 const GEAR_TARGET_MAX_WIDTH := 760.0
-
 
 # Confirm button — exact clone of the squad screen's DEPLOY button (home_screen.gd).
 const CONFIRM_FONT := 84
@@ -230,9 +237,12 @@ func _build_reward_cards() -> void:
 		var item: ItemData = DataManager.get_item(str(offer.get("item_id", ""))) as ItemData
 		if item == null:
 			continue
-		# ui-fix (Kev, 2026-10-16): every offer, relics included (the relic cache),
-		# is the same selectable Reward-component row (was a ceremonial relic card).
-		reward_cards.add_child(_create_reward_row(item, selection_id, str(offer.get("hero_id", ""))))
+		# Two tiers on purpose (Build B): relic offers are ceremonial Major-event
+		# cards; everything ordinary is a wide Reward-component row.
+		if item.item_type == "relic":
+			reward_cards.add_child(_create_relic_card(item, selection_id))
+		else:
+			reward_cards.add_child(_create_reward_row(item, selection_id, str(offer.get("hero_id", ""))))
 	# Zero-options guard (permanent fixture, TRUTH §Run structure): an empty
 	# offer must never strand the run on a dead picker.
 	if not ChoiceScreenGuardScript.ensure_options("reward", reward_cards.get_child_count(), _auto_resolve_empty_offer):
@@ -244,6 +254,7 @@ func _build_reward_cards() -> void:
 func _update_reward_layout() -> void:
 	if reward_cards == null:
 		return
+	var card_width: float = _get_card_width()
 	reward_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	reward_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -280,10 +291,24 @@ func _update_reward_layout() -> void:
 		var panel: PanelContainer = child as PanelContainer
 		if panel == null:
 			continue
-		# Full-width row; the whole width is the tap target.
-		panel.custom_minimum_size = Vector2(0, ROW_MIN_HEIGHT)
-		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		if str(panel.get_meta("reward_kind", "row")) == "relic":
+			# Ceremonial tier: large centered card, natural content height.
+			panel.custom_minimum_size = Vector2(card_width, 0)
+			panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		else:
+			# Ordinary tier: full-width row; the whole width is the tap target.
+			panel.custom_minimum_size = Vector2(0, ROW_MIN_HEIGHT)
+			panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+func _get_card_width() -> float:
+	var available_width: float = reward_scroll.size.x if reward_scroll != null else size.x
+	if available_width <= 1.0:
+		available_width = get_viewport().get_visible_rect().size.x
+	available_width = maxf(available_width - 24.0, 1.0)
+	return PixelUI.even_px(clampf(available_width * CARD_WIDTH_FRACTION, CARD_MIN_WIDTH, CARD_MAX_WIDTH))
 
 
 # Ordinary reward ROW (Build B): art LEFT at 128 integer scale, name + meta +
@@ -355,8 +380,6 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 	# The rarity label, small caps under the name, in its rarity color.
 	var meta_label := _make_fixed_slot_label(meta_text, ROW_META_FONT, accent, ROW_META_SLOT_HEIGHT, 0)
 	meta_label.name = "RewardMetaSlot"
-	# A relic has no rarity, and a "RELIC" type label adds nothing (ui-fix).
-	meta_label.visible = item.item_type != "relic" or owner_id != ""
 	info.add_child(meta_label)
 
 	var effect_row := HBoxContainer.new()
@@ -373,6 +396,65 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 	_add_selection_brackets(panel, selection_id, accent, "row")
 	return panel
 
+
+# Relic ceremonial card (Build B): Major-event tier — gold chrome, large art,
+# deliberately a rank above ordinary rows. Same select-then-CONFIRM model.
+func _create_relic_card(item: ItemData, selection_id: String = "") -> PanelContainer:
+	if selection_id == "":
+		selection_id = item.id
+	var accent: Color = _get_item_accent(item)
+
+	var panel := PanelContainer.new()
+	panel.name = "RelicCard"
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	panel.set_meta("item_id", selection_id)
+	panel.set_meta("reward_kind", "relic")
+	_style_relic_panel(panel, false)
+	_attach_tap_select(panel, selection_id)
+	_attach_item_inspect(panel, item)
+
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side_key in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
+		margin.add_theme_constant_override(side_key, CARD_PADDING)
+	panel.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", CARD_SEP)
+	margin.add_child(vbox)
+
+	# Name in a filled header strip; gold is the ceremonial voice here.
+	var name_strip := PanelContainer.new()
+	name_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var strip_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.UI_PANEL.lerp(PixelUI.CHROME, 0.18), PixelUI.UI_PANEL, 0)
+	strip_style.set_content_margin(SIDE_TOP, 8.0)
+	strip_style.set_content_margin(SIDE_BOTTOM, 8.0)
+	name_strip.add_theme_stylebox_override("panel", strip_style)
+	name_strip.add_child(_make_centered_label(item.display_name, NAME_FONT_SIZE, PixelUI.CHROME, 0))
+	vbox.add_child(name_strip)
+
+	# Large relic art at integer scale (128 native -> 2x; the low-res
+	# gravityWell sits at exactly 4x on its Reward-chrome emblem plate).
+	var icon_holder: Control = PixelUI.make_integer_icon(item.icon, RELIC_ICON_BOX, accent)
+	icon_holder.name = "RelicArtwork"
+	icon_holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	vbox.add_child(icon_holder)
+
+	# ui-fix (Kev, 2026-10-16): no "RELIC" type label (it adds nothing on a
+	# relic-only draft) and no effect pips (Field Cache's green +1 repeated its
+	# description). Name, art and description carry the card.
+
+	var description := _create_description_label(item.description, RELIC_DESC_MIN_HEIGHT)
+	description.name = "RelicDescription"
+	vbox.add_child(description)
+
+	_add_selection_brackets(panel, selection_id, accent, "relic")
+	return panel
 
 
 func _attach_item_inspect(panel: PanelContainer, item: ItemData) -> void:
@@ -405,6 +487,17 @@ func _style_card_panel(panel: PanelContainer, _accent: Color, selected: bool) ->
 		(frame as PanelContainer).add_theme_stylebox_override("panel", PixelUI.ui_art_frame_style(selected))
 
 
+func _style_relic_panel(panel: PanelContainer, selected: bool) -> void:
+	# Components: Major-event (ceremonial gold) at rest, Selected on pick —
+	# the selection language stays cyan even on the ceremonial tier.
+	# UI restyle A: the ceremonial tier keeps a dimmed accent frame at rest and
+	# takes the same selected-card state as ordinary rows when picked.
+	var style: StyleBoxFlat = PixelUI.ui_card_style(true)
+	if not selected:
+		style = PixelUI.make_hard_style(PixelUI.UI_PANEL, PixelUI.CHROME_DIM, PixelUI.MIN_STROKE)
+	panel.add_theme_stylebox_override("panel", style)
+
+
 func _create_description_label(text: String, min_height: float = 0.0, max_lines: int = 0) -> Label:
 	# Full sentence, left-aligned, wraps freely — the wide row gives it reading
 	# room (fewer forced line breaks is an explicit Build B goal). Body tier.
@@ -433,6 +526,17 @@ func _make_fixed_slot_label(text: String, font_size: int, color: Color, slot_hei
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	label.clip_text = true
+	return label
+
+
+func _make_centered_label(text: String, font_size: int, color: Color, outline: int = 1) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	PixelUI.style_label(label, font_size, color, outline)
 	return label
 
 
@@ -526,7 +630,10 @@ func _refresh_selection() -> void:
 		var item_id := str(item_id_variant)
 		var entry: Dictionary = _cards[item_id]
 		var is_selected: bool = item_id == _selected_item_id
-		_style_card_panel(entry["panel"], entry["accent"], is_selected)
+		if str(entry.get("kind", "row")) == "relic":
+			_style_relic_panel(entry["panel"], is_selected)
+		else:
+			_style_card_panel(entry["panel"], entry["accent"], is_selected)
 		# UI restyle A: the selected border and fill carry selection; the old
 		# cyan corner brackets stay registered but hidden.
 		for rect_variant in entry["brackets"]:

@@ -12,7 +12,8 @@
 #       native size; low-res (<=48 native) icons render at exactly 4x.
 #   T6  CONFIRM commits the selected reward.
 # Relic cache:
-#   T7  relic offers render as the reward screen's rows, no "RELIC" type label (ui-fix).
+#   T7  relic offers render as ceremonial cards (nodes named "RelicCard"),
+#       with no "RELIC" type label (ui-fix, 2026-10-16).
 #   T8  the 32x32 gravityWell icon renders at exactly 4x (128) on its plate.
 # Containment:
 #   T9  at inset budgets (0,0) and (132,56) the confirm button and every row
@@ -221,15 +222,18 @@ func _test_footer_stability() -> void:
 
 
 func _test_relics() -> void:
-	print("-- relic cache (reward rows)")
+	print("-- relic cache (ceremonial)")
 	await _boot_reward(RELIC_ITEMS, 0, 0)
 	var screen: Node = current_scene
-	var rows: Array = _reward_panels(screen, "row")
-	_check(rows.size() == 2 and _reward_panels(screen, "relic").is_empty(), "T7 relic offers are reward rows (found %d)" % rows.size())
-	for row_variant in rows:
-		var meta: Label = (row_variant as Node).find_child("RewardMetaSlot", true, false) as Label
-		_check(meta != null and not meta.visible, "T7 a relic row has no RELIC type label")
-	_check_fixed_row_layout(screen, rows, "T11")
+	var cards: Array = _reward_panels(screen, "relic")
+	_check(cards.size() == 2, "T7 two RelicCard nodes (found %d)" % cards.size())
+	for card_variant in cards:
+		var relic_label_found := false
+		for label_variant in (card_variant as Node).find_children("*", "Label", true, false):
+			if (label_variant as Label).text.strip_edges().to_upper() == "RELIC":
+				relic_label_found = true
+		_check(not relic_label_found, "T7 a relic card has no RELIC type label")
+	_check_relic_layout(screen, cards, "T11")
 	_check_integer_icons(screen.get("reward_cards"), "T8")
 
 
@@ -243,9 +247,14 @@ func _test_long_copy_layout() -> void:
 
 	await _boot_reward(LONG_RELIC_ITEMS, 0, 0)
 	screen = current_scene
-	var relic_rows: Array = _reward_panels(screen, "row")
-	_check(relic_rows.size() == 2, "T11 long-copy relic rows render")
-	_check_fixed_row_layout(screen, relic_rows, "T11 long-copy relic")
+	var cards: Array = _reward_panels(screen, "relic")
+	_check(cards.size() == 2, "T11 long-copy relic cards render")
+	_check_relic_layout(screen, cards, "T11 long-copy")
+	for card_variant in cards:
+		var card: Control = card_variant
+		var description: Label = card.find_child("RelicDescription", true, false) as Label
+		_check(description != null and not description.clip_text and description.size.y >= 100.0,
+			"T11 long relic description reserves unclipped space")
 
 
 func _check_fixed_row_layout(screen: Node, rows: Array, label: String) -> void:
@@ -261,11 +270,27 @@ func _check_fixed_row_layout(screen: Node, rows: Array, label: String) -> void:
 	_check_group_centered(screen, rows, label)
 
 
+func _check_relic_layout(screen: Node, cards: Array, label: String) -> void:
+	if cards.is_empty():
+		return
+	var scroll: Control = screen.get("reward_scroll") as Control
+	var first: Control = cards[0] as Control
+	for card_variant in cards:
+		var card: Control = card_variant
+		_check(absf(card.size.x - first.size.x) < 0.1, "%s equal relic widths" % label)
+		_check(absf((card.global_position.x + card.size.x * 0.5) - (scroll.global_position.x + scroll.size.x * 0.5)) < 1.0,
+			"%s relic horizontally centered" % label)
+	# The runtime caps an ultra-wide desktop viewport at 1000px, while phone
+	# layouts use at least 90% of the safe content width.
+	_check(first.size.x >= minf(scroll.size.x * 0.9, 1000.0), "%s relic uses near-full safe width" % label)
+	_check_group_centered(screen, cards, label)
+
 
 # Design px between the CHOOSE REWARD heading and the first option row. The
 # scene's RewardContent separation is PixelUI.GAP; the ceiling leaves room for a
 # font or spacing tweak without leaving room for the dead band to come back.
 const MAX_HEADING_GAP := 96.0
+
 
 func _check_group_centered(screen: Node, panels: Array, label: String) -> void:
 	if panels.is_empty():
