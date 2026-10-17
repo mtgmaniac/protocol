@@ -17,7 +17,8 @@ the live game. Implementing these needs its own task.
 
 ## G-90. DEMO v0.4: version, balance check, web build (Kev, 2026-10-17)
 
-Branch `ui/release-v04`, fast-forwarded into `main`, tagged `demo-v0.4`.
+Branch `ui/release-v04`. Not yet built, merged or tagged: the full gate's four
+failures (all pre-existing on `main`) went to Kev first.
 
 - **Version:** `project.godot` `config/version` 0.3 -> 0.4, the one source: the
   title stamp and the Help footer read DEMO v0.4 from it, and the Android preset
