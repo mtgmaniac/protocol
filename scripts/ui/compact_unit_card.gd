@@ -6,7 +6,7 @@ signal unit_detail_requested(card)
 
 const CARD_SIZE := Vector2(260, 0)
 const PORTRAIT_HP_GAP_PX := 10.0
-const NAME_ROW_HEIGHT := 88.0   # ui-fix: 80 -> 88 so a trait / BOSS line fits above the callsign
+const NAME_ROW_HEIGHT := 96.0   # ui-fix: 80 -> 88 -> 96 so a trait / BOSS line fits above the callsign with room on every side
 const HP_BAR_HEIGHT := 78.0   # ui-fix: 86 -> 78 pays for the taller name row; the portrait window keeps its aspect
 const HP_FILL_HEIGHT := 78.0
 const ACTION_PANEL_HEIGHT := 88.0
@@ -162,7 +162,7 @@ func apply_battle_presentation(text_scale: float) -> void:
 	if is_equal_approx(_battle_text_scale, text_scale):
 		return
 	_battle_text_scale = text_scale
-	PixelUI.apply_type(_name_label, PixelUI.TYPE_CARD, null, text_scale)
+	PixelUI.apply_type(_name_label, PixelUI.TYPE_CARD_NAME, null, text_scale)
 	_boss_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
 	_trait_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
 	_name_label.get_parent().custom_minimum_size.y = NAME_ROW_HEIGHT * text_scale
@@ -306,6 +306,7 @@ func _build() -> void:
 	_apply_label(_name_label, CARD_NAME_FONT_SIZE, PixelUI.PLAYER_ACCENT_LIGHT, 0)
 	name_content.add_child(_name_label)
 	_name_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	PixelUI.set_block_ink_snap(_name_label)   # whole-px strokes at every window, the 540 preview too
 	_boss_label = Label.new()
 	_boss_label.text = "BOSS"
 	_boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -565,7 +566,7 @@ func _refresh() -> void:
 		_update_portrait_size()
 
 	_name_label.text = unit_name.to_upper()
-	PixelUI.apply_type(_name_label, PixelUI.TYPE_CARD, _name_font_color(is_hero), _battle_text_scale)
+	PixelUI.apply_type(_name_label, PixelUI.TYPE_CARD_NAME, _name_font_color(is_hero), _battle_text_scale)
 	_boss_label.visible = is_boss
 	var has_trait_marker: bool = trait_marker != "" and not is_boss
 	_trait_label.visible = has_trait_marker
@@ -1157,27 +1158,43 @@ func _status_icon_for_type(status_type: String) -> String:
 # shell and title divider), so the tag's caps start 3 + 4 below the row top and
 # the callsign's glyph (at its drawn size) ends 8 + 4 above the row bottom. A
 # card with neither keeps the centred callsign.
-const TWO_LINE_PAD_TOP := 7.0
-const TWO_LINE_PAD_BOTTOM := 12.0
+# ui-fix (Kev, 2026-10-17): the row's clear interior is the 96 row less the 7 px
+# the card shell (8 + 4 inset, less the card's 5 px margin) covers at its top and
+# the 8 px title divider at its bottom. A trait / BOSS line (caps 7 m5x7 px) and
+# the callsign (caps 7 font px, as drawn) share it with three equal pads: above,
+# between, below. 360: 81 - 21 - 42 leaves 6 design px each, 2 screen px.
+const NAME_ROW_SHELL_TOP := 7.0
+const NAME_ROW_DIVIDER := 8.0
+const CAP_ROWS := 7.0               # cap height in font pixels, both faces
 const M5X7_CAP_PAD_PX := 4.0        # m5x7 pixels between the line top and the caps
 const BLOCK_GLYPH_FOOT := 0.3125    # Battle Block: glyph bottom is 10/32 of the line above its foot
+# Battle Block's advance ends in one blank font pixel, so a centred advance box
+# puts the ink half a font pixel left of centre. The callsign shifts right by
+# that half (at its 96 layout) so its ink is centred and clears the shell's inset
+# line on both sides: AVALANCHE lost its first column to it at 360 (ui-fix).
+const NAME_INK_SHIFT := 3.0
 
 
 func _layout_name_lines(two_lines: bool) -> void:
 	var s: float = _battle_text_scale
+	_name_label.offset_left = NAME_INK_SHIFT * s
+	_name_label.offset_right = NAME_INK_SHIFT * s
+	var line_h: float = PixelUI.block_draw_size(_name_label)
+	var tag_px: float = float(_trait_label.get_theme_font_size("font_size")) / float(PixelUI.FONT_NATIVE_M5X7)
+	var interior: float = (NAME_ROW_HEIGHT - NAME_ROW_SHELL_TOP - NAME_ROW_DIVIDER) * s
+	var pad: float = (interior - CAP_ROWS * tag_px - CAP_ROWS * line_h / 16.0) / 3.0
 	if not two_lines:
 		_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_name_label.offset_top = 0
 		_name_label.offset_bottom = 0
 	else:
-		var line_h: float = PixelUI.block_draw_size(_name_label)
 		_name_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 		_name_label.offset_top = 0
-		_name_label.offset_bottom = roundf(line_h * BLOCK_GLYPH_FOOT - TWO_LINE_PAD_BOTTOM * s)
+		_name_label.offset_bottom = roundf(line_h * BLOCK_GLYPH_FOOT - NAME_ROW_DIVIDER * s - pad)
 	for tag: Label in [_boss_label, _trait_label]:
 		var font_px: float = float(tag.get_theme_font_size("font_size")) / float(PixelUI.FONT_NATIVE_M5X7)
 		tag.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		tag.offset_top = roundf(TWO_LINE_PAD_TOP * s - M5X7_CAP_PAD_PX * font_px)
+		tag.offset_top = roundf(NAME_ROW_SHELL_TOP * s + pad - M5X7_CAP_PAD_PX * font_px)
 		tag.offset_bottom = tag.offset_top
 	PixelUI.refresh_block_snap(_name_label)   # its pivot follows the new alignment
 

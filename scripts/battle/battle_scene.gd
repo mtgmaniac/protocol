@@ -2546,7 +2546,7 @@ func _ensure_protocol_stack_layout() -> void:
 	# Label sits RIGHT on top of the pips (Kev 2026-07-10: anchoring it to the
 	# stack top clipped the glyphs under the panel above). Bottom-anchored just
 	# above the pip bar; the overlap eats m5x7's below-baseline padding.
-	# ui-fix: the label's caps on the block's top, the cells at its bottom.
+	# ui-fix: cells on the block's bottom; BattleLayout then centres the label on screen px.
 	protocol_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	protocol_label.offset_top = -PROTOCOL_LABEL_CAP_PAD
 	protocol_label.offset_bottom = protocol_label.offset_top + PROTOCOL_LABEL_BOX_H

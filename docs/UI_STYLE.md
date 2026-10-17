@@ -54,8 +54,10 @@ digits only). Sizes are whole multiples of the native size only
 
 | Role | Font | Size | Use | Case |
 |---|---|---|---|---|
-| DISPLAY | Battle Block | 96, drawn pixel-exact (below) | screen titles, battle header | caps |
-| CARD | Battle Block | 64 to 96, drawn pixel-exact (below) | battle card unit names and HP numbers | caps |
+| HEADER | Battle Block | 128 (x4) to 144, drawn pixel-exact (below) | the shared header's operation name and battle count, on battle and every in-run screen | caps |
+| DISPLAY | Battle Block | 96 (x3), drawn pixel-exact (below) | screen titles; the header while the dev-mode buttons are up | caps |
+| CARD_NAME | Battle Block | 96 (x3), drawn pixel-exact (below) | battle card unit callsigns | caps |
+| CARD | Battle Block | 64 to 96, drawn pixel-exact (below) | battle card HP numbers | caps |
 | LABEL | m5x7 | 64 (full-width primaries up to 112) | buttons, tabs, section headers, unit names off the battle card, the footer PROTOCOL label | caps |
 | BODY | m5x7 | 64, line spacing 10 | descriptions, help, battle log | sentence |
 | SMALL | m5x7 | 48 | rarity, version tag, cost labels, eyebrows | as written (metadata caps per the caps law) |
@@ -66,14 +68,28 @@ width only when one font pixel is a whole number of screen pixels, and the
 stretch scale differs per device (360 px wide: 1/3; 390: 0.361; the 540 preview:
 1/2). A fixed 64 put one font pixel on 1.33 screen px at 360 and 1.44 at 390,
 so strokes drew 1 and 2 px wide in the same numeral. Every Battle Block label
-(`apply_type` with DISPLAY or CARD, `style_battle_text`) is laid out at its
+(`apply_type` with a Battle Block role, `style_battle_text`) is laid out at its
 role's cap and drawn with a scale of at most 1 (`PixelUI.bind_block_snap`) that
 puts one font pixel on exactly k screen px: the smallest k at or above the
 role's size, or the largest under the cap when that is over. Font pixel = size
-/ 16 design px. CARD 4 to 6 (64 to 96): 96 at 360, 88.6 at 390, 64 at 540.
-DISPLAY 6 (96): 96 at 360, 88.6 at 390, 96 at 540. Never set a Battle Block
-label's font size directly; check with `scripts/checks/stroke_runs.py` on a
-capture (every ink run a multiple of k).
+/ 16 design px.
+
+| Role | Font pixel (design px) | 360 | 390 | 540 preview |
+|---|---|---|---|---|
+| HEADER | 8 to 9 | 144 (k 3) | 133 (k 3) | 128 (k 4) |
+| DISPLAY | 6 | 96 (k 2) | 88.6 (k 2) | 96 (k 3) |
+| CARD_NAME | 6 | 96 (k 2) | 88.6 (k 2) | 96 (k 3) |
+| CARD (HP) | 4 to 6 | 96 (k 2) | 88.6 (k 2) | 64 (k 2) |
+
+HEADER's cap is 9, not 8, so the phones reach k 3 at all. CARD_NAME (Kev,
+2026-10-17: x2 -> x3) draws the same on the phones as CARD did: k 2 is the
+largest k that fits AVALANCHE (k 3 would be 162 screen px on a 115 px card at
+360), so the step shows at the 540 preview and wider windows. A whole k also
+needs the text to start off a half screen px, or texel edges land on pixel
+centres and strokes come out 2 and 3 px wide: the callsign opts into
+`PixelUI.set_block_ink_snap`, which puts its text origin on a whole screen px.
+Never set a Battle Block label's font size directly; check with
+`scripts/checks/stroke_runs.py` on a capture (every ink run a multiple of k).
 
 **HP numerals (Kev, 2026-10-17).** CARD Battle Block, "60 / 60", centred on the
 78 px bar: the line is laid out at 96, so the label grows both ways and the
@@ -88,18 +104,28 @@ is the design, not the render.
 **Trait names take the unit's home colour:** the card's name colour (the
 encounter-derived enemy name, the hero name), no per-trait colour.
 
-**Card name row (88 design px).** A trait title or the BOSS tag (SMALL, m5x7 48,
-the text floor) sits fully above the callsign: both are placed by glyph
-extents, clear of the 3 px the card shell covers at the row's top and the 8 px
-title divider at its bottom (`compact_unit_card._layout_name_lines`). A card
-with neither keeps the centred callsign. The row grew 80 -> 88 for every card
-(boss, trait and plain cards stay aligned) and the HP bar gave the 8 px back
-(86 -> 78), so the portrait window keeps its ruled aspect.
+**Card name row (96 design px, Kev 2026-10-17).** A trait title or the BOSS tag
+(SMALL, m5x7 48, the text floor) sits fully above the callsign: both are placed
+by glyph extents inside the row's clear interior, below the 7 px the card shell
+(8 + 4 inset) covers at its top and above the 8 px title divider at its bottom
+(`compact_unit_card._layout_name_lines`). The two cap heights share that
+interior with three equal pads, above, between and below: 6 design px each at
+360 (2 / 2 / 2 screen px), 2 / 3 / 2 at 390. A card with neither keeps the
+centred callsign. The row grew 80 -> 88 -> 96 for every card (boss, trait and
+plain cards stay aligned). 88 -> 96 grew the card 570 -> 578 and took the 16
+from the tray (`CENTER_ZONE_HEIGHT` 512 -> 496, tray 908 -> 892); the portrait
+box (332 x 384 crop, the 328 x 380 window) and the 78 px HP bar are unchanged.
 
-The CARD cap (96, x3) fits the card: the longest name (AVALANCHE) and a
-three-digit HP ("140 / 140") are 324 px in the 332 px label. Landscape (dev)
-cards step the role down to fit and keep the same draw rule. Check widths with
-`battle_ui_capture.gd --capture-card-fit`.
+The callsign's ink is centred, not its advance box: Battle Block's advance ends
+in a blank font pixel, so the label shifts right half a font pixel
+(`NAME_INK_SHIFT`). Every column of the longest name draws between the shell's
+inset lines: AVALANCHE is 106 screen px of a 107 px clear width at 360 (it lost
+its first column there before), 159 of 160 at 540.
+
+The CARD_NAME cap (96, x3) fits the card: the longest names (AVALANCHE,
+OVERCLOCK) and a three-digit HP ("140 / 140") are 324 px in the 332 px label.
+Landscape (dev) cards step the role down to fit and keep the same draw rule.
+Check widths with `battle_ui_capture.gd --capture-card-fit`.
 
 No extra letter spacing on any role. Text floor 48 (`TEXT_MIN_PX`); the pip
 duration superscript is the one smaller exception. The dice faces keep their own
@@ -151,11 +177,21 @@ whole button at `UNAFFORDABLE_ALPHA` 0.45.
   a card or row is not a GAP.
 - **Header and footer bars are the same height**: 144 design px
   (`PersistentHeader.HEADER_HEIGHT`), each with a `MIN_STROKE` divider (the
-  header's along its bottom, the footer's along its top). Footer: the Protocol
-  block (LABEL caps on top, the cells at the bottom) and the four action buttons
-  (108 px squares, GAP apart) sit GAP from both bar edges.
+  header's along its bottom, the footer's along its top). The HEADER type (x4)
+  fits the 144 bar: its caps sit 36 to 99 design px down at 360, GAP clear of
+  the top and clear of the encounter rule at 120, so neither bar grew.
+  "FACILITY 10/10" is 768 of the 816 px the two-button row leaves; the dev-mode
+  row (four buttons) leaves 584, so with it up the header drops to DISPLAY.
+  Footer: the four action buttons (108 px squares, GAP apart) and the Protocol
+  block sit GAP from both bar edges, the cells level with the button bottoms.
+  **The PROTOCOL label is centred on screen pixels** (Kev, 2026-10-17): as many
+  whole px of the footer's fill above its caps as under the cells
+  (`BattleLayout._center_protocol_label`). The 4 design px each side rounded
+  opposite ways (360: 2 above, 1 below; 390: 1 above, 2 below), so a design
+  offset cannot do it; the label now sits 1 / 1 at 360 and 2 / 2 at 390.
 - Gate: `layout rhythm` (`scripts/debug/layout_rhythm_test.gd`, windowed at 360
-  and 390 px). Measure a capture with `battle_ui_capture.gd
+  and 390 px; it also reads the rendered frame for the footer centring, every
+  callsign's columns and the header's k). Measure a capture with `battle_ui_capture.gd
   --capture-layout-report` and `scripts/checks/annotate_layout.py`; run-flow
   screens with `scripts/debug/screen_rhythm_probe.gd`.
 - Spacing in multiples of 4 design px (one art pixel).

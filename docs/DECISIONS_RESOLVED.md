@@ -34,9 +34,15 @@ which TRUTH names as the UI authority.
   text and the notch (Kev, 2026-10-17: the solid fill is reverted); secondary
   is outlined (neutral border); destructive is an amber (WARNING) border and
   text, with no stripes and no notch.
-- **Type roles:** DISPLAY, CARD, LABEL, BODY, SMALL, NUMERAL, at whole
-  multiples of the font's native size. CARD (Battle Block, 64 to 96, drawn
-  pixel-exact) is the battle card's unit names and HP numbers.
+- **Type roles:** HEADER, DISPLAY, CARD_NAME, CARD, LABEL, BODY, SMALL,
+  NUMERAL, at whole multiples of the font's native size. Kev, 2026-10-17, each
+  one rung up: the header's operation name and count are HEADER (Battle Block
+  x4, 128 to 144, k 3 on phones; DISPLAY while the dev-mode buttons are up); the
+  battle card callsigns are CARD_NAME (Battle Block x3, 96); CARD (64 to 96)
+  keeps the HP numbers. All draw pixel-exact. The card name row is 96 (a trait /
+  BOSS line and the callsign, equal pads); the card grew 8 and the tray gave 16
+  (portraits unchanged). Header and footer stay 144 (HEADER fits). The PROTOCOL
+  label is centred in the footer on screen pixels.
 - **One GAP:** `PixelUI.GAP` = 16 design px between bars and cards and between
   stacked blocks on every screen; no spacer adds a second gap. Header and footer
   bars are both 144. Gate: `layout rhythm`.

@@ -49,8 +49,8 @@ func geometry(landscape: bool) -> void:
 	check(s._layout.is_landscape == landscape, "selected mode")
 	var header: Node = root.get_node("PersistentHeader")
 	check(header.band_height() == (192.0 if landscape else 144.0) + PixelUI.safe_top, "scoped header height")
-	# ui-unify / ui-cleanup type roles: DISPLAY 96 in portrait; landscape's 144 snaps to Battle Block's lattice.
-	check(header._summary_label.get_theme_font_size("font_size") == (PixelUI.lattice_px(144, "block") if landscape else PixelUI.type_px(PixelUI.TYPE_DISPLAY)), "header typography and restoration")
+	# Type roles: HEADER in portrait (x4, laid out at its 144 cap; ui-fix 2026-10-17); landscape's 144 snaps to Battle Block's lattice.
+	check(header._summary_label.get_theme_font_size("font_size") == (PixelUI.lattice_px(144, "block") if landscape else roundi((PixelUI.BLOCK_FONT_PX[PixelUI.TYPE_HEADER] as Vector2).y * 16.0)), "header typography and restoration")
 	for views in [s.hero_card_views, s.enemy_card_views]:
 		var last := Rect2()
 		for view in views:
@@ -60,8 +60,8 @@ func geometry(landscape: bool) -> void:
 			check(rect.end.y <= footer.position.y, "card clears Protocol")
 			check(not last.intersects(rect), "cards do not overlap")
 			var card_font: int = card._name_label.get_theme_font_size("font_size")
-			# ui-fix: CARD lays out at its cap (x3) and draws pixel-exact (see below).
-			check(card_font >= 88 and card_font <= 108 if landscape else card_font == roundi((PixelUI.BLOCK_FONT_PX[PixelUI.TYPE_CARD] as Vector2).y * 16.0), "card font is scoped and fits")
+			# ui-fix: CARD_NAME lays out at its cap (x3) and draws pixel-exact (see below).
+			check(card_font >= 88 and card_font <= 108 if landscape else card_font == roundi((PixelUI.BLOCK_FONT_PX[PixelUI.TYPE_CARD_NAME] as Vector2).y * 16.0), "card font is scoped and fits")
 			for block_label: Control in [card._name_label, card._hp_label]:
 				var screen_font_px: float = PixelUI.screen_scale_at(block_label.get_parent()) * block_label.get_theme_font_size("font_size") / 16.0 * block_label.scale.x
 				check(absf(screen_font_px - roundf(screen_font_px)) < 0.01 and screen_font_px >= 0.99, "Battle Block font pixel is whole screen px (%.3f)" % screen_font_px)

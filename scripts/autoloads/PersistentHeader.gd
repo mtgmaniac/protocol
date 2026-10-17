@@ -25,7 +25,7 @@ const HEADER_HEIGHT := 144.0
 ## _apply_safe_area() re-derives the offsets, so the pad must be named here or
 ## the safe-area pass would silently erase it.
 const BAR_PAD_X := 16.0
-const SUMMARY_FONT_SIZE := 96   # ui-unify: the DISPLAY role (Battle Block x3)
+const SUMMARY_FONT_SIZE := 96   # ui-unify: the DISPLAY role (Battle Block x3); the in-run header is HEADER (_header_block_px)
 const BUTTON_SIZE := Vector2(112, 112)
 const LANDSCAPE_STYLE := preload("res://scripts/battle/landscape_battle_style.gd").VALUES
 const DEPTH := preload("res://scripts/ui/battle_depth.gd")
@@ -220,14 +220,17 @@ func _style() -> void:
 	_summary_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_summary_label.clip_text = false
 	_summary_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var block_px: Vector2 = _header_block_px()
 	if _battle_visuals:
 		PixelUI.style_battle_text(_summary_label)
+		PixelUI.bind_block_snap(_summary_label, block_px.x, block_px.y)
 	else:
 		_summary_label.remove_theme_color_override("font_shadow_color")
 	if _count_label != null:
 		PixelUI.apply_pixel_font(_count_label)
 		_count_label.add_theme_font_size_override("font_size", _battle_style.get("header_font", SUMMARY_FONT_SIZE))
 		PixelUI.style_battle_text(_count_label, _count_tint)
+		PixelUI.bind_block_snap(_count_label, block_px.x, block_px.y)
 	_refresh_summary()
 	_background.queue_redraw()
 	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
@@ -239,6 +242,21 @@ func _style() -> void:
 	for b: Button in [_help_button, _debug_button, _debug2_button, _back_button]:
 		if is_instance_valid(b):
 			b.custom_minimum_size = _battle_style.get("header_button_size", BUTTON_SIZE)
+
+
+## The operation name and count's Battle Block font pixel (min, max design px).
+## ui-fix (Kev, 2026-10-17): the HEADER role, x4, one rung above DISPLAY. Its
+## glyphs sit 36 to 99 design px down the 144 bar at 360 (k 3), clear of GAP at
+## the top and of the encounter rule at 120, so the bars keep 144. "FACILITY 10/10"
+## is 768 px of the 816 the two-button row leaves; the dev-mode row (four
+## buttons) leaves 584, so with it up the header drops back to DISPLAY.
+## The parked landscape layout keeps its own header font.
+func _header_block_px() -> Vector2:
+	if _battle_style.has("header_font"):
+		var px: float = float(PixelUI.lattice_px(int(_battle_style["header_font"]), "block")) / 16.0
+		return Vector2(px, px)
+	var dev_row: bool = dev_mode_enabled and has_debug_buttons()
+	return PixelUI.BLOCK_FONT_PX[PixelUI.TYPE_DISPLAY if dev_row else PixelUI.TYPE_HEADER]
 
 
 # Held for the node's life: a style made inside the draw callback is freed when
@@ -401,6 +419,8 @@ func set_dev_mode(enabled: bool) -> void:
 		_debug_button.visible = enabled
 	if is_instance_valid(_debug2_button):
 		_debug2_button.visible = enabled
+	if _summary_label != null:
+		_style()   # the header type steps down while the dev row is up
 
 
 # Session-only easter egg. Seven quick taps on the operation title; any other

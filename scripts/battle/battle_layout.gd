@@ -15,7 +15,9 @@ const DICE_LANE_HEIGHT_PX := 168.0
 const COMPACT_DICE_ANCHOR_HEIGHT_PX := 56.0
 const COMPACT_READOUT_HEIGHT_PX := 148.0
 const COMPACT_CARD_WIDTH_PX := 344.0
-const COMPACT_CARD_HEIGHT_PX := 570.0
+# ui-fix (Kev, 2026-10-17): 570 -> 578, the card name row's 8 (88 -> 96); the
+# portrait window keeps its exact size and the tray pays (CENTER_ZONE_HEIGHT).
+const COMPACT_CARD_HEIGHT_PX := 578.0
 # V2 band geometry (portrait). Header/footer are a fixed 144 each (touch targets,
 # owned by the .tscn anchors). Center is fixed; the two rails are the FLEX bands:
 # they share all leftover height equally via EXPAND, which is what lets the same
@@ -25,9 +27,10 @@ const COMPACT_CARD_HEIGHT_PX := 570.0
 # to clip the readout pips into the dice. 540 is the readable value.
 const CARD_ZONE_HEIGHT := 768.0
 # ui-fix layout rhythm: Content is 2400 - 138 * 2 = 2124 tall; less its margins
-# (28) and the two rails (792 each) leaves 512 for the centre band, so the board
-# fills Content exactly and the cards land one GAP from each bar.
-const CENTER_ZONE_HEIGHT := 512.0
+# (28) and the two rails (800 each) leaves 496 for the centre band, so the board
+# fills Content exactly and the cards land one GAP from each bar. (512 -> 496 on
+# 2026-10-17: the taller card name rows take 8 from each rail's side of the tray.)
+const CENTER_ZONE_HEIGHT := 496.0
 const RAIL_ROW_GAP_PX := 1.0
 const RAIL_SLOT_GAP_PX := 2.0
 
@@ -303,6 +306,34 @@ func _position_zone_dividers(_combat_zone: Rect2) -> void:
 	footer_divider.offset_bottom = ftop + PixelUI.MIN_STROKE
 	if _scene.protocol_panel != null and is_instance_valid(_scene.protocol_panel):
 		_scene.protocol_panel.offset_top = (ftop + PixelUI.MIN_STROKE) - _scene.size.y
+		_center_protocol_label()
+
+
+# ui-fix (Kev, 2026-10-17): the PROTOCOL label and the cells sit centred in the
+# footer's fill on SCREEN pixels: as many whole px above the label's caps as
+# under the cells. The cells stay level with the button bottoms; only the label
+# moves. A design offset cannot do it: the 4 design px on each side round to 1
+# or 2 screen px, opposite ways at 360 (2 above, 1 below) and 390 (1 above, 2
+# below). The fill starts inside the strip's 8 px border and 4 px inset line.
+const FOOTER_SHELL_PX := float(PixelUI.BATTLE_SHELL_WIDTH + PixelUI.BATTLE_INSET_WIDTH)
+
+
+func _center_protocol_label() -> void:
+	var label: Control = _scene.protocol_label
+	var panel: Control = _scene.protocol_panel
+	var stack: Control = label.get_parent() as Control if label != null else null
+	if stack == null or stack.name != "ProtocolStack" or not stack.is_inside_tree():
+		return
+	# The first screen row at or below a design y (pixel centres decide coverage).
+	var row := func(item: CanvasItem, local_y: float) -> int:
+		return ceili((PixelUI.physical_transform(item) * Vector2(0.0, local_y)).y - 0.5)
+	var fill_top: int = row.call(panel, FOOTER_SHELL_PX)
+	var fill_end: int = row.call(panel, panel.size.y - FOOTER_SHELL_PX)
+	var cells_end: int = row.call(stack, stack.size.y)   # the cells are bottom-anchored
+	var caps_row: float = float(fill_top + fill_end - cells_end)
+	var caps_y: float = (PixelUI.physical_transform(stack).affine_inverse() * Vector2(0.0, caps_row)).y
+	label.offset_top = caps_y - _scene.PROTOCOL_LABEL_CAP_PAD
+	label.offset_bottom = label.offset_top + _scene.PROTOCOL_LABEL_BOX_H
 
 
 func get_card_group_rect(views: Array) -> Rect2:

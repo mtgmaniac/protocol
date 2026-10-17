@@ -142,10 +142,16 @@ const TYPE_LABEL := "label"       # buttons, tabs, section headers, unit names
 const TYPE_BODY := "body"         # descriptions, help text, the battle log
 const TYPE_SMALL := "small"       # rarity labels, version tag, cost labels
 const TYPE_NUMERAL := "numeral"   # HP, intent and pip numbers
-## ui-cleanup: battle card unit names and HP numbers, Battle Block. ui-fix: 64 is
-## its least size; it is laid out at x3 (AVALANCHE and a three-digit HP are 324 px
-## in the card's 332 px label) and drawn pixel-exact (BLOCK_FONT_PX).
+## ui-cleanup: battle card HP numbers, Battle Block. ui-fix: 64 is its least
+## size; it is laid out at x3 (a three-digit HP is 324 px in the card's 332 px
+## label) and drawn pixel-exact (BLOCK_FONT_PX).
 const TYPE_CARD := "card"
+## ui-fix (Kev, 2026-10-17): the battle card's unit callsign, split from CARD and
+## one rung up, x3 (96): AVALANCHE is 324 px in the 332 px label.
+const TYPE_CARD_NAME := "card_name"
+## ui-fix (Kev, 2026-10-17): the shared header's operation name and battle count,
+## one rung above DISPLAY, x4 (128).
+const TYPE_HEADER := "header"
 const TYPE_ROLES := {
 	TYPE_DISPLAY: {"family": "block", "size": 96},
 	TYPE_LABEL: {"family": "m5x7", "size": 64},   # primary buttons step up the lattice
@@ -153,6 +159,8 @@ const TYPE_ROLES := {
 	TYPE_SMALL: {"family": "m5x7", "size": 48},
 	TYPE_NUMERAL: {"family": "m5x7", "size": 64},
 	TYPE_CARD: {"family": "block", "size": 64},
+	TYPE_CARD_NAME: {"family": "block", "size": 96},
+	TYPE_HEADER: {"family": "block", "size": 128},
 }
 
 
@@ -182,7 +190,7 @@ static func apply_type(control: Control, role: String, ink: Variant = null, scal
 	control.add_theme_font_size_override("font_size", type_px(role, scale))
 	# DISPLAY, LABEL and CARD are capitals (a display transform; the copy is
 	# unchanged, and Battle Block has no lowercase glyphs).
-	if control is Label and (role == TYPE_DISPLAY or role == TYPE_LABEL or role == TYPE_CARD):
+	if control is Label and role in [TYPE_DISPLAY, TYPE_LABEL, TYPE_CARD, TYPE_CARD_NAME, TYPE_HEADER]:
 		(control as Label).uppercase = true
 	if ink is Color:
 		control.add_theme_color_override("font_color", ink)
@@ -204,11 +212,17 @@ static func apply_type(control: Control, role: String, ink: Variant = null, scal
 # one font pixel on exactly k screen px: the smallest k at or above the role's
 # size, or, when that passes the cap, the largest k under it. Battle Block's
 # font pixel is font size / 16 design px. Min / max per role:
-#   CARD    4..6 (64..96): 360 -> 96 (k 2), 390 -> 88.6 (k 2), 540 -> 64 (k 2)
-#   DISPLAY 6..6 (96):     360 -> 96 (k 2), 390 -> 88.6 (k 2), 540 -> 96 (k 3)
+#   CARD      4..6 (64..96):   360 -> 96 (k 2), 390 -> 88.6 (k 2), 540 -> 64 (k 2)
+#   CARD_NAME 6..6 (96):       360 -> 96 (k 2), 390 -> 88.6 (k 2), 540 -> 96 (k 3)
+#   DISPLAY   6..6 (96):       360 -> 96 (k 2), 390 -> 88.6 (k 2), 540 -> 96 (k 3)
+#   HEADER    8..9 (128..144): 360 -> 144 (k 3), 390 -> 133 (k 3), 540 -> 128 (k 4)
+# CARD_NAME cannot reach k 3 on a phone: AVALANCHE would be 162 screen px on a
+# 115 px card at 360. HEADER's cap is 9, not 8, so the phones reach k 3 at all.
 const BLOCK_FONT_PX := {
 	TYPE_CARD: Vector2(4.0, 6.0),
+	TYPE_CARD_NAME: Vector2(6.0, 6.0),
 	TYPE_DISPLAY: Vector2(6.0, 6.0),
+	TYPE_HEADER: Vector2(8.0, 9.0),
 }
 
 
@@ -341,6 +355,45 @@ static func _apply_block_snap(label_ref: Variant) -> void:
 				pivot.y = label.size.y
 	label.pivot_offset = pivot
 	label.scale = Vector2(f, f)
+	if label.get_meta("block_ink_snap", false) and label is Label and label.get_parent() is not Container:
+		_snap_block_ink(label as Label)
+
+
+## Opt-in (the battle card callsign, ui-fix 2026-10-17): keep the label's text
+## origin on a whole screen px. A whole k per font pixel is not enough alone:
+## when the text starts on a HALF screen px every texel edge sits on a pixel
+## centre and nearest sampling draws strokes 2 and 3 px wide in one glyph (the
+## callsign at the 540 preview: the card's 5 px margin and its ink shift are odd
+## design px, so half screen px there). Only for labels in a plain Control.
+static func set_block_ink_snap(label: Label) -> void:
+	label.set_meta("block_ink_snap", true)
+	_queue_block_snap(label)
+
+
+static func _snap_block_ink(label: Label) -> void:
+	var font: Font = label.get_theme_font("font")
+	var font_size: int = label.get_theme_font_size("font_size")
+	var origin := Vector2.ZERO
+	var text_w: float = font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	match label.horizontal_alignment:
+		HORIZONTAL_ALIGNMENT_CENTER:
+			origin.x = (label.size.x - text_w) * 0.5
+		HORIZONTAL_ALIGNMENT_RIGHT:
+			origin.x = label.size.x - text_w
+	var line_h: float = font.get_height(font_size)
+	match label.vertical_alignment:
+		VERTICAL_ALIGNMENT_CENTER:
+			origin.y = (label.size.y - line_h) * 0.5
+		VERTICAL_ALIGNMENT_BOTTOM:
+			origin.y = label.size.y - line_h
+	var xf: Transform2D = physical_transform(label)
+	var at: Vector2 = xf * origin
+	var per_px: Vector2 = physical_transform(label.get_parent() as CanvasItem).get_scale()
+	if per_px.x <= 0.0 or per_px.y <= 0.0:
+		return
+	var nudge := Vector2((roundf(at.x) - at.x) / per_px.x, (roundf(at.y) - at.y) / per_px.y)
+	if nudge.length() > 0.001:
+		label.position += nudge
 
 
 ## Snap a layout length or coordinate to a whole, EVEN design px (text
