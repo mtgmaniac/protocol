@@ -17,8 +17,17 @@ the live game. Implementing these needs its own task.
 
 ## G-90. DEMO v0.4: version, balance check, web build (Kev, 2026-10-17)
 
-Branch `ui/release-v04`. Not yet built, merged or tagged: the full gate's four
-failures (all pre-existing on `main`) went to Kev first.
+Branch `ui/release-v04`, fast-forwarded into `main`, tagged `demo-v0.4`. Web
+build `builds/overload-protocol-demo-v0.4-web.zip` (46.0 MB, the 9 export files
+flat, not committed, not uploaded).
+
+- **Known gate debt (Kev, 2026-10-17: ship, all four are test or tooling only,
+  fix later):** `sim size break` (the stale stamp after G-74); `title and unlock
+  UI` (order-dependent: an earlier gate test leaves `dev_run.json`, so NEW GAME
+  asks KEEP RUN as G-80 says, and the test, which expects the tutorial question,
+  fails; reproduced on `main`); `framing editor` and `framing sheet`
+  (`dev/framing_editor/framing_sites.gd` reads `HOME.ENC_PORTRAIT_W`, removed by
+  the A5 rebuild 9325bb8; dev-only, excluded from every export).
 
 - **Version:** `project.godot` `config/version` 0.3 -> 0.4, the one source: the
   title stamp and the Help footer read DEMO v0.4 from it, and the Android preset
