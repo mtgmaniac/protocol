@@ -60,8 +60,9 @@ G-75's "the header battle count and rule, and enemy frames, nothing else".
   `INSPECT_BG` and the op line on `UI_BG`. The mission name on its 10% tint
   (a tint of the token itself, so it lightens with it) clears for Mantle (4.52)
   and Veil (4.51) but not Facility (4.48) or Signal (4.42); one more step,
-  Facility `CF6358` / Signal `CB5DA0` (`lightened 0.15`), clears it. Open for
-  Kev. Hive was already clear.
+  Facility `CF6358` / Signal `CB5DA0` (`lightened 0.15`), would clear it; Kev
+  accepted 4.48 / 4.42 on the mission card and kept the values above
+  (2026-10-17). Hive was already clear.
 - **Kept as reported (Kev):** Veil stays violet (the one cool encounter color);
   the Facility defeat screen keeps its two reds (accent op line, `KW_DAMAGE`
   headline); `BATTLE_BAY_AMBER_LIT` stays (Facility's v3 tray edge, debug F9
