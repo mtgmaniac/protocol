@@ -1,30 +1,11 @@
 {
-  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER accent (flat pixel B color ownership): in battle it drives the header battle count and rule and the enemy card frames and name headers, nothing else. `wall_texture`, `floor_texture`, `edge_accent` and `streak` feed the v3 perspective scene (debug F9 only). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`. The dice tray floor (Kev, 2026-10-17, DECISIONS_RESOLVED G-76): `tray_floor` names the entry of `tray_floors` every operation uses; a scene entry may set its own `tray_floor` to override it (none do). There is no battle backdrop image (G-76): battle and in-run screens show the plain dark background token.",
+  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER accent (flat pixel B color ownership): in battle it drives the header battle count and rule and the enemy card frames and name headers, nothing else. `wall_texture`, `floor_texture`, `edge_accent` and `streak` feed the v3 perspective scene (debug F9 only). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`. The dice tray floor (Kev, 2026-10-17, DECISIONS_RESOLVED G-79, replacing G-76's grate + ember): `tray_floor` names the entry of `tray_floors` every operation uses; a scene entry may set its own `tray_floor` to override it (none do). There is no battle backdrop image (G-76): battle and in-run screens show the plain dark background token.",
   "fallback": "bare",
-  "tray_floor": "grate_ember",
+  "tray_floor": "reticle",
   "tray_floors": {
-    "grate_ember": {
-      "_about": "Drawn in code at art resolution (tray size / 4 design px), NEAREST at 4x (battle_bay_floor.gd build_floor_image). Rows: art y % slat_period == 0 is `slat`, == 1 `slat_dim`, the rest `void`. The ember glow sits in void rows only: `ember` where a 4x4 Bayer threshold is under clamp((y/H - ember_start) / (1 - ember_start), 0, 1) * ember_max. Support frame: `frame_columns` from each side. Recessed lip: the outermost px `lip`, then 2 px `lip_shade` on top and left, `lip_lit` on bottom and right. Reticle: a 1 px ring at `reticle_radius` in four arcs with `reticle_gap_degrees` gaps at 0/90/180/270, and a full ring at `reticle_core_radius`.",
-      "void": "TRAY_GRATE_VOID",
-      "slat": "TRAY_GRATE_SLAT",
-      "slat_dim": "TRAY_GRATE_SLAT_DIM",
-      "slat_period": 5,
-      "ember": "TRAY_GRATE_EMBER",
-      "ember_start": 0.35,
-      "ember_max": 0.55,
-      "frame": "TRAY_GRATE_SLAT",
-      "frame_columns": [
-        3,
-        4
-      ],
-      "lip": "TRAY_GRATE_LIP",
-      "lip_shade": "TRAY_GRATE_LIP_SHADE",
-      "lip_lit": "TRAY_GRATE_LIP_LIT",
-      "lip_band": 2,
-      "reticle": "TRAY_GRATE_LIP",
-      "reticle_radius": 34,
-      "reticle_gap_degrees": 24,
-      "reticle_core_radius": 3
+    "reticle": {
+      "_about": "One image at the tray's exact art size (260 x 223 art px = the 1040 x 892 design px tray / 4), built from assets/art_incoming/tray_reticle_raw.png by tools/build_tray_floor.py: a flat dark charcoal surface, a faint diagonal texture, one thin gray reticle at the centre. battle_bay_floor.gd draws it one texel per art pixel, centred on the tray; a tray of another size crops the image's edges or extends it with the image's most common colour. A missing image leaves the plain dark background.",
+      "image": "res://assets/battle_tray/tray_floor_reticle.png"
     }
   },
   "scenes": {

@@ -49,17 +49,6 @@ const BATTLE_HEADER_RULE := Color("3a454c")
 const BATTLE_BAY_SHADOW_ALPHA := 0.85
 # Flat pixel A: the hard pixel drop shadow under each die (dice_tray_3d.gd).
 const BATTLE_FLAT_SHADOW := Color("040506")
-# The dice tray floor, "grate + ember" (Kev, 2026-10-17, DECISIONS_RESOLVED
-# G-76): one floor for every operation, drawn by battle_bay_floor.gd from the
-# `tray_floors` entry in data/raw/battle-tray-scenes.json (which names these).
-# Neutral shared ground: dark steel slats over a void with a faint warm glow.
-const TRAY_GRATE_VOID := Color("0b0c0e")   # (11, 12, 14)
-const TRAY_GRATE_SLAT := Color("16181b")   # (22, 24, 27)
-const TRAY_GRATE_SLAT_DIM := Color("111316")   # (17, 19, 22)
-const TRAY_GRATE_EMBER := Color("1e120c")   # (30, 18, 12)
-const TRAY_GRATE_LIP := Color("23262a")   # (35, 38, 42)
-const TRAY_GRATE_LIP_SHADE := Color("0d0e10")   # (13, 14, 16)
-const TRAY_GRATE_LIP_LIT := Color("1c1e22")   # (28, 30, 34)
 # The vignette: hard-edged steps of black, darkest first (no smooth ramp).
 const BATTLE_VIGNETTE_STEPS: Array[float] = [0.42, 0.26, 0.12]
 # Die tags: transparent over the scene (2026-07-09 ruling); F8 brings the v2

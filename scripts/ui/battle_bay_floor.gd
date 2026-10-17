@@ -1,12 +1,13 @@
 extends Control
-## The flat scene (default; Kev, 2026-10-17, DECISIONS_RESOLVED G-76): no
+## The flat scene (default; Kev, 2026-10-17, DECISIONS_RESOLVED G-76 / G-79): no
 ## backdrop image, the plain dark background token behind the whole board, and
-## the dice tray's "grate + ember" floor: dark steel slats over a void with a
-## faint warm glow toward the front, a recessed lip, a support frame down both
-## sides and a centre reticle. It is drawn in code at art resolution (the tray's
-## size / 4 design px) into one image shown NEAREST at 4x. One floor for every
-## operation, a data entry (`tray_floors` in the scene data) an operation could
-## override later. The tray is neutral shared ground: never the encounter color.
+## the dice tray's floor: one image at the tray's exact art size (a dark
+## charcoal surface with a faint diagonal texture and one thin gray reticle at
+## its centre, `assets/battle_tray/tray_floor_reticle.png`, built by
+## tools/build_tray_floor.py), drawn one texel per art pixel, NEAREST at 4x,
+## centred on the tray. One floor for every operation, a data entry
+## (`tray_floors` in the scene data) an operation could override later. The tray
+## is neutral shared ground: never the encounter color.
 ##
 ## Battle depth prototype v3 (debug F9): the full-screen battle scene behind the board. A
 ## back wall behind the enemy cards, slab side walls down both edges, and one
@@ -40,8 +41,6 @@ const VIGNETTE_STEP := 28.0
 ## Side-wall window slots near the top: design px from the screen top, and size.
 const WINDOW_TOPS: Array[float] = [196.0, 332.0]
 const WINDOW_SIZE := Vector2(12.0, 52.0)
-## The 4x4 Bayer matrix the floor's ember glow is dithered with.
-const BAYER_4: Array[int] = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
 var operation_id: String = "":
 	set(value):
@@ -58,10 +57,11 @@ var _wall: Texture2D
 var _floor: Texture2D
 var _edge := Color.TRANSPARENT
 var _streak := Color.TRANSPARENT
-## The tray floor: its data entry, and the image built for the current size.
-var _tray_floor: Dictionary = {}
-var _floor_image: ImageTexture = null
-var _floor_image_size := Vector2i.ZERO
+## The tray floor's image, and the colour that extends it past its edges.
+var _floor_image: Texture2D = null
+var _floor_fill := Color.TRANSPARENT
+## floor_fill_color per image path (it scans every pixel once).
+static var _fill_cache := {}
 
 
 func _ready() -> void:
@@ -85,8 +85,8 @@ func _load_scene() -> void:
 	_floor = _texture(str(entry.get("floor_texture", "")))
 	_edge = DEPTH.token(str(entry.get("edge_accent", "")))
 	_streak = DEPTH.token(str(entry.get("streak", "")))
-	_tray_floor = DEPTH.tray_floor_for(operation_id)
-	_floor_image = null
+	_floor_image = floor_texture(operation_id)
+	_floor_fill = floor_fill_color(_floor_image)
 
 
 func _texture(path: String) -> Texture2D:
@@ -125,107 +125,53 @@ func _draw() -> void:
 
 
 # The flat scene: the plain dark background token, then the tray floor on the
-# tray rect snapped to the 4 design px art grid, one texel per art pixel.
+# tray rect snapped to the 4 design px art grid, one texel per art pixel. The
+# image is the tray's art size at 1080 x 2400; a tray of another size (safe-area
+# insets) shows the image centred, its edges cropped, or extended with its fill.
 func _draw_flat() -> void:
 	draw_rect(Rect2(Vector2.ZERO, screen), PixelUI.UI_BG)
 	var floor_rect := Rect2(_snap(tray.position), _snap(tray.end) - _snap(tray.position))
-	var art_size := Vector2i((floor_rect.size / ART_PX).round())
-	if art_size.x < 8 or art_size.y < 8:
+	if floor_rect.size.x < ART_PX * 8.0 or floor_rect.size.y < ART_PX * 8.0 or _floor_image == null:
 		return
-	if _floor_image == null or _floor_image_size != art_size:
-		_floor_image = ImageTexture.create_from_image(build_floor_image(art_size, _tray_floor))
-		_floor_image_size = art_size
-	draw_texture_rect(_floor_image, floor_rect, false)
+	var image_size: Vector2 = _floor_image.get_size()
+	var art_size: Vector2 = floor_rect.size / ART_PX
+	# Whole art px: the image's top-left, centred on the tray.
+	var image_rect := Rect2(floor_rect.position + ((art_size - image_size) * 0.5).floor() * ART_PX, image_size * ART_PX)
+	var shown: Rect2 = image_rect.intersection(floor_rect)
+	if shown.size != floor_rect.size:
+		draw_rect(floor_rect, _floor_fill)
+	draw_texture_rect_region(_floor_image, shown, Rect2((shown.position - image_rect.position) / ART_PX, shown.size / ART_PX))
 
 
-## The "grate + ember" floor at `art_size` art px from its data entry (see the
-## `tray_floors` _about in data/raw/battle-tray-scenes.json). Pure: the same
-## size and entry always give the same pixels. An empty entry gives the void.
-static func build_floor_image(art_size: Vector2i, spec: Dictionary) -> Image:
-	var w: int = art_size.x
-	var h: int = art_size.y
-	var void_c: Color = _spec_color(spec, "void", PixelUI.TRAY_GRATE_VOID)
-	var slat: Color = _spec_color(spec, "slat", void_c)
-	var slat_dim: Color = _spec_color(spec, "slat_dim", void_c)
-	var ember: Color = _spec_color(spec, "ember", void_c)
-	var period: int = maxi(int(spec.get("slat_period", 5)), 2)
-	var ember_start: float = float(spec.get("ember_start", 0.35))
-	var ember_max: float = float(spec.get("ember_max", 0.0))
-	var pixels := PackedByteArray()
-	pixels.resize(w * h * 3)
-	var at: int = 0
-	for y in range(h):
-		var phase: int = y % period
-		var t: float = clampf((float(y) / float(h) - ember_start) / maxf(1.0 - ember_start, 0.001), 0.0, 1.0) * ember_max
-		var base: Color = slat if phase == 0 else (slat_dim if phase == 1 else void_c)
-		for x in range(w):
-			var c: Color = base
-			# Ember: void rows only, a 4x4 Bayer threshold under t.
-			if phase > 1 and (float(BAYER_4[(y % 4) * 4 + x % 4]) + 0.5) / 16.0 < t:
-				c = ember
-			pixels[at] = c.r8
-			pixels[at + 1] = c.g8
-			pixels[at + 2] = c.b8
-			at += 3
-	var image := Image.create_from_data(w, h, false, Image.FORMAT_RGB8, pixels)
-	# The support frame: whole columns in from each side.
-	var frame: Color = _spec_color(spec, "frame", slat)
-	for column_variant: Variant in spec.get("frame_columns", []):
-		var column: int = int(column_variant)
-		for x: int in [column, w - 1 - column]:
-			if x >= 0 and x < w:
-				image.fill_rect(Rect2i(x, 0, 1, h), frame)
-	# The centre reticle: four arcs with gaps at 0/90/180/270, and a small ring.
-	var reticle: Color = _spec_color(spec, "reticle", slat)
-	var centre := Vector2i(w / 2, h / 2)
-	var radius: int = int(spec.get("reticle_radius", 0))
-	if radius > 0:
-		_ring(image, centre, radius, float(spec.get("reticle_gap_degrees", 0.0)), reticle)
-	var core: int = int(spec.get("reticle_core_radius", 0))
-	if core > 0:
-		_ring(image, centre, core, 0.0, reticle)
-	# The recessed lip: the outermost px, then the shaded top / left and the lit
-	# bottom / right bands (top / left win the two corners they share).
-	var band: int = int(spec.get("lip_band", 2))
-	var lit: Color = _spec_color(spec, "lip_lit", void_c)
-	var shade: Color = _spec_color(spec, "lip_shade", void_c)
-	image.fill_rect(Rect2i(1, h - 1 - band, w - 2, band), lit)
-	image.fill_rect(Rect2i(w - 1 - band, 1, band, h - 2), lit)
-	image.fill_rect(Rect2i(1, 1, w - 2, band), shade)
-	image.fill_rect(Rect2i(1, 1, band, h - 2), shade)
-	var lip: Color = _spec_color(spec, "lip", void_c)
-	for edge: Rect2i in [Rect2i(0, 0, w, 1), Rect2i(0, h - 1, w, 1), Rect2i(0, 0, 1, h), Rect2i(w - 1, 0, 1, h)]:
-		image.fill_rect(edge, lip)
-	return image
+## The tray floor image an operation uses (`tray_floors` entry `image`), or null.
+static func floor_texture(operation_id: String) -> Texture2D:
+	var path: String = str(DEPTH.tray_floor_for(operation_id).get("image", ""))
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
 
 
-static func _spec_color(spec: Dictionary, key: String, fallback: Color) -> Color:
-	var name: String = str(spec.get(key, ""))
-	return DEPTH.token(name) if name != "" else fallback
-
-
-# A 1 px ring (midpoint circle), skipping the points within gap / 2 degrees of
-# the four axes.
-static func _ring(image: Image, centre: Vector2i, radius: int, gap_degrees: float, colour: Color) -> void:
-	var x: int = radius
-	var y: int = 0
-	var err: int = 1 - radius
-	while x >= y:
-		for p: Vector2i in [Vector2i(x, y), Vector2i(y, x), Vector2i(-y, x), Vector2i(-x, y),
-				Vector2i(-x, -y), Vector2i(-y, -x), Vector2i(y, -x), Vector2i(x, -y)]:
-			if gap_degrees > 0.0:
-				var angle: float = fposmod(rad_to_deg(atan2(float(p.y), float(p.x))), 90.0)
-				if angle < gap_degrees * 0.5 or angle > 90.0 - gap_degrees * 0.5:
-					continue
-			var at: Vector2i = centre + p
-			if at.x >= 0 and at.y >= 0 and at.x < image.get_width() and at.y < image.get_height():
-				image.set_pixelv(at, colour)
-		y += 1
-		if err < 0:
-			err += 2 * y + 1
-		else:
-			x -= 1
-			err += 2 * (y - x) + 1
+## The image's most common colour: the floor's own surface, used where the tray
+## is bigger than the image. Read from the art, so no token repeats it.
+static func floor_fill_color(texture: Texture2D) -> Color:
+	if texture == null:
+		return PixelUI.UI_BG
+	if _fill_cache.has(texture.resource_path):
+		return _fill_cache[texture.resource_path]
+	var image: Image = texture.get_image()
+	var counts := {}
+	var best := Color.BLACK
+	var best_count := 0
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var c: Color = image.get_pixel(x, y)
+			var n: int = int(counts.get(c, 0)) + 1
+			counts[c] = n
+			if n > best_count:
+				best_count = n
+				best = c
+	_fill_cache[texture.resource_path] = best
+	return best
 
 
 func _snap(point: Vector2) -> Vector2:

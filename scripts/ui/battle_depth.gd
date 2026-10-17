@@ -9,7 +9,7 @@ extends RefCounted
 
 ## Debug A/B switches (battle scene, debug builds): F6 the scene, F8 the v2
 ## plates behind the die tags, F9 the v3 perspective. (F7, the floor decal, went
-## with the decal: the grate + ember floor draws its own reticle, G-76.)
+## with the decal: the tray floor image carries its own reticle, G-76 / G-79.)
 static var backdrop_on := true
 static var plates_on := false
 ## Flat pixel A: the tray is drawn top-down and flat (every die the same size, no
@@ -42,7 +42,7 @@ static func encounter_accent(operation_id: String) -> Color:
 	return token(str(scene_for(operation_id).get("accent", "")))
 
 
-## The dice tray's floor (Kev, 2026-10-17, G-76): one "grate + ember" floor for
+## The dice tray's floor (Kev, 2026-10-17, G-79): one floor image for
 ## every operation, a data entry in `tray_floors`. The root `tray_floor` names
 ## the default; a scene entry may name its own `tray_floor` to override it later.
 static func tray_floor_for(operation_id: String) -> Dictionary:
