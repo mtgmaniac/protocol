@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://8my34spwhci3"
-path="res://.godot/imported/tray_floor_reticle.png-49424d4625ec765dd950f74faa46ad7e.ctex"
+uid="uid://b6eay3r6g5v1x"
+path="res://.godot/imported/tray_floor_signal.png-474d37e00908abb1d0691aa14856a8af.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/battle_tray/tray_floor_reticle.png"
-dest_files=["res://.godot/imported/tray_floor_reticle.png-49424d4625ec765dd950f74faa46ad7e.ctex"]
+source_file="res://assets/battle_tray/tray_floor_signal.png"
+dest_files=["res://.godot/imported/tray_floor_signal.png-474d37e00908abb1d0691aa14856a8af.ctex"]
 
 [params]
 

@@ -1,11 +1,27 @@
 {
-  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER color (G-83: enemies warm, the player cool): it marks the enemy side everywhere (the battle header count and rule, enemy card frames and name strips, the squad-select mission card, Help bestiary pages, enemy pop-ups, the result screen's operation and boss lines), one value per operation. `wall_texture`, `floor_texture`, `edge_accent` and `streak` feed the v3 perspective scene (debug F9 only). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`. The dice tray floor (Kev, 2026-10-17, DECISIONS_RESOLVED G-79, replacing G-76's grate + ember): `tray_floor` names the entry of `tray_floors` every operation uses; a scene entry may set its own `tray_floor` to override it (none do). There is no battle backdrop image (G-76): battle and in-run screens show the plain dark background token.",
+  "_about": "One battle scene per operation. `accent` is the operation's ENCOUNTER color (G-83: enemies warm, the player cool): it marks the enemy side everywhere (the battle header count and rule, enemy card frames and name strips, the squad-select mission card, Help bestiary pages, enemy pop-ups, the result screen's operation and boss lines), one value per operation. `wall_texture`, `floor_texture`, `edge_accent` and `streak` feed the v3 perspective scene (debug F9 only). Colours are PixelUI token names, never hexes. Empty fields draw the bare scene. Operations without an entry use `fallback`. The dice tray floor (Kev, 2026-10-17, DECISIONS_RESOLVED G-84, replacing G-79's one reticle floor): each operation's scene entry names its own `tray_floors` entry as `tray_floor`; the root `tray_floor` (facility) is the floor of every scene without one (the tutorial and the bare fallback). There is no battle backdrop image (G-76): battle and in-run screens show the plain dark background token.",
   "fallback": "bare",
-  "tray_floor": "reticle",
+  "tray_floor": "facility",
   "tray_floors": {
-    "reticle": {
-      "_about": "One image at the tray's exact art size (260 x 223 art px = the 1040 x 892 design px tray / 4), built from assets/art_incoming/tray_reticle_raw.png by tools/build_tray_floor.py: a flat dark charcoal surface, a faint diagonal texture, one thin gray reticle at the centre. battle_bay_floor.gd draws it one texel per art pixel, centred on the tray; a tray of another size crops the image's edges or extends it with the image's most common colour. A missing image leaves the plain dark background.",
-      "image": "res://assets/battle_tray/tray_floor_reticle.png"
+    "facility": {
+      "_about": "One image at the tray's exact art size (260 x 223 art px = the 1040 x 892 design px tray / 4), copied as-is from assets/art_incoming/tray_facility.png (no conversion; tools/build_tray_floor.py --check verifies). battle_bay_floor.gd draws it one texel per art pixel, centred on the tray; a tray of another size crops the image's edges or extends it with the image's most common colour. A missing image leaves the plain dark background.",
+      "image": "res://assets/battle_tray/tray_floor_facility.png"
+    },
+    "hive": {
+      "_about": "One image at the tray's exact art size (260 x 223 art px = the 1040 x 892 design px tray / 4), copied as-is from assets/art_incoming/tray_hive.png (no conversion; tools/build_tray_floor.py --check verifies). battle_bay_floor.gd draws it one texel per art pixel, centred on the tray; a tray of another size crops the image's edges or extends it with the image's most common colour. A missing image leaves the plain dark background.",
+      "image": "res://assets/battle_tray/tray_floor_hive.png"
+    },
+    "mantle": {
+      "_about": "One image at the tray's exact art size (260 x 223 art px = the 1040 x 892 design px tray / 4), copied as-is from assets/art_incoming/tray_mantle.png (no conversion; tools/build_tray_floor.py --check verifies). battle_bay_floor.gd draws it one texel per art pixel, centred on the tray; a tray of another size crops the image's edges or extends it with the image's most common colour. A missing image leaves the plain dark background.",
+      "image": "res://assets/battle_tray/tray_floor_mantle.png"
+    },
+    "signal": {
+      "_about": "One image at the tray's exact art size (260 x 223 art px = the 1040 x 892 design px tray / 4), copied as-is from assets/art_incoming/tray_signal.png (no conversion; tools/build_tray_floor.py --check verifies). battle_bay_floor.gd draws it one texel per art pixel, centred on the tray; a tray of another size crops the image's edges or extends it with the image's most common colour. A missing image leaves the plain dark background.",
+      "image": "res://assets/battle_tray/tray_floor_signal.png"
+    },
+    "veil": {
+      "_about": "One image at the tray's exact art size (260 x 223 art px = the 1040 x 892 design px tray / 4), copied as-is from assets/art_incoming/tray_veil.png (no conversion; tools/build_tray_floor.py --check verifies). battle_bay_floor.gd draws it one texel per art pixel, centred on the tray; a tray of another size crops the image's edges or extends it with the image's most common colour. A missing image leaves the plain dark background.",
+      "image": "res://assets/battle_tray/tray_floor_veil.png"
     }
   },
   "scenes": {
@@ -14,6 +30,7 @@
       "wall_texture": "res://assets/battle_tray/placeholder_facility_wall_slabs.png",
       "floor_texture": "res://assets/battle_tray/placeholder_facility_floor_panels.png",
       "accent": "ENCOUNTER_FACILITY",
+      "tray_floor": "facility",
       "edge_accent": "BATTLE_BAY_AMBER_LIT",
       "streak": "BATTLE_BAY_RUST"
     },
@@ -22,6 +39,7 @@
       "wall_texture": "",
       "floor_texture": "",
       "accent": "ENCOUNTER_HIVE",
+      "tray_floor": "hive",
       "edge_accent": "",
       "streak": ""
     },
@@ -30,6 +48,7 @@
       "wall_texture": "",
       "floor_texture": "",
       "accent": "ENCOUNTER_VEIL",
+      "tray_floor": "veil",
       "edge_accent": "",
       "streak": ""
     },
@@ -38,6 +57,7 @@
       "wall_texture": "",
       "floor_texture": "",
       "accent": "ENCOUNTER_SIGNAL",
+      "tray_floor": "signal",
       "edge_accent": "",
       "streak": ""
     },
@@ -46,6 +66,7 @@
       "wall_texture": "",
       "floor_texture": "",
       "accent": "ENCOUNTER_MANTLE",
+      "tray_floor": "mantle",
       "edge_accent": "",
       "streak": ""
     },

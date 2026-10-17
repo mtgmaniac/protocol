@@ -42,9 +42,9 @@ static func encounter_accent(operation_id: String) -> Color:
 	return token(str(scene_for(operation_id).get("accent", "")))
 
 
-## The dice tray's floor (Kev, 2026-10-17, G-79): one floor image for
-## every operation, a data entry in `tray_floors`. The root `tray_floor` names
-## the default; a scene entry may name its own `tray_floor` to override it later.
+## The dice tray's floor (Kev, 2026-10-17, G-84): one floor image per
+## operation, a data entry in `tray_floors`. A scene entry names its own
+## `tray_floor`; the root `tray_floor` (Facility's) is every other scene's.
 static func tray_floor_for(operation_id: String) -> Dictionary:
 	var entry: Dictionary = scene_for(operation_id)
 	var floor_id: String = str(entry.get("tray_floor", _scenes.get("tray_floor", "")))

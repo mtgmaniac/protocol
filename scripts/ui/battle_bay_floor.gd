@@ -1,13 +1,13 @@
 extends Control
-## The flat scene (default; Kev, 2026-10-17, DECISIONS_RESOLVED G-76 / G-79): no
+## The flat scene (default; Kev, 2026-10-17, DECISIONS_RESOLVED G-76 / G-84): no
 ## backdrop image, the plain dark background token behind the whole board, and
-## the dice tray's floor: one image at the tray's exact art size (a dark
-## charcoal surface with a faint diagonal texture and one thin gray reticle at
-## its centre, `assets/battle_tray/tray_floor_reticle.png`, built by
-## tools/build_tray_floor.py), drawn one texel per art pixel, NEAREST at 4x,
-## centred on the tray. One floor for every operation, a data entry
-## (`tray_floors` in the scene data) an operation could override later. The tray
-## is neutral shared ground: never the encounter color.
+## the dice tray's floor: one image per operation at the tray's exact art size (a
+## dark charcoal surface, a faint texture and one thin gray reticle at its
+## centre, `assets/battle_tray/tray_floor_<operation>.png`, copied as-is from
+## the art drop), drawn one texel per art pixel, NEAREST at 4x, centred on the
+## tray. Each operation's scene entry names its `tray_floors` entry; the tutorial
+## and operations without one get Facility's. The tray is neutral shared ground:
+## never the encounter color.
 ##
 ## Battle depth prototype v3 (debug F9): the full-screen battle scene behind the board. A
 ## back wall behind the enemy cards, slab side walls down both edges, and one
