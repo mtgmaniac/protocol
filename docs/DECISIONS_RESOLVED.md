@@ -15,6 +15,48 @@ the live game. Implementing these needs its own task.
   heal above); remaining summons are full HP.
 - **Supersedes the G-54 summons hold once implemented.** Until then G-54 stands.
 
+## G-83. Encounter colors: enemies warm, the player cool (Kev, 2026-10-17)
+
+Branch `ui/encounter-colors`. **Supersedes** the per-operation encounter
+values in G-75 / `docs/FLAT_PIXEL_PROTOTYPE.md` (Facility amber `cf9a36`, Hive
+red `c8404a`, Veil violet `8f7ae0`, Signal `b653c8`, Mantle ochre `d89b4a`) and
+G-75's "the header battle count and rule, and enemy frames, nothing else".
+
+- **Rule: enemies are warm, the player is cool.** The player side stays PLAYER
+  cobalt everywhere. The encounter color marks the enemy side.
+- **One value per operation**, used for every encounter element, no second
+  per-operation tone:
+
+  | Operation | Color | Token |
+  |---|---|---|
+  | Facility Sweep | red `C6483A` | `ENCOUNTER_FACILITY` |
+  | Hive Incursion | yellow `D6B234` | `ENCOUNTER_HIVE` |
+  | Mantle Hunt | brown `AC7048` | `ENCOUNTER_MANTLE` |
+  | Signal Purge | magenta `C2408F` | `ENCOUNTER_SIGNAL` |
+  | Veil Breach | violet `8B6BD6` | `ENCOUNTER_VEIL` |
+
+- **Where it lives:** the hex is the PixelUI token (the single source for
+  colors); the operation data (`data/raw/battle-tray-scenes.json`, `accent`)
+  names the token for each operation, and every reader goes through
+  `battle_depth.gd encounter_accent` or `PixelUI.ENCOUNTER_ACCENT`. No screen
+  holds a copy.
+- **What reads it:** the battle header count and rule, enemy card frames and
+  name strips, the squad-select mission card (frame, tint, boss frame, name,
+  level pips, page dot) and its long-press pop-up, Help's bestiary pages (each
+  page's enemy rows and pop-ups read that page's operation, not the last
+  battle's), enemy inspect pop-ups, the briefing's boss and rule lines, the
+  route fork's flagged node, and the result screen's operation line and victory
+  boss line. Shades the code derives from it (frame `darkened(0.3)`, name strip
+  `lightened(0.35)` on `darkened(0.78)`, the 10% mission tint, the briefing's
+  `lightened(0.2)`) stay derived, never stored.
+- Unchanged: dice colors (hero blue, enemy red, every operation), the neutral
+  tray, `ENEMY_DEFAULT` for an enemy faction with no operation.
+- **Open (Kev's call):** Facility red and Signal magenta are under 4.5:1 as text
+  on the dark fields, and Mantle and Veil are just under on some of them (the
+  numbers and the suggested lighter values are in the delivery report,
+  `debug_artifacts/encounter_colors/REPORT.md`). The hexes above are not changed
+  until Kev approves.
+
 ## G-82. Type size: keep the sizes, rely on hiDPI (Kev, 2026-10-17)
 
 Option A of `docs/TYPE_SIZE_OPTIONS_2026-10-17.md`. The type roles keep their

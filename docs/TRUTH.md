@@ -4,6 +4,15 @@
 all UI work (color ownership, components, type roles, GAP, Protocol color,
 rarity). Older UI entries below yield to it where they differ.
 
+**Encounter colors (Kev, 2026-10-17, DECISIONS_RESOLVED G-83; supersedes older
+encounter values):** enemies are warm, the player is cool. Each operation has one
+encounter color, used for every enemy-side element (header count and rule, enemy
+cards, the mission card, Help bestiary pages, enemy pop-ups, the result screen's
+operation and boss lines): Facility Sweep red `C6483A`, Hive Incursion yellow
+`D6B234`, Mantle Hunt brown `AC7048`, Signal Purge magenta `C2408F`, Veil Breach
+violet `8B6BD6`. The hex is the `PixelUI.ENCOUNTER_*` token; the operation data
+(`battle-tray-scenes.json` `accent`) names it. The player side stays cobalt.
+
 **UI batch A5 (Kev, 2026-10-17, DECISIONS_RESOLVED G-79 / G-80 / G-81 / G-82; supersedes
 the entries below where they differ):** the dice tray floor is one reticle image
 (`assets/battle_tray/tray_floor_reticle.png`, the `tray_floors.reticle` entry),

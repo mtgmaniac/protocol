@@ -45,7 +45,9 @@ All in `scripts/ui/pixel_ui.gd` ("Color roles" block):
   reward title/relic strip) now reads SYSTEM_ACCENT. The two places that used
   `UI_ACCENT.darkened(...)` as a dim border (art frame, relic card) use
   SYSTEM_ACCENT_DIM.
-- **ENCOUNTER accents:** `ENCOUNTER_FACILITY` (amber `cf9a36`, the value v3 used
+- **ENCOUNTER accents** (superseded 2026-10-17 by DECISIONS_RESOLVED G-83: red /
+  yellow / brown / magenta / violet; the values below are history):
+  `ENCOUNTER_FACILITY` (amber `cf9a36`, the value v3 used
   through DT_AMBER), `ENCOUNTER_HIVE` (red `c8404a`), `ENCOUNTER_VEIL` (violet
   `8f7ae0`), `ENCOUNTER_SIGNAL` (`b653c8`), `ENCOUNTER_MANTLE` (`d89b4a`). The
   data (`data/raw/battle-tray-scenes.json`, `accent`) names the token per

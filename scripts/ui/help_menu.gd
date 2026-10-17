@@ -5,6 +5,7 @@ class_name HelpMenu
 extends CanvasLayer
 
 const AutoPick := preload("res://scripts/battle/auto_pick.gd")
+const DEPTH := preload("res://scripts/ui/battle_depth.gd")
 const MENU_LAYER := 135  # above InspectPopup (130) and the persistent header (8)
 # ...except while THIS screen is showing a breakdown: a popup the help menu
 # itself opened has to render above the help panel, so the menu ducks under
@@ -712,6 +713,13 @@ func _select_bestiary_faction(faction: String) -> void:
 			_add_bestiary_entry(_bestiary_detail, enemy)
 
 
+# The open bestiary page's ENCOUNTER color (data, G-83): each faction page is an
+# operation. A faction with no operation reads ENEMY_DEFAULT.
+func _bestiary_accent() -> Color:
+	var accent: Color = DEPTH.encounter_accent(_bestiary_faction)
+	return accent if accent.a > 0.0 and _dm().get_operation(_bestiary_faction) != null else PixelUI.ENEMY_DEFAULT
+
+
 func _add_bestiary_entry(host: VBoxContainer, enemy: EnemyData) -> void:
 	# Same row shape as the Units list. The `role` sentence stays in the data
 	# and moves to the long-press breakdown: it never scanned as a list row.
@@ -1344,10 +1352,10 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 		# The shared portrait frame. It was a 96×96 square: a second window,
 		# shorter for its width than the battle card's, so each thumb lost the
 		# bottom of the framing its battle card shows (2026-10-10).
-		# ui-unify: a hero's frame is the player's resting frame. ui-cleanup: an
-		# enemy's is ENEMY_DEFAULT (Help has no operation to borrow a color from),
-		# darkened as the battle darkens ENCOUNTER_ACCENT for an enemy frame.
-		var border: Color = PixelUI.ENEMY_DEFAULT.darkened(0.3) if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_DIM
+		# ui-unify: a hero's frame is the player's resting frame. An enemy's is
+		# its bestiary page's operation color (G-83), darkened as the battle
+		# darkens ENCOUNTER_ACCENT for an enemy frame.
+		var border: Color = _bestiary_accent().darkened(0.3) if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_DIM
 		var frame_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, border, 2)
 		row.add_child(PixelUI.make_portrait_frame(portrait, ROW_PORTRAIT_W, frame_style)["frame"])
 
@@ -1363,7 +1371,7 @@ func _add_reference_row(host: VBoxContainer, portrait: Texture2D, title: String,
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_theme_constant_override("separation", 12)
 	entry.add_child(head)
-	var name_label := _make_wrap_label(title, ROW_NAME_FONT, PixelUI.ENEMY_DEFAULT if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_LIGHT, 2)
+	var name_label := _make_wrap_label(title, ROW_NAME_FONT, _bestiary_accent() if source_kind == "enemy" else PixelUI.PLAYER_ACCENT_LIGHT, 2)
 	PixelUI.apply_type(name_label, PixelUI.TYPE_LABEL)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(name_label)
@@ -1441,6 +1449,8 @@ func _enemy_breakdown_payload(enemy: EnemyData) -> Dictionary:
 	var payload: Dictionary = InspectResolver.resolve_unit(enemy)
 	if payload.is_empty():
 		return payload
+	# The page's operation color, not whichever battle last set ENCOUNTER_ACCENT.
+	payload["accent"] = _bestiary_accent()
 	var role: String = enemy.role.strip_edges()
 	if role != "":
 		var existing: String = str(payload.get("description", "")).strip_edges()

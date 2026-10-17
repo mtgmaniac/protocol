@@ -8,10 +8,14 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 
 - **The player owns the bottom:** PLAYER cobalt for friendly frames, primary
   buttons, selection, the footer.
-- **The enemy owns the top:** the operation's ENCOUNTER color for the header
-  battle count and rule and the enemy frames. Nothing else, except squad
-  select's mission card (G-81), which previews the operation: its frame, faint
-  tint, boss frame, name, level pips, threat tags and the current page dot.
+- **Enemies are warm, the player is cool (G-83).** The enemy owns the top: the
+  operation's ENCOUNTER color, one value per operation, marks the enemy side
+  wherever it shows: the header battle count and rule, enemy card frames and
+  name strips, squad select's mission card (G-81: frame, faint tint, boss frame,
+  name, level pips, current page dot) and its long-press, Help's bestiary pages
+  (the page's operation), enemy pop-ups, the result screen's operation and
+  victory boss lines. Every reader goes through `battle_depth.gd
+  encounter_accent` or `ENCOUNTER_ACCENT`; no screen holds a copy of a hex.
 - **The tray is neutral shared ground:** neutral darks, never the encounter
   color. Its floor is one image for every operation, a charcoal surface with
   one thin gray reticle (G-79, `assets/battle_tray/tray_floor_reticle.png`, drawn
@@ -33,8 +37,8 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 | `PLAYER_ACCENT_DIM` | `1c3f82` | resting friendly frames |
 | `PLAYER_ACCENT_INK` | `060d1c` | text on a PLAYER fill (active tab, pressed primary) |
 | `PROTOCOL_ACCENT` | `66e0ff` (electric cyan-blue) | Protocol: meter cells, cost numbers, the keyword; the logo core's light centre |
-| `ENCOUNTER_FACILITY` / `_HIVE` / `_VEIL` / `_SIGNAL` / `_MANTLE` | `cf9a36` / `c8404a` / `8f7ae0` / `b653c8` / `d89b4a` | per operation, named in `data/raw/battle-tray-scenes.json` (`accent`); `ENCOUNTER_ACCENT` holds the current battle's |
-| `ENEMY_DEFAULT` | `c9755a` (rust) | enemy UI outside any operation (Help's bestiary rows: name, and the frame darkened 0.3 as in battle) |
+| `ENCOUNTER_FACILITY` / `_HIVE` / `_MANTLE` / `_SIGNAL` / `_VEIL` | `c6483a` red / `d6b234` yellow / `ac7048` brown / `c2408f` magenta / `8b6bd6` violet (G-83) | per operation, named in `data/raw/battle-tray-scenes.json` (`accent`); `ENCOUNTER_ACCENT` holds the current battle's |
+| `ENEMY_DEFAULT` | `c9755a` (rust) | enemy UI with no operation (a bestiary faction that is no operation: name, and the frame darkened 0.3 as in battle) |
 | `WARNING` | `e8a33a` | warning text; the DESTRUCTIVE button |
 | `WARNING_INK` | `1a1206` | text on a WARNING fill (a pressed destructive button) |
 | `UI_BG` | `0e1216` | screen field; the battle and in-run background (no image, G-76) |

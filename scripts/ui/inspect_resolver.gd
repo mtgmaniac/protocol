@@ -408,7 +408,7 @@ static func resolve_encounter(op: OperationData, threat_level: int, threat_max: 
 	if op == null:
 		return {}
 	return {
-		"accent": _side_accent("enemy"),
+		"accent": _operation_accent(op),
 		"header": {"title": op.display_name.to_upper(), "subtitle": "ENCOUNTER"},
 		"stats": [{"label": "THREAT", "value": "LV %d / %d" % [threat_level, threat_max]}],
 		"description": op.blurb,
@@ -427,7 +427,7 @@ static func resolve_operation(op: OperationData) -> Dictionary:
 	var overlay_script: GDScript = load("res://scripts/ui/operation_briefing_overlay.gd")
 	var copy: Dictionary = overlay_script.operation_copy(op.id)
 	var payload: Dictionary = {
-		"accent": _side_accent("enemy"),
+		"accent": _operation_accent(op),
 		"header": {"title": op.display_name.to_upper(), "subtitle": "OPERATION"},
 		"description": op.blurb,
 	}
@@ -441,6 +441,14 @@ static func resolve_operation(op: OperationData) -> Dictionary:
 # ui-unify: an enemy's pop-up is the current ENCOUNTER_ACCENT, a hero's PLAYER.
 static func _side_accent(side: String) -> Color:
 	return PixelUI.ENCOUNTER_ACCENT if side == "enemy" else PixelUI.PLAYER_ACCENT
+
+
+# An operation's own ENCOUNTER color (data, G-83): squad select browses
+# operations outside a battle, where ENCOUNTER_ACCENT is the last battle's.
+# Runtime load for the same reason as resolve_operation's.
+static func _operation_accent(op: OperationData) -> Color:
+	var accent: Color = (load("res://scripts/ui/battle_depth.gd") as GDScript).encounter_accent(op.id)
+	return accent if accent.a > 0.0 else _side_accent("enemy")
 
 
 static func _status_keyword(kind: String) -> String:

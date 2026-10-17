@@ -28,6 +28,10 @@ func _run_capture() -> void:
 	await process_frame
 	await process_frame
 
+	if config.has("operation"):
+		var accent: Color = load("res://scripts/ui/battle_depth.gd").encounter_accent(str(config["operation"]))
+		if accent.a > 0.0:
+			load("res://scripts/ui/pixel_ui.gd").ENCOUNTER_ACCENT = accent
 	var payload: Dictionary = _build_payload(config)
 	if payload.is_empty():
 		push_error("Inspect capture: empty payload for kind=%s id=%s" % [config.get("kind"), config.get("id")])
@@ -63,6 +67,10 @@ func _parse_args() -> Dictionary:
 				config["window"] = Vector2i(int(window_parts[0]), int(window_parts[1]))
 		elif arg.begins_with("--capture-delay-ms="):
 			config["delay_ms"] = maxi(int(arg.get_slice("=", 1)), 100)
+		elif arg.begins_with("--capture-operation="):
+			# An enemy pop-up in that operation's battle: sets ENCOUNTER_ACCENT as
+			# BattleLayout does (G-83).
+			config["operation"] = arg.get_slice("=", 1)
 	return config
 
 

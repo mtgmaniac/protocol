@@ -482,17 +482,20 @@ const PLAYER_ACCENT_DIM := Color("1c3f82")
 const PLAYER_ACCENT_INK := Color("060d1c")
 #
 # ENCOUNTER: one per operation, named by token in data/raw/battle-tray-scenes.json
-# (`accent`), read through battle_depth.gd `encounter_accent`. In battle it drives
-# the header battle count and rule and the enemy card frames and name headers,
-# nothing else. ENCOUNTER_ACCENT is the current battle's (BattleLayout sets it).
-const ENCOUNTER_FACILITY := Color("cf9a36")   # amber
-const ENCOUNTER_HIVE := Color("c8404a")       # red
-const ENCOUNTER_VEIL := Color("8f7ae0")       # violet
-const ENCOUNTER_SIGNAL := Color("b653c8")     # magenta (the briefing's existing color)
-const ENCOUNTER_MANTLE := Color("d89b4a")     # ochre (the briefing's existing color)
+# (`accent`), read through battle_depth.gd `encounter_accent`. It marks the enemy
+# side everywhere (header count and rule, enemy cards, the mission card, Help's
+# bestiary pages, enemy pop-ups, the result screen's operation and boss lines);
+# one value per operation, no second tone. Enemies are warm, the player is cool
+# (Kev, 2026-10-17, DECISIONS_RESOLVED G-83). ENCOUNTER_ACCENT is the current
+# battle's (BattleLayout / PersistentHeader.show_operation set it).
+const ENCOUNTER_FACILITY := Color("c6483a")   # red
+const ENCOUNTER_HIVE := Color("d6b234")       # yellow
+const ENCOUNTER_VEIL := Color("8b6bd6")       # violet
+const ENCOUNTER_SIGNAL := Color("c2408f")     # magenta
+const ENCOUNTER_MANTLE := Color("ac7048")     # brown
 static var ENCOUNTER_ACCENT: Color = ENCOUNTER_FACILITY
-## ui-cleanup: enemy UI with no operation to borrow a color from (Help's
-## bestiary): the enemy rust, used the way ENCOUNTER_ACCENT is in battle.
+## ui-cleanup: enemy UI with no operation to borrow a color from (an enemy whose
+## faction has no operation): the enemy rust, used the way ENCOUNTER_ACCENT is.
 const ENEMY_DEFAULT := Color("c9755a")
 
 
