@@ -1156,20 +1156,19 @@ func _check_shown() -> void:
 	var stalker: Resource = dm().get_enemy_by_display_name("Spine Stalker")
 	_expect(_traits.marker_text(_traits.of_unit(stalker)) == "BARBED" and not _traits.is_warning(_traits.of_unit(stalker)), "card: any other trait's marker is its name")
 	_expect(_traits.marker_text(_traits.of_unit(drone)) == "", "card: a unit without a trait has no marker")
-	# The warning marker is a different colour from every other trait's amber,
-	# and from the enemy name under it. Never green (INVARIANTS #7).
-	var colours: Array = []
-	for unit in [volt, stalker]:
+	# Every trait marker is drawn in its card's name colour: the encounter-derived
+	# enemy name, the hero name. No per-trait colour, VOLATILE included (Kev,
+	# 2026-10-17; supersedes G-63's warning red).
+	for case in [["enemy", volt], ["enemy", stalker], ["hero", volt]]:
 		var card: Control = load("res://scripts/ui/compact_unit_card.gd").new()
 		root.add_child(card)
-		card.configure({"side": "enemy", "name": unit.battle_name(), "trait": _traits.marker_text(_traits.of_unit(unit)), "trait_warning": _traits.is_warning(_traits.of_unit(unit))})
-		colours.append([(card.find_child("TraitMarker", true, false) as Label).get_theme_color("font_color"), (card._name_label as Label).get_theme_color("font_color")])
+		var unit: Resource = case[1]
+		card.configure({"side": case[0], "name": unit.battle_name(), "trait": _traits.marker_text(_traits.of_unit(unit))})
+		var marker_colour: Color = (card.find_child("TraitMarker", true, false) as Label).get_theme_color("font_color")
+		var name_colour: Color = (card._name_label as Label).get_theme_color("font_color")
+		_expect(marker_colour.is_equal_approx(name_colour), "card: the %s %s marker is the name's colour (%s vs %s)" % [case[0], _traits.marker_text(_traits.of_unit(unit)), marker_colour.to_html(false), name_colour.to_html(false)])
+		_expect(marker_colour.is_equal_approx(PixelUI.unit_card_palette(case[0] == "hero")["name"]), "card: the %s marker is the side's home name colour (%s)" % [case[0], marker_colour.to_html(false)])
 		card.free()
-	var warn_colour: Color = colours[0][0]
-	_expect((colours[1][0] as Color).is_equal_approx(PixelUI.DT_AMBER), "card: a trait marker is amber (%s)" % str(colours[1][0]))
-	_expect(_colour_gap(warn_colour, PixelUI.DT_AMBER) >= 0.5, "card: VOLATILE is drawn in a colour apart from the amber of the other traits (%s vs %s)" % [warn_colour.to_html(false), PixelUI.DT_AMBER.to_html(false)])
-	_expect(_colour_gap(warn_colour, colours[0][1]) >= 0.5, "card: VOLATILE is drawn in a colour apart from the name under it (%s vs %s)" % [warn_colour.to_html(false), (colours[0][1] as Color).to_html(false)])
-	_expect(warn_colour.r > warn_colour.g * 2.0, "card: the warning colour is a red, never a green (%s)" % warn_colour.to_html(false))
 	# Help: an evolution's breakdown is built from its group, trait included.
 	var help: Node = load("res://scripts/ui/help_menu.gd").new()
 	var pyro: Dictionary = {}
@@ -1182,10 +1181,6 @@ func _check_shown() -> void:
 	_expect(help_statuses.size() >= 3 and str((help_statuses[1] as Dictionary).get("text", "")).begins_with("SMOLDERING: ") and str((help_statuses[2] as Dictionary).get("text", "")).begins_with("SEARING: "), "help: then each trait's own line (%s)" % str(help_statuses))
 	_expect(str((help._enemy_breakdown_payload(volt).get("statuses", [{}]) as Array)[0].get("text", "")).begins_with("VOLATILE: "), "help: Volt Enforcer's breakdown leads with VOLATILE")
 	help.free()
-
-
-func _colour_gap(a: Color, b: Color) -> float:
-	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
 
 
 # ── E. Copy ───────────────────────────────────────────────────────────────────

@@ -245,8 +245,8 @@ func _create_trait_card(unit_trait: Dictionary, base_unit: UnitData) -> PanelCon
 	vbox.add_theme_constant_override("separation", 16)
 	margin.add_child(vbox)
 
-	# The name is read from the trait (UnitTraits.marker_text), amber like the
-	# marker it becomes on the battle card.
+	# The name is read from the trait (UnitTraits.marker_text), in the hero name
+	# colour, as the marker it becomes on the battle card.
 	var trait_title: String = CombatManager.UnitTraits.marker_text(unit_trait)
 	var title: Label = _make_label(trait_title, CARD_TITLE_FONT_SIZE, PixelUI.PLAYER_ACCENT_LIGHT, 3)
 	PixelUI.apply_type(title, PixelUI.TYPE_LABEL)

@@ -144,7 +144,6 @@ func update_card_view(card: Control, state: Dictionary, roll_value: Variant, acc
 			"name": unit.battle_name(),
 			"boss": accent_color == _scene.ENEMY_ACCENT and CombatManager.BOSS_STANDING_RULES.has(str(unit.display_name)),
 			"trait": CombatManager.UnitTraits.marker_text(CombatManager.UnitTraits.of_unit(unit)),
-			"trait_warning": CombatManager.UnitTraits.is_warning(CombatManager.UnitTraits.of_unit(unit)),
 			"current_hp": shown_hp,
 			"forecast_hp": forecast_hp,
 			"max_hp": int(state["max_hp"]),
