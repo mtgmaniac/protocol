@@ -34,6 +34,10 @@ func _run_capture() -> void:
 			sm2.data["unlocks"]["heroes"] = subset
 			sm2.data["unlocks"]["heroes_new"] = []
 			print("[HOME_UI_CAPTURE] in-memory lock-to-first-%d" % lock_n)
+	for op_id in config.get("cleared", []):
+		var sm3: Variant = root.get_node_or_null("/root/SaveManager")
+		if sm3 != null:
+			(sm3.data["stats"]["runs_won_by_op"] as Dictionary)[str(op_id)] = 1
 	change_scene_to_file("res://scenes/ui/UnitSelect.tscn")
 	await _wait_for_scene(config)
 	var output_path: String = str(config.get("output", DEFAULT_OUTPUT))
@@ -62,6 +66,13 @@ func _parse_args() -> Dictionary:
 		elif arg.begins_with("--capture-select-units="):
 			# Comma-separated unit ids; simulates the user having tapped them.
 			config["units"] = arg.get_slice("=", 1).split(",", false)
+		elif arg.begins_with("--capture-tap-units="):
+			# UI batch A5: taps these tiles in order through the real tap handler
+			# (info bar + toggle; a locked or squad-full tap only shows the unit).
+			config["tap_units"] = arg.get_slice("=", 1).split(",", false)
+		elif arg.begins_with("--capture-cleared="):
+			# UI batch A5: in memory only, mark these operations won (CLEARED tag).
+			config["cleared"] = arg.get_slice("=", 1).split(",", false)
 		elif arg.begins_with("--capture-deselect-unit="):
 			config["deselect_unit"] = arg.get_slice("=", 1).strip_edges()
 		elif arg.begins_with("--capture-scroll-thumbs-end"):
@@ -119,6 +130,10 @@ func _wait_for_scene(config: Dictionary) -> void:
 	var unit_ids: Variant = config.get("units", null)
 	if unit_ids != null:
 		_force_select_units(unit_ids)
+	for tap_id in config.get("tap_units", []):
+		if current_scene != null and current_scene.has_method("_on_tile_tapped"):
+			current_scene.call("_on_tile_tapped", str(tap_id).strip_edges())
+		await process_frame
 	var deselect_unit: String = str(config.get("deselect_unit", ""))
 	if deselect_unit != "" and current_scene != null and current_scene.has_method("_on_tile_tapped"):
 		current_scene.call("_on_tile_tapped", deselect_unit)

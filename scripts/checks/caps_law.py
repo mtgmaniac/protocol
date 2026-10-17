@@ -112,6 +112,7 @@ def _walk_body_and_names():
             hid = h.get("id", "?")
             yield "name", f"heroes:{hid}.name", h.get("name", "")
             yield "body", f"heroes:{hid}.pickerBlurb", h.get("pickerBlurb", "")
+            yield "body", f"heroes:{hid}.blurb", h.get("blurb", "")
             for a in h.get("abilities", []):
                 yield "name", f"heroes:{hid}.ability:{a.get('name','?')}", a.get("name", "")
                 yield "body", f"heroes:{hid}.ability:{a.get('name','?')}.eff", a.get("eff", "")

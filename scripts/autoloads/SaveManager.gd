@@ -92,8 +92,6 @@ const OPERATION_CHAIN := ["facility", "hive", "veil", "voidCirclet", "stellarMen
 # hero granted for rung (i + 1); its unlock condition lives in _hero_rung_satisfied().
 const HERO_LADDER := ["avalanche", "shield", "ghost", "breaker"]
 const MAX_HERO_LADDER_RUNG := 4
-# One-line unlock hints (all-caps, UI-facing), keyed by hero id and tied to each
-# ladder rung's condition.
 var data: Dictionary = {}
 var _disk_enabled: bool = true
 var _save_path: String = SAVE_PATH
@@ -187,6 +185,9 @@ func default_data() -> Dictionary:
 			"first_run_finished": false,
 		},
 		"settings": {},
+		# The last squad and operation deployed (UI batch A5, Kev 2026-10-17):
+		# squad select reopens on them. Absent in older saves (heals to empty).
+		"last_deploy": {"operation": "", "squad": []},
 	}
 
 
@@ -260,6 +261,12 @@ func _merge_loaded(loaded: Dictionary) -> void:
 	if loaded.get("settings") is Dictionary:
 		data["settings"] = loaded["settings"].duplicate(true)
 		data["settings"].erase("dev_mode")
+	var loaded_deploy: Variant = loaded.get("last_deploy", {})
+	if loaded_deploy is Dictionary:
+		data["last_deploy"] = {
+			"operation": str((loaded_deploy as Dictionary).get("operation", "")),
+			"squad": _string_array((loaded_deploy as Dictionary).get("squad", [])),
+		}
 	# Onboarding block heals to defaults when absent (older saves).
 	var had_onboarding: bool = loaded.get("onboarding") is Dictionary
 	if had_onboarding:
@@ -930,6 +937,33 @@ func _hero_rung_satisfied(rung_index: int) -> bool:
 		3:  # breaker — reach deep into Veil
 			return int(best_by_op.get("veil", 0)) >= 6
 	return false
+
+
+# The one-line unlock condition of a locked ladder hero, for squad select's unit
+# info bar (UI batch A5, Kev 2026-10-17). Sentence case, like an operation's
+# "Clear Hive Incursion to unlock"; each line restates its rung in
+# _hero_rung_satisfied. Rungs open in order, one per run end.
+func hero_unlock_condition(hero_id: String) -> String:
+	match HERO_LADDER.find(hero_id):
+		0:
+			return "Reach battle 6 of %s, or start 3 runs, to unlock" % _operation_display_name("facility")
+		1:
+			return "Clear %s to unlock" % _operation_display_name("facility")
+		2:
+			return "Clear %s to unlock" % _operation_display_name("hive")
+		3:
+			return "Reach battle 6 of %s to unlock" % _operation_display_name("veil")
+	return ""
+
+
+# The last deploy (squad select reopens on it): {"operation": id, "squad": [ids]}.
+func last_deploy() -> Dictionary:
+	return (data.get("last_deploy", {}) as Dictionary).duplicate(true)
+
+
+func remember_deploy(op_id: String, squad: Array) -> void:
+	data["last_deploy"] = {"operation": op_id, "squad": _string_array(squad)}
+	save()
 
 
 func _next_operation(op_id: String) -> String:

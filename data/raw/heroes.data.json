@@ -225,6 +225,8 @@
       "cls": "ENERGY WEAPONS TECH",
       "pickerCategory": "damage",
       "pickerBlurb": "Plants burn on every hit, then detonates it for burst damage.",
+      "blurb": "Burn specialist. Stacks burn, then detonates it.",
+      "blurbStatus": "draft",
       "hp": 45,
       "sk": "pulse",
       "abilities": [
@@ -506,6 +508,8 @@
       "cls": "STRIKE OPS",
       "pickerCategory": "damage",
       "pickerBlurb": "Marks targets low, deletes them high. Pure single-target damage.",
+      "blurb": "Marksman. Marks a target, then pierces and executes.",
+      "blurbStatus": "draft",
       "hp": 55,
       "sk": "combat",
       "abilities": [
@@ -791,6 +795,8 @@
       "cls": "REACTIVE DEFENSE",
       "pickerCategory": "defense",
       "pickerBlurb": "Taunts hits onto itself, spikes attackers, and breaks enemy shields.",
+      "blurb": "Tank. Taunts hits onto itself and spikes attackers.",
+      "blurbStatus": "draft",
       "hp": 55,
       "sk": "shield",
       "abilities": [
@@ -1090,6 +1096,8 @@
       "cls": "CRYO SUPPORT",
       "pickerCategory": "defense",
       "pickerBlurb": "Freezes dice to lock and repeat results. Heals the squad high.",
+      "blurb": "Controller. Freezes enemy dice and heals the squad.",
+      "blurbStatus": "draft",
       "hp": 55,
       "sk": "avalanche",
       "abilities": [
@@ -1385,6 +1393,8 @@
       "cls": "COMBAT MEDTECH",
       "pickerCategory": "support",
       "pickerBlurb": "Heals allies low, drains enemies mid, hits shockingly hard on 20.",
+      "blurb": "Field medic. Heals and cleanses, then leeches enemy HP.",
+      "blurbStatus": "draft",
       "hp": 50,
       "sk": "medic",
       "abilities": [
@@ -1682,6 +1692,8 @@
       "cls": "SUPPORT TECH",
       "pickerCategory": "support",
       "pickerBlurb": "Generates Protocol and shields low, then turns to squad-wide damage.",
+      "blurb": "Support gunner. Shields the squad and builds Protocol.",
+      "blurbStatus": "draft",
       "hp": 50,
       "sk": "engineer",
       "abilities": [
@@ -1975,6 +1987,8 @@
       "cls": "INFILTRATOR",
       "pickerCategory": "control",
       "pickerBlurb": "Cloaks past big hits and strikes from stealth.",
+      "blurb": "Infiltrator. Cloaks out of reach, then pierces shields.",
+      "blurbStatus": "draft",
       "hp": 45,
       "sk": "ghost",
       "abilities": [
@@ -2261,6 +2275,8 @@
       "cls": "SIGNAL WARFARE",
       "pickerCategory": "control",
       "pickerBlurb": "Drags every enemy roll down and jams their strongest dice.",
+      "blurb": "Disruptor. Drags enemy rolls down and jams their dice.",
+      "blurbStatus": "draft",
       "hp": 45,
       "sk": "breaker",
       "abilities": [

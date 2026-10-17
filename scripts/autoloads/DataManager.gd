@@ -500,6 +500,7 @@ func _load_units() -> void:
 		unit.role = str(HERO_ROLE_BY_ID.get(unit.id, ""))
 		unit.picker_category = str(hero_entry.get("pickerCategory", ""))
 		unit.picker_blurb = str(hero_entry.get("pickerBlurb", ""))
+		unit.blurb = str(hero_entry.get("blurb", ""))
 		unit.max_hp = int(hero_entry.get("hp", 0))
 		unit.source_key = str(hero_entry.get("sk", unit.id))
 		unit.portrait = _load_hero_portrait(unit.id)

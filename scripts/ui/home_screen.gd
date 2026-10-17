@@ -1,122 +1,119 @@
-# Deploy / picker screen: encounter carousel + 4x2 squad grid + DEPLOY.
+# Deploy / picker screen ("A5", UI batch A5, Kev 2026-10-17, DECISIONS_RESOLVED
+# G-81): mission card, squad grid, unit info bar, DEPLOY.
 #
-# Direction-05 "Dithered Terminal" styling, authored against the 1080x2400 logical
-# viewport (project base); on-screen px values are ~×2.4 in logical units. Fonts use
-# m5x7 at raw logical sizes via _make_pixel_label (bypasses PixelUI.scale_font_size,
-# but floored at PixelUI.TEXT_MIN_PX via text_px). Colors pull from PixelUI DT_* tokens.
+# Top to bottom (every block GAP apart, the cluster centred between the shared
+# header, which carries only ? and back here, and DEPLOY):
+# - MISSION (LABEL subheader), then the mission card between small prev / next
+#   arrows: an ENCOUNTER_ACCENT frame over a faint tint of it; the boss portrait
+#   at the left (the shared portrait frame at the roster tile width, so the same
+#   height as the tiles, framed in the accent); the operation name (CARD_NAME,
+#   accent), a row of level pips + "LV n" + a CLEARED tag (cobalt outline) or a
+#   LOCKED tag, and the THREATS as small outlined tags (a locked operation shows
+#   its unlock condition there instead). Nothing else: the flavor paragraph left
+#   this screen (it stays in data, Help and the card's long-press). Page dots
+#   under the card, the current one in the accent.
+# - A thin separator, GAP above and below.
+# - SQUAD (LABEL subheader) with "n / 3" right-aligned, and the 4-column roster
+#   grid (tile sizes unchanged). Picks keep the cobalt frame and the 1-3 badge;
+#   the unit shown in the info bar gets a bone (CHROME) outline around its frame.
+# - The unit info bar, always present at one height (cobalt frame, dark fill):
+#   name, HP and IN SQUAD / ON BENCH / LOCKED; the one-line `blurb`; a roll band
+#   bar of five segments sized by the unit's real roll windows, each with one
+#   small pixel glyph for its main effect (attack / heal / shield in the keyword
+#   colours, a neutral dot otherwise); the hint line. A locked unit shows its
+#   unlock condition and no bar.
+# - DEPLOY SQUAD, the one primary; short of three picks it reads "PICK n MORE",
+#   disabled.
+# Tap a unit: it shows in the info bar AND toggles in or out of the squad; with
+# the squad full a bench tap only shows it, plus "SQUAD FULL: TAP A PICK TO
+# REMOVE". Long-press opens the unit's inspect pop-up. The info bar opens on
+# pick 1. The last operation and squad deployed come back next time
+# (SaveManager.last_deploy).
 #
-# Squad-select redesign (2026-07-10, Kev-approved mockup):
-# - Encounter = ONE compact banner row: [◀] name + threat [boss thumb] [▶], dots
-#   under. The flavor blurb is NOT on screen — long-press the banner opens the
-#   InspectPopup (InspectResolver.resolve_encounter) with the verbatim copy.
-#   The boss thumb frames the enemy through the SAME portrait window as the battle
-#   card (the shared PixelUI.make_portrait_frame), so the
-#   boss reads identically to its battle card, smaller — no zoom (enemies are the
-#   framing reference and are never zoomed; the hero zoom is hero-only).
-# - Squad: the portrait IS the button (no name-button row); hero name is a label
-#   UNDER each portrait. Tap only toggles selection (slot badge + cyan border);
-#   long-press opens the unit's inspect popup (name, blurb, kit).
-# - Fixed slots (UI batch 2026-09-27, B3): switching encounters, locked or not,
-#   moves nothing. The banner's subtitle slot shows the site line, or the unlock
-#   condition on a locked encounter; the status line always holds its row; the
-#   detail box is always present at one height and shows encounter info only
-#   (story + THREATS; locked: the lock info + "THREATS: ???").
-# - Locked heroes: no full-size cells — one slim "lock: N LOCKED" strip under the grid.
-# - Detail panel is anchored ABOVE the deploy button.
-# - DEPLOY shows its own gate: "DEPLOY SQUAD (N MORE)" ghosted until full.
-#   Threat level derives from encounter order (no data field); boss thumb = the
-#   operation's highest-HP enemy with art.
+# Switching operations, toggling units and changing the info bar's unit move
+# nothing on screen: every slot keeps its size (the `unlock progression` gate).
 extends Control
 
 const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing_overlay.gd")
 
 const MAX_SELECTED_UNITS := 3
 
-# Layout (logical units).
-const ROOT_MARGIN_X := 40   # 60→40 (composition pass): buys the grid its exact-fit width
-const ROOT_MARGIN_TOP := 60
+# Layout (design px).
+const ROOT_MARGIN_X := 40   # buys the grid its exact-fit width (1000 px content)
 const ROOT_MARGIN_BOTTOM := 48
-const SECTION_GAP := 30
-const HEADER_GAP := 16
+const GAP := PixelUI.GAP
+## Design px per art pixel: glyphs, pips and the band bar sit on this grid.
+const ART_PX := 4
 
-# Fonts (logical units) — matched to the battle screen's scale (card names 72,
-# protocol/summary labels 70-112) so the picker reads at the same weight.
-const HEADER_FONT := 72
-const COUNTER_FONT := 64
-const ENC_NAME_FONT := 80          # biggest text in the banner by design; long names
-								   # (STELLAR MENAGERIE) wrap to two lines instead of clipping
-const ENC_META_FONT := 56          # THREAT / LV — sized up from 48
-const ENC_SITE_FONT := 52          # site subtitle + THREATS line; 44 -> 52 readability bump (2026-09-21)
-# A locked encounter's unlock condition shares the subtitle slot. "Clear Facility
-# Sweep to unlock" is 511 px at 52 against a 486 px column, so it renders at the
-# text floor (48), inside the slot's fixed 52 px line height (B3).
-const ENC_UNLOCK_FONT := PixelUI.TEXT_MIN_PX
-const PROGRESS_FONT := 44          # one metadata-tier clearance line in the carousel card (Build B)
-const LORE_FONT := 48              # one unframed flavor sentence under the carousel (Build B slot; copy lands in Build C)
 const TILE_NAME_FONT := 60         # sized to the widest callsign (AVALANCHE) at cell width 238
-const DETAIL_NAME_FONT := 76
-# Kit blurb — the body-copy tier, expressed through the ONE body token (this
-# screen authors raw px, so it takes the token's post-scale value: 42 → 64).
+# Kit blurb in the Directive picker: the body-copy tier through the ONE body token.
 static var DETAIL_DESC_FONT: int = PixelUI.scale_font_size(PixelUI.FONT_BODY_MIN)
+const DETAIL_NAME_FONT := 76
 const FOCUS_CHIP_FONT := 40
-const DETAIL_THREAT_FONT := ENC_SITE_FONT
-const DETAIL_STORY_LINES := 3       # the longest operation origin wraps to 3 lines (B3)
 const DEPLOY_FONT := 84
-const DEPLOY_GATE_FONT := 64       # the ghosted "(N MORE)" gate reads smaller than DEPLOY
-# Fixed DEPLOY button height so the locked→armed font swap never resizes it (measured
-# armed height at DEPLOY_FONT). Both states pin to this; the cluster never shifts.
+const DEPLOY_GATE_FONT := 64       # the disabled "PICK N MORE" gate reads smaller than DEPLOY
+# Fixed DEPLOY button height so the gate -> armed font swap never resizes it.
 const DEPLOY_BUTTON_HEIGHT := 145
 
-# 4px (not 2) so borders survive the canvas_items downscale to the preview window —
-# at 2px they render sub-pixel and drop edges, worst on bright accent borders.
+# 4px (not 2) so borders survive the canvas_items downscale to the preview window.
 const PANEL_BORDER := 4
-const PANEL_RADIUS := 0
 
-# Grid portrait cell width. Pixel-snapped: content width 1080 − 2×40 margins =
-# 1000; 4 columns with 3×16 gaps → (1000 − 48) / 4 = 238 exactly (even → crisp
-# halves at 540 preview). Width is DERIVED from the usable width, not a target.
+# Grid portrait cell width. Pixel-snapped: content width 1080 - 2x40 margins =
+# 1000; 4 columns with 3x16 gaps -> (1000 - 48) / 4 = 238 exactly.
 const PORTRAIT_CELL := 238
 # Portrait art windows, as WIDTHS only: PixelUI.make_portrait_frame owns the
-# height (the one portrait window) and adds the frame border outside it, so the
-# hero you pick and the boss you face are framed identically to their battle
-# cards, smaller. Never define a portrait height or aspect here: the old local
-# 320×486 tile gave squad select a different window than battle (the 2026-07-12
-# bug), and the old 224×260 thumb put the aspect on the frame and left the art
-# window 216×252, 2 px too tall (found 2026-10-10).
+# height (the one portrait window) and adds the frame border outside it. The
+# boss portrait takes the tile's width, so it is the tiles' height too.
 const TILE_PORTRAIT_W := PORTRAIT_CELL - 2 * PANEL_BORDER
-const ENC_PORTRAIT_W := 216
-const DIRECTIVE_ICON_BOX := 128.0  # Starting Directive relic art at 1x (integer law; was 168, a 1.31x stretch)
+const DIRECTIVE_ICON_BOX := 128.0  # Starting Directive relic art at 1x (integer law)
 const TILE_GAP := 16
 const GRID_COLUMNS := 4
 const ROLE_BADGE_SIZE := 34
 const SLOT_BADGE_SIZE := 60
 const CHECK_INSET := 8
+## The bone outline around the unit shown in the info bar: drawn outside the
+## tile frame (expand margin), so the grid does not move.
+const FOCUS_RING := 4
 
-const BANNER_PAD := 16
-const NAV_BUTTON_W := 96
-const NAV_ICON_SIZE := 64
+# Mission card. "A 3 px frame": 8 design px (2 art px), 2.7 screen px at 360
+# and 2.9 at 390 (the battle card shell's width).
+const MISSION_FRAME := 8
+const MISSION_PAD := 16
+const MISSION_TINT := 0.10         # the accent's share of the card's fill
+const MISSION_COLUMN_GAP := 24
+const NAV_BUTTON_SIZE := Vector2(72, 144)
+const NAV_ICON_SIZE := 48
 const NAV_ARROW_ICON := preload("res://assets/ui/icons/icon_back.png")
 const THREAT_PIP_COUNT := 5
-const THREAT_PIP_SIZE := Vector2(48, 36)   # sized up from (42,30) — near-illegible strip
+const LEVEL_PIP_SIZE := Vector2(32, 24)   # 8 x 6 art px
+const LEVEL_PIP_GAP := 4
+const LEVEL_ROW_GAP := 12
+const TAG_PAD := Vector2(12, 8)    # content margin of a small outlined tag (border inside)
+const TAG_GAP := 8
+const DOT_SIZE := 16
+const DOT_GAP := 16
+const THREAT_EMPTY := PixelUI.BATTLE_PROTO_EMPTY
+const DEPTH := preload("res://scripts/ui/battle_depth.gd")
+
+# Unit info bar.
+const INFO_PAD := 16
+const INFO_ROW_GAP := 8
+const BAND_BAR_H := 32             # 8 art px
+const BAND_ICON_GAP := 8
+const BAND_GLYPH := 7              # art px square
+const HINT_TEXT := "HOLD ANY UNIT FOR FULL INTEL"
+const SQUAD_FULL_TEXT := "SQUAD FULL: TAP A PICK TO REMOVE"
+## The band glyphs, 7 x 7 art px ("#" = ink). Attack: a sword; heal: a cross;
+## shield: a shield; anything else: a small neutral dot.
+const BAND_GLYPHS := {
+	"attack": ["......#", ".....#.", "....#..", ".#.#...", "..#....", ".#.#...", "#......"],
+	"heal": ["..###..", "..###..", "#######", "#######", "#######", "..###..", "..###.."],
+	"shield": ["#######", "#######", "#######", "#######", ".#####.", "..###..", "...#..."],
+	"": [".......", ".......", "..###..", "..###..", "..###..", ".......", "......."],
+}
 
 const ROSTER_ORDER := ["combat", "engineer", "medic", "pulse", "avalanche", "shield", "ghost", "breaker"]
 const DEFAULT_SQUAD := ["combat", "engineer", "medic"]
-
-const DOT_SIZE := 18
-const DOT_GAP := 18
-
-const DIVIDER_THICK := 2
-
-# Threat pips / level color
-# ui-unify: the encounter panel previews the enemy side, so its portrait frame,
-# LV pips and THREATS label take that operation's ENCOUNTER accent.
-const THREAT_EMPTY := PixelUI.BATTLE_PROTO_EMPTY
-const DEPTH := preload("res://scripts/ui/battle_depth.gd")
-var _enc_thumb_frame: PanelContainer = null
-
-# Deploy button states
-const DEPLOY_IDLE_BG := PixelUI.UI_BUTTON
-const DEPLOY_IDLE_BORDER := PixelUI.UI_LINE
 
 
 # ─── State ────────────────────────────────────────────────────────────────────
@@ -125,29 +122,37 @@ var _operation_index: int = 0
 var _selected_operation_id: String = ""
 var _unit_ids: Array[String] = []
 var _selected_unit_ids: Array[String] = []
+## The unit the info bar shows.
+var _focus_unit_id: String = ""
+var _squad_full_hint: bool = false
 
 # Built nodes
 var _current_op_locked: bool = false
-var _enc_banner: PanelContainer
+var _enc_card: PanelContainer
 var _enc_portrait: TextureRect
-var _enc_thumb_holder: Control
+var _enc_thumb_frame: PanelContainer
 var _enc_portrait_placeholder: Label
 var _enc_lock_overlay: Control
 var _enc_name_label: Label
-var _enc_site_label: Label
+var _enc_level_row: HBoxContainer
 var _enc_level_label: Label
-var _enc_progress_label: Label
-var _op_lore_label: Label
+var _enc_status_tag: PanelContainer
+var _enc_status_label: Label
+var _enc_tags_slot: Control
+var _enc_tags_row: HBoxContainer
+var _enc_unlock_label: Label
 var _threat_pips: Array[ColorRect] = []
 var _dot_row: HBoxContainer
 var _dot_nodes: Array[ColorRect] = []
-var _unit_tiles: Dictionary = {}    # unit_id -> { frame, role_badge, slot_panel, slot_label, name }
+var _unit_tiles: Dictionary = {}    # unit_id -> { frame, ring, name, slot_badge, slot_label, locked, new_badge }
 var _counter_label: Label
-var _detail_panel: PanelContainer
-var _detail_desc: Label
-var _detail_threat_row: HBoxContainer
-var _detail_threat_label: Label
-var _detail_threats: Label
+var _info_bar: PanelContainer
+var _info_name: Label
+var _info_hp: Label
+var _info_status: Label
+var _info_blurb: Label
+var _info_strip: Control
+var _info_hint: Label
 var _deploy_panel: PanelContainer
 var _deploy_button: Button
 
@@ -165,17 +170,13 @@ func _ready() -> void:
 	PersistentHeader.bind_battle_actions(Callable(), Callable(), Callable(), _on_back_to_title)
 	_apply_background()
 	_gather_data()
-	_selected_unit_ids.clear()
-	for unit_id in DEFAULT_SQUAD:
-		if _unit_ids.has(unit_id) and SaveManager.is_hero_unlocked(unit_id):
-			_selected_unit_ids.append(unit_id)
+	_restore_last_deploy()
+	_focus_unit_id = _selected_unit_ids[0] if not _selected_unit_ids.is_empty() else (_unit_ids[0] if not _unit_ids.is_empty() else "")
 	_build_layout()
-	# Kev 2026-07-10: the detail panel stays HIDDEN until the player taps a
-	# unit — no default dossier on entry.
 	_refresh_encounter()
 	_refresh_unit_tiles()
 	_refresh_squad_counter()
-	_refresh_detail()
+	_refresh_info()
 	_refresh_deploy()
 
 
@@ -204,40 +205,61 @@ func _gather_data() -> void:
 			_unit_ids.append(unit_id)
 
 
+# The last operation and squad deployed (SaveManager.last_deploy) come back when
+# they are still playable: an unlocked operation, three unlocked heroes.
+# Otherwise the first operation and the default squad.
+func _restore_last_deploy() -> void:
+	var last: Dictionary = SaveManager.last_deploy()
+	var op_id: String = str(last.get("operation", ""))
+	var op_index: int = _operation_ids.find(op_id)
+	if op_index >= 0 and SaveManager.is_operation_unlocked(op_id):
+		_operation_index = op_index
+		_selected_operation_id = op_id
+	_selected_unit_ids.clear()
+	for unit_id_variant in last.get("squad", []):
+		var unit_id: String = str(unit_id_variant)
+		if _unit_ids.has(unit_id) and SaveManager.is_hero_unlocked(unit_id) and not _selected_unit_ids.has(unit_id):
+			_selected_unit_ids.append(unit_id)
+	if _selected_unit_ids.size() == MAX_SELECTED_UNITS:
+		return
+	_selected_unit_ids.clear()
+	for unit_id in DEFAULT_SQUAD:
+		if _unit_ids.has(unit_id) and SaveManager.is_hero_unlocked(unit_id):
+			_selected_unit_ids.append(unit_id)
+
+
 # ─── Layout ───────────────────────────────────────────────────────────────────
 func _build_layout() -> void:
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", ROOT_MARGIN_X)
-	margin.add_theme_constant_override("margin_right", ROOT_MARGIN_X)
-	# Reserve room for the always-on PersistentHeader band (overlays the top 144px).
-	# Safe area: the header band grows by safe_top on cutout devices, and DEPLOY
-	# sits near the bottom edge (under the gesture bar without safe_bottom).
-	# Both insets are 0 on desktop (no-op).
-	margin.add_theme_constant_override("margin_top", ROOT_MARGIN_TOP + int(PersistentHeader.HEADER_HEIGHT) + PixelUI.safe_top)
+	margin.add_theme_constant_override("margin_left", ROOT_MARGIN_X + PixelUI.safe_left)
+	margin.add_theme_constant_override("margin_right", ROOT_MARGIN_X + PixelUI.safe_right)
+	# Reserve room for the always-on PersistentHeader band (its real height on a
+	# cutout device) plus one GAP; DEPLOY clears the gesture bar.
+	margin.add_theme_constant_override("margin_top", int(PersistentHeader.band_height()) + GAP)
 	margin.add_theme_constant_override("margin_bottom", ROOT_MARGIN_BOTTOM + PixelUI.safe_bottom)
 	add_child(margin)
 
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", SECTION_GAP)
+	column.add_theme_constant_override("separation", GAP)
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(column)
 
-	# Final pass §1 — centered cluster: the top bar (PersistentHeader) and DEPLOY
-	# are the stationary chrome; everything between (banner → divider → squad
-	# grid → locked strip → detail panel) moves as ONE block with fixed internal
-	# rhythm, vertically centered by the two equal spacers. At 8 heroes the
-	# cluster nearly fills the space; at 3–4 the whole block (banner included —
-	# it's interactive: swipe + long-press) sits lower and thumb-reachable, with
-	# symmetric space above and below.
+	# The header and DEPLOY are the stationary chrome; everything between moves
+	# as ONE block with fixed internal rhythm, centred by two equal spacers.
 	var spacer_top := Control.new()
 	spacer_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer_top.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(spacer_top)
-	column.add_child(_build_encounter_section())
+	column.add_child(_make_subheader("MISSION"))
+	column.add_child(_build_mission_row())
+	column.add_child(_build_dots())
 	column.add_child(_build_divider())
-	column.add_child(_build_squad_section())
+	column.add_child(_build_squad_header())
+	column.add_child(_build_roster())
+	_info_bar = _build_info_bar()
+	column.add_child(_info_bar)
 	var spacer_bottom := Control.new()
 	spacer_bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer_bottom.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -245,87 +267,90 @@ func _build_layout() -> void:
 	column.add_child(_build_deploy_button())
 
 
-# ─── Encounter carousel ─────────────────────────────────────────────────────---
-func _build_encounter_section() -> Control:
-	var section := VBoxContainer.new()
-	section.add_theme_constant_override("separation", HEADER_GAP)
-	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+# A section subheader: LABEL role, CHROME_DIM (MISSION, SQUAD).
+func _make_subheader(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	PixelUI.apply_type(label, PixelUI.TYPE_LABEL, PixelUI.CHROME_DIM)
+	return label
 
-	section.add_child(_make_header_label("SELECT ENCOUNTER", PixelUI.TEXT_MUTED, HORIZONTAL_ALIGNMENT_LEFT))
 
-	# Compact single-row banner: [◀] [name + threat] [boss thumb] [▶].
-	# Long-press anywhere on it opens the encounter InspectPopup (the flavor blurb
-	# lives there now, not on the screen). No taught hint — long-press is the
-	# game-wide inspect convention.
-	_enc_banner = PanelContainer.new()
-	_enc_banner.mouse_filter = Control.MOUSE_FILTER_STOP
-	# Flat pixel B: CHROME (neutral) frame; the encounter is not a friendly card.
-	_enc_banner.add_theme_stylebox_override("panel", PixelUI.component_style(PixelUI.COMPONENT_NORMAL))
-	section.add_child(_enc_banner)
-	var banner_press := LongPressInput.new()
-	_enc_banner.add_child(banner_press)
-	banner_press.long_pressed.connect(_on_banner_long_pressed)
+func _make_type_label(text: String, role: String, ink: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	PixelUI.apply_type(label, role, ink)
+	return label
+
+
+# A small outlined tag: SMALL text inside a MIN_STROKE outline (threats,
+# CLEARED, LOCKED).
+func _make_tag(text: String) -> Dictionary:
+	var tag := PanelContainer.new()
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var label := _make_type_label(text, PixelUI.TYPE_SMALL, PixelUI.CHROME)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tag.add_child(label)
+	return {"tag": tag, "label": label}
+
+
+func _style_tag(tag: Dictionary, border: Color, ink: Color) -> void:
+	var style: StyleBoxFlat = PixelUI.make_hard_style(Color.TRANSPARENT, border, PixelUI.MIN_STROKE)
+	style.draw_center = false
+	style.set_content_margin(SIDE_LEFT, TAG_PAD.x)
+	style.set_content_margin(SIDE_RIGHT, TAG_PAD.x)
+	style.set_content_margin(SIDE_TOP, TAG_PAD.y)
+	style.set_content_margin(SIDE_BOTTOM, TAG_PAD.y)
+	(tag["tag"] as PanelContainer).add_theme_stylebox_override("panel", style)
+	(tag["label"] as Label).add_theme_color_override("font_color", ink)
+
+
+# A tag's laid-out height (the tags slot reserves it, so a locked operation's
+# one-line unlock condition and an open one's tags take the same room).
+func _tag_height() -> float:
+	return ceilf(PixelUI.get_pixel_font().get_height(PixelUI.type_px(PixelUI.TYPE_SMALL))) + 2.0 * TAG_PAD.y
+
+
+# ─── Mission card ─────────────────────────────────────────────────────────────
+func _build_mission_row() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", GAP)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_make_nav_button(-1))
+
+	# Long-press anywhere on the card opens the encounter InspectPopup (the
+	# flavor paragraph lives there and in Help, not on the screen).
+	_enc_card = PanelContainer.new()
+	_enc_card.mouse_filter = Control.MOUSE_FILTER_STOP
+	_enc_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_enc_card)
+	var card_press := LongPressInput.new()
+	_enc_card.add_child(card_press)
+	card_press.long_pressed.connect(_on_banner_long_pressed)
 
 	var pad := MarginContainer.new()
 	for side_key in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		pad.add_theme_constant_override(side_key, BANNER_PAD)
-	_enc_banner.add_child(pad)
+		pad.add_theme_constant_override(side_key, MISSION_PAD)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_enc_card.add_child(pad)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 22)
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pad.add_child(row)
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", MISSION_COLUMN_GAP)
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.add_child(body)
 
-	row.add_child(_make_nav_button(-1))
-
-	# Name + threat, stacked, centered in the leftover width.
-	var text_col := VBoxContainer.new()
-	text_col.alignment = BoxContainer.ALIGNMENT_CENTER
-	text_col.add_theme_constant_override("separation", 14)
-	text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(text_col)
-
-	_enc_name_label = _make_pixel_label("", ENC_NAME_FONT, PixelUI.TEXT_PRIMARY)
-	_enc_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_enc_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_enc_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_col.add_child(_enc_name_label)
-	# Subtitle slot (B3): always present at one line of ENC_SITE_FONT, so a
-	# locked encounter (unlock condition) and an open one (site line) lay out
-	# identically. Clipped, never wrapped: a longer line can't grow the banner.
-	_enc_site_label = _make_pixel_label("", ENC_SITE_FONT, PixelUI.DT_AMBER)
-	_enc_site_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_enc_site_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_enc_site_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_enc_site_label.clip_text = true
-	_enc_site_label.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(PixelUI.text_px(ENC_SITE_FONT)))
-	text_col.add_child(_enc_site_label)
-	text_col.add_child(_build_threat_row())
-	# Progress/clearance — ONE metadata-tier line (caps law) inside the existing
-	# carousel card; not a module (Build B).
-	# Status slot (B3): always present, even when an unplayed encounter has no
-	# status text, so CLEARED / BEST / LOCKED never shift the column.
-	_enc_progress_label = _make_pixel_label("", PROGRESS_FONT, PixelUI.TEXT_MUTED)
-	_enc_progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_enc_progress_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_enc_progress_label.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(PixelUI.text_px(PROGRESS_FONT)))
-	text_col.add_child(_enc_progress_label)
-
-	# Boss thumb — the shared portrait frame (PixelUI.make_portrait_frame), so
-	# the boss is framed exactly like its enemy battle card, smaller: same
-	# window, same crop rule, no zoom. (The old letterboxed / dominant-art-aspect
-	# thumb was unified into this window by fix 9322a30, matching the hero tiles.)
+	# Boss portrait: the shared portrait frame at the roster tile's width, so the
+	# boss and the heroes share a height and the battle card's window.
 	var thumb_style: StyleBoxFlat = PixelUI.component_style(PixelUI.COMPONENT_ENEMY)
 	thumb_style.set_content_margin_all(float(PANEL_BORDER))
-	var thumb: Dictionary = PixelUI.make_portrait_frame(null, ENC_PORTRAIT_W, thumb_style)
-	var thumb_frame: PanelContainer = thumb["frame"]
-	_enc_thumb_frame = thumb_frame
+	var thumb: Dictionary = PixelUI.make_portrait_frame(null, TILE_PORTRAIT_W, thumb_style)
+	_enc_thumb_frame = thumb["frame"]
+	_enc_thumb_frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var thumb_holder: Control = thumb["crop"]
-	_enc_thumb_holder = thumb_holder
 	_enc_portrait = thumb["tex"]
-	_enc_portrait_placeholder = _make_pixel_label("?", 128, PixelUI.DT_ENEMY_BORDER)
+	_enc_portrait_placeholder = _make_type_label("?", PixelUI.TYPE_LABEL, PixelUI.CHROME_DIM)
 	_enc_portrait_placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_enc_portrait_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_enc_portrait_placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -335,76 +360,72 @@ func _build_encounter_section() -> Control:
 	_enc_lock_overlay = _make_lock_overlay()
 	_enc_lock_overlay.visible = false
 	thumb_holder.add_child(_enc_lock_overlay)
-	row.add_child(thumb_frame)
+	body.add_child(_enc_thumb_frame)
 
-	row.add_child(_make_nav_button(1))
+	var text_col := VBoxContainer.new()
+	text_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	text_col.add_theme_constant_override("separation", GAP)
+	text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(text_col)
 
-	# Dots.
-	_dot_row = HBoxContainer.new()
-	_dot_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_dot_row.add_theme_constant_override("separation", DOT_GAP)
-	_dot_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	section.add_child(_dot_row)
-	for i in _operation_ids.size():
-		var dot := ColorRect.new()
-		dot.custom_minimum_size = Vector2(DOT_SIZE, DOT_SIZE)
-		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_dot_row.add_child(dot)
-		_dot_nodes.append(dot)
+	_enc_name_label = _make_type_label("", PixelUI.TYPE_CARD_NAME, PixelUI.CHROME)
+	text_col.add_child(_enc_name_label)
 
-	# Operation lore — one sentence of UNFRAMED flavor text directly under the
-	# carousel (Build B wires the slot; Build C supplies the copy via the
-	# operation data `lore` field). The slot is fixed (B3): it exists only when
-	# some operation has lore, and then holds two lines for every encounter
-	# (empty on a locked one). No operation has lore today, so it is absent.
-	_op_lore_label = _make_pixel_label("", LORE_FONT, PixelUI.CHROME)
-	_op_lore_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_op_lore_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_op_lore_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_op_lore_label.max_lines_visible = 2
-	_op_lore_label.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(PixelUI.text_px(LORE_FONT)) * 2.0 + float(PixelUI.BODY_LINE_SPACING))
-	_op_lore_label.visible = _any_operation_has_lore()
-	section.add_child(_op_lore_label)
-
-	return section
-
-
-func _build_threat_row() -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	# No "THREAT" word — the pips + LV label carry it (the word's fixed width was
-	# the straw that pushed the banner's minimum past the 960px content column,
-	# inflating every sibling section and bleeding the grid past the right margin).
+	_enc_level_row = HBoxContainer.new()
+	_enc_level_row.add_theme_constant_override("separation", LEVEL_ROW_GAP)
+	_enc_level_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_enc_level_row.custom_minimum_size.y = _tag_height()
+	text_col.add_child(_enc_level_row)
 	var pips := HBoxContainer.new()
-	pips.add_theme_constant_override("separation", 6)
+	pips.add_theme_constant_override("separation", LEVEL_PIP_GAP)
 	pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(pips)
+	pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_enc_level_row.add_child(pips)
 	_threat_pips.clear()
 	for i in THREAT_PIP_COUNT:
 		var pip := ColorRect.new()
-		pip.custom_minimum_size = THREAT_PIP_SIZE
+		pip.custom_minimum_size = LEVEL_PIP_SIZE
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pips.add_child(pip)
 		_threat_pips.append(pip)
+	_enc_level_label = _make_type_label("", PixelUI.TYPE_LABEL, PixelUI.CHROME)
+	_enc_level_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_enc_level_row.add_child(_enc_level_label)
+	var status: Dictionary = _make_tag("")
+	_enc_status_tag = status["tag"]
+	_enc_status_label = status["label"]
+	_enc_level_row.add_child(_enc_status_tag)
 
-	_enc_level_label = _make_pixel_label("", ENC_META_FONT, PixelUI.CHROME_DIM)
-	row.add_child(_enc_level_label)
+	# The tags slot: the THREATS as tags, or a locked operation's unlock
+	# condition, in one fixed-height row.
+	_enc_tags_slot = Control.new()
+	_enc_tags_slot.custom_minimum_size.y = _tag_height()
+	_enc_tags_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_enc_tags_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text_col.add_child(_enc_tags_slot)
+	_enc_tags_row = HBoxContainer.new()
+	_enc_tags_row.add_theme_constant_override("separation", TAG_GAP)
+	_enc_tags_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_enc_tags_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_enc_tags_slot.add_child(_enc_tags_row)
+	_enc_unlock_label = _make_type_label("", PixelUI.TYPE_SMALL, PixelUI.CHROME_DIM)
+	_enc_unlock_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_enc_unlock_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_enc_unlock_label.clip_text = true
+	_enc_tags_slot.add_child(_enc_unlock_label)
+
+	row.add_child(_make_nav_button(1))
 	return row
 
 
 func _make_nav_button(direction: int) -> Button:
 	var button := Button.new()
-	# Full banner height (= the boss thumb) so the swipe targets are easy thumbs.
-	button.custom_minimum_size = Vector2(NAV_BUTTON_W, PixelUI.portrait_window(ENC_PORTRAIT_W).y + 2.0 * PANEL_BORDER)
+	button.custom_minimum_size = NAV_BUTTON_SIZE
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
 	# The selector uses the project arrow artwork, never a font-dependent < or >
-	# glyph. The same left-chevron asset mirrors for the right control, preserving
-	# one crisp nearest-filtered source and the existing target size.
+	# glyph. The same left-chevron asset mirrors for the right control.
 	button.text = ""
 	for state in ["normal", "hover", "pressed", "focus"]:
 		button.add_theme_stylebox_override(state, PixelUI.make_hard_style(PixelUI.DT_PANEL_BG, PixelUI.DT_FIELD_BORDER, PANEL_BORDER))
@@ -425,6 +446,21 @@ func _make_nav_button(direction: int) -> Button:
 	return button
 
 
+func _build_dots() -> Control:
+	_dot_row = HBoxContainer.new()
+	_dot_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_dot_row.add_theme_constant_override("separation", DOT_GAP)
+	_dot_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dot_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for i in _operation_ids.size():
+		var dot := ColorRect.new()
+		dot.custom_minimum_size = Vector2(DOT_SIZE, DOT_SIZE)
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_dot_row.add_child(dot)
+		_dot_nodes.append(dot)
+	return _dot_row
+
+
 func _on_nav_pressed(direction: int) -> void:
 	if _operation_ids.is_empty():
 		return
@@ -432,7 +468,6 @@ func _on_nav_pressed(direction: int) -> void:
 	_operation_index = wrapi(_operation_index + direction, 0, _operation_ids.size())
 	_selected_operation_id = _operation_ids[_operation_index]
 	_refresh_encounter()
-	_refresh_detail()
 	_refresh_deploy()
 
 
@@ -442,57 +477,66 @@ func _refresh_encounter() -> void:
 	var op: OperationData = DataManager.get_operation(_selected_operation_id) as OperationData
 	if op == null:
 		return
-	_enc_name_label.text = op.display_name.to_upper()
 	_current_op_locked = not SaveManager.is_operation_unlocked(_selected_operation_id)
-	var presentation: Dictionary = OPERATION_BRIEFING_OVERLAY.operation_copy(_selected_operation_id)
-	if _enc_site_label != null:
-		var accent: Variant = presentation.get("accent", PixelUI.DT_AMBER)
-		if _current_op_locked:
-			# Same slot, the unlock condition instead of the site (B3).
-			_enc_site_label.text = unlock_condition_text(_selected_operation_id)
-			_enc_site_label.add_theme_font_size_override("font_size", PixelUI.text_px(ENC_UNLOCK_FONT))
-			_enc_site_label.add_theme_color_override("font_color", PixelUI.CHROME_DIM)
-		else:
-			_enc_site_label.text = str(presentation.get("site", ""))
-			_enc_site_label.add_theme_font_size_override("font_size", PixelUI.text_px(ENC_SITE_FONT))
-			_enc_site_label.add_theme_color_override("font_color", accent as Color if accent is Color else PixelUI.DT_AMBER)
+	var accent: Color = _encounter_accent()
+
+	var card_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.UI_BG.lerp(accent, MISSION_TINT), accent, MISSION_FRAME)
+	card_style.set_content_margin_all(float(MISSION_FRAME))
+	_enc_card.add_theme_stylebox_override("panel", card_style)
+	var frame_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_ENEMY_BG, accent, PANEL_BORDER)
+	frame_style.set_content_margin_all(float(PANEL_BORDER))
+	_enc_thumb_frame.add_theme_stylebox_override("panel", frame_style)
+
+	_enc_name_label.text = op.display_name.to_upper()
+	_enc_name_label.add_theme_color_override("font_color", accent)
 	var boss_tex: Texture2D = _get_boss_portrait(op)
 	PixelUI.set_portrait(_enc_portrait, boss_tex)
 	_enc_portrait_placeholder.visible = boss_tex == null
+	# Locked operations stay browsable: their own boss art is a dark silhouette
+	# and the real operation name remains visible; the threats and DEPLOY wait.
+	_enc_portrait.modulate = PixelUI.SILHOUETTE if _current_op_locked else Color.WHITE
+	_enc_lock_overlay.visible = _current_op_locked
 
 	var level: int = _threat_level(_operation_index)
 	_enc_level_label.text = "LV %d" % level
 	for i in _threat_pips.size():
-		_threat_pips[i].color = _encounter_accent() if i < level else THREAT_EMPTY
-	if _enc_thumb_frame != null:
-		var frame_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.DT_ENEMY_BG, _encounter_accent().darkened(0.3), PANEL_BORDER)
-		frame_style.set_content_margin_all(float(PANEL_BORDER))
-		_enc_thumb_frame.add_theme_stylebox_override("panel", frame_style)
+		_threat_pips[i].color = accent if i < level else THREAT_EMPTY
+	var status: String = "LOCKED" if _current_op_locked else _operation_progress_text(_selected_operation_id)
+	_enc_status_tag.visible = status == "CLEARED" or status == "LOCKED"
+	_enc_status_label.text = status
+	if status == "CLEARED":
+		_style_tag({"tag": _enc_status_tag, "label": _enc_status_label}, PixelUI.PLAYER_ACCENT, PixelUI.PLAYER_ACCENT_LIGHT)
+	else:
+		_style_tag({"tag": _enc_status_tag, "label": _enc_status_label}, PixelUI.UI_LINE, PixelUI.CHROME_DIM)
 
-	# Clearance line (one metadata-tier line, Build B) + the lore slot (empty
-	# until Build C authors operation lore).
-	if _enc_progress_label != null:
-		_enc_progress_label.text = _operation_progress_text(_selected_operation_id)
-	if _op_lore_label != null:
-		_op_lore_label.text = op.lore.strip_edges()
+	for child in _enc_tags_row.get_children():
+		_enc_tags_row.remove_child(child)
+		child.queue_free()
+	_enc_unlock_label.visible = _current_op_locked
+	_enc_tags_row.visible = not _current_op_locked
+	if _current_op_locked:
+		_enc_unlock_label.text = unlock_condition_text(_selected_operation_id)
+	else:
+		_enc_unlock_label.text = ""
+		for threat in threat_tags(_selected_operation_id):
+			var tag: Dictionary = _make_tag(threat)
+			_style_tag(tag, accent, PixelUI.CHROME)
+			_enc_tags_row.add_child(tag["tag"])
 
 	for i in _dot_nodes.size():
-		_dot_nodes[i].color = PixelUI.PLAYER_ACCENT if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
-
-	# Locked operations stay browsable: their own boss art is a dark silhouette
-	# and the real operation name remains visible. Their blurb and all detailed
-	# intel stay hidden, while DEPLOY remains disabled. Every slot keeps its
-	# place (B3): only the text in it changes.
-	_enc_portrait.modulate = PixelUI.SILHOUETTE if _current_op_locked else Color.WHITE
-	if _enc_lock_overlay != null:
-		_enc_lock_overlay.visible = _current_op_locked
-	if _current_op_locked:
-		# Keep the true operation identity, but do not leak its description.
-		if _enc_progress_label != null:
-			_enc_progress_label.text = "LOCKED"
-		if _op_lore_label != null:
-			_op_lore_label.text = ""
+		_dot_nodes[i].color = accent if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 	_refresh_deploy()
+
+
+## The operation's THREATS (existing briefing data, "SHIELDS · JAM · REBUILD")
+## as one tag each.
+static func threat_tags(op_id: String) -> Array[String]:
+	var tags: Array[String] = []
+	var threats: String = str(OPERATION_BRIEFING_OVERLAY.operation_copy(op_id).get("threats", ""))
+	for part in threats.split("·", false):
+		if part.strip_edges() != "":
+			tags.append(part.strip_edges())
+	return tags
 
 
 # "Clear Hive Incursion to unlock": the operation chain opens each encounter
@@ -505,16 +549,8 @@ static func unlock_condition_text(op_id: String) -> String:
 	return "Clear %s to unlock" % prev_op.display_name
 
 
-func _any_operation_has_lore() -> bool:
-	for op_id in _operation_ids:
-		var op: OperationData = DataManager.get_operation(op_id) as OperationData
-		if op != null and op.lore.strip_edges() != "":
-			return true
-	return false
-
-
-# One metadata-tier clearance line for the carousel card (Build B): cleared /
-# furthest battle reached / never entered. Reads the persistent profile stats.
+# CLEARED / furthest battle reached / never entered, from the profile stats. The
+# card shows CLEARED only (the mission card has no BEST line).
 func _operation_progress_text(op_id: String) -> String:
 	var stats: Dictionary = SaveManager.get_stats()
 	var wins: Dictionary = stats.get("runs_won_by_op", {}) as Dictionary
@@ -527,9 +563,8 @@ func _operation_progress_text(op_id: String) -> String:
 	return ""
 
 
-# Long-press on the banner → encounter InspectPopup (name, threat, and the full
-# flavor blurb — relocated off the visible screen by the squad-select redesign).
-# Locked operations reveal nothing.
+# Long-press on the card -> encounter InspectPopup (name, threat, and the full
+# flavor paragraph). Locked operations reveal nothing.
 func _on_banner_long_pressed(_global_position: Vector2) -> void:
 	if _current_op_locked or _operation_ids.is_empty():
 		return
@@ -538,7 +573,7 @@ func _on_banner_long_pressed(_global_position: Vector2) -> void:
 		return
 	AudioManager.play_click()
 	var payload: Dictionary = InspectResolver.resolve_encounter(op, _threat_level(_operation_index), THREAT_PIP_COUNT)
-	InspectPopup.open(self, payload, _enc_banner.get_global_rect(), _enc_banner.get_instance_id())
+	InspectPopup.open(self, payload, _enc_card.get_global_rect(), _enc_card.get_instance_id())
 
 
 # Threat level (1..THREAT_PIP_COUNT) derived from encounter order.
@@ -569,38 +604,32 @@ func _get_boss_portrait(op: OperationData) -> Texture2D:
 # ─── Divider ──────────────────────────────────────────────────────────────────
 func _build_divider() -> Control:
 	var divider := ColorRect.new()
-	divider.color = PixelUI.DT_LINE
-	divider.custom_minimum_size = Vector2(0, DIVIDER_THICK)
+	divider.color = PixelUI.UI_LINE
+	divider.custom_minimum_size = Vector2(0, PixelUI.MIN_STROKE)
 	divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return divider
 
 
 # ─── Squad grid ───────────────────────────────────────────────────────────────
-func _build_squad_section() -> Control:
-	var section := VBoxContainer.new()
-	section.add_theme_constant_override("separation", HEADER_GAP)
-	section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
+func _build_squad_header() -> Control:
 	var header := HBoxContainer.new()
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var title := _make_pixel_label("SELECT SQUAD", HEADER_FONT, PixelUI.CHROME)
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var title := _make_subheader("SQUAD")
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	_counter_label = _make_pixel_label("0 / %d" % MAX_SELECTED_UNITS, COUNTER_FONT, PixelUI.CHROME)
+	_counter_label = _make_type_label("0 / %d" % MAX_SELECTED_UNITS, PixelUI.TYPE_LABEL, PixelUI.CHROME)
 	header.add_child(_counter_label)
-	section.add_child(header)
+	return header
 
-	# No role legend (redesign): role reads from the portrait corner pip + the named
-	# tag in the detail panel — nothing else teaches the color code.
 
+func _build_roster() -> Control:
 	# Every base hero gets the same fixed-size cell. Locked cards keep their real
-	# portrait silhouette, so the player can see the full roster without
-	# exposing the locked hero's kit or unlock condition.
+	# portrait silhouette.
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", TILE_GAP)
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	section.add_child(rows)
 	var row: HBoxContainer = null
 	var row_count: int = 0
 	for unit_id in _unit_ids:
@@ -616,72 +645,14 @@ func _build_squad_section() -> Control:
 			row_count = 0
 		row.add_child(_build_unit_tile(unit_id, unit))
 		row_count += 1
-
-	# Detail panel remains part of the content flow, not pinned at the bottom.
-	_detail_panel = _build_detail_bar()
-	section.add_child(_detail_panel)
-	return section
+	return rows
 
 
-func _build_detail_bar() -> PanelContainer:
-	var panel := PanelContainer.new()
-	# Encounter detail box (B3): always present at ONE height, encounter info
-	# only. A fixed story block (DETAIL_STORY_LINES) plus the THREATS row, so
-	# switching between any encounters, locked or not, reflows nothing. Unit
-	# info (name, blurb) lives on the unit tile's long-press.
-	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	# Grouping surface: filled plate, no stroked outline (INVARIANTS #7 — the
-	# old hero-border frame here was border noise).
-	panel.add_theme_stylebox_override("panel", _make_panel_style(PixelUI.DT_TRAY_BG, Color.TRANSPARENT, 0))
-
-	var pad := MarginContainer.new()
-	pad.add_theme_constant_override("margin_left", 24)
-	pad.add_theme_constant_override("margin_right", 24)
-	pad.add_theme_constant_override("margin_top", 18)
-	pad.add_theme_constant_override("margin_bottom", 18)
-	panel.add_child(pad)
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
-	pad.add_child(col)
-
-	_detail_desc = _make_pixel_label("", DETAIL_DESC_FONT, PixelUI.CHROME)
-	_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# Body-copy line spacing — set BEFORE the reservation below reads it.
-	_detail_desc.add_theme_constant_override("line_spacing", PixelUI.BODY_LINE_SPACING)
-	# Reserve the story lines INCLUDING the inter-line spacing so the panel
-	# height is constant (reserving N x font_height alone under-measures by the
-	# line spacing; Batch 3 — the screen must never move).
-	var desc_font: Font = PixelUI.get_pixel_font()
-	var desc_line_spacing: int = _detail_desc.get_theme_constant("line_spacing")
-	var desc_px: int = PixelUI.text_px(DETAIL_DESC_FONT)
-	_detail_desc.custom_minimum_size = Vector2(0, ceilf(desc_font.get_height(desc_px) * float(DETAIL_STORY_LINES) + float(desc_line_spacing * (DETAIL_STORY_LINES - 1))))
-	_detail_desc.max_lines_visible = DETAIL_STORY_LINES
-	col.add_child(_detail_desc)
-
-	_detail_threat_row = HBoxContainer.new()
-	_detail_threat_row.add_theme_constant_override("separation", 12)
-	_detail_threat_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_detail_threat_label = _make_pixel_label("THREATS:", DETAIL_THREAT_FONT, PixelUI.DT_AMBER)
-	_detail_threat_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_detail_threat_row.add_child(_detail_threat_label)
-	_detail_threats = _make_pixel_label("", DETAIL_THREAT_FONT, PixelUI.TEXT_PRIMARY)
-	_detail_threats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_detail_threats.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_detail_threats.clip_text = true
-	_detail_threat_row.add_child(_detail_threats)
-	var threat_font: Font = PixelUI.get_pixel_font()
-	_detail_threat_row.custom_minimum_size = Vector2(0, ceilf(threat_font.get_height(PixelUI.text_px(DETAIL_THREAT_FONT))))
-	col.add_child(_detail_threat_row)
-
-	return panel
-
-
-# Tile = square portrait (the ONLY tap target) + name label UNDER it. Quick tap
-# toggles an unlocked selection; long-press opens an unlocked unit's inspect popup.
+# Tile = portrait (the tap target) + name label UNDER it. A tap shows the unit in
+# the info bar and toggles it in the squad; a long-press opens its inspect popup.
 func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
-	# Fixed-width cell (final pass §2): identical in full and partial rows; the
-	# row container centers partial rows, so cells must not stretch.
+	# Fixed-width cell: identical in full and partial rows; the row container
+	# centers partial rows, so cells must not stretch.
 	var cell := VBoxContainer.new()
 	cell.add_theme_constant_override("separation", 8)
 	cell.custom_minimum_size = Vector2(PORTRAIT_CELL, 0)
@@ -699,7 +670,14 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	var portrait_box: Dictionary = PixelUI.make_portrait_frame(unit.portrait, TILE_PORTRAIT_W, frame_style)
 	var frame: PanelContainer = portrait_box["frame"]
 	var crop: Control = portrait_box["crop"]
-	cell.add_child(frame)
+	# The focus ring: a frame-sized holder whose outline draws FOCUS_RING px
+	# outside it (expand margin), so the info bar's unit is outlined in bone
+	# without moving the grid.
+	var ring := PanelContainer.new()
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	ring.add_child(frame)
+	cell.add_child(ring)
 	var is_locked := not SaveManager.is_hero_unlocked(unit_id)
 	var portrait: TextureRect = portrait_box["tex"] as TextureRect
 	# Keep the hero's own composition, but reduce it to an unmistakably dark
@@ -719,8 +697,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	role_badge.visible = PixelUI.SHOW_BETA_UNIT_BADGES
 	crop.add_child(role_badge)
 
-	# Slot badge (top-left): filled player-color plate with the pick order (1/2/3) — the
-	# selection indicator on the portrait itself, alongside the bright border.
+	# Slot badge (top-left): filled player-color plate with the pick order (1/2/3).
 	var slot_badge := PanelContainer.new()
 	slot_badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	slot_badge.offset_left = CHECK_INSET
@@ -755,6 +732,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 
 	_unit_tiles[unit_id] = {
 		"frame": frame,
+		"ring": ring,
 		"role_badge": role_badge,
 		"name": name_label,
 		"slot_badge": slot_badge,
@@ -765,7 +743,7 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	return cell
 
 
-# The padlock glyph and explicit state centered over a locked hero's silhouette.
+# The padlock glyph and explicit state centered over a locked silhouette.
 func _make_lock_overlay() -> Control:
 	var wrap := CenterContainer.new()
 	wrap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -818,19 +796,27 @@ func _make_new_badge() -> Control:
 	return badge
 
 
+# A tap shows the unit in the info bar AND toggles it in or out of the squad.
+# Locked units only show (their unlock condition). With the squad full, a bench
+# tap only shows the unit and says how to make room.
 func _on_tile_tapped(unit_id: String) -> void:
-	# Locked heroes remain visible but never become selected or inspectable.
+	_focus_unit_id = unit_id
+	_squad_full_hint = false
 	if not SaveManager.is_hero_unlocked(unit_id):
-		return
-	# Tap only toggles (B3): the unit's name and blurb live on long-press.
-	_toggle_unit_selection(unit_id)
+		AudioManager.play_click()
+	elif not _selected_unit_ids.has(unit_id) and _selected_unit_ids.size() >= MAX_SELECTED_UNITS:
+		AudioManager.play_click()
+		_squad_full_hint = true
+	else:
+		_toggle_unit_selection(unit_id)
 	_refresh_unit_tiles()
 	_refresh_squad_counter()
+	_refresh_info()
 	_refresh_deploy()
 
 
 func _on_tile_long_pressed(_global_position: Vector2, unit_id: String, anchor: Control) -> void:
-	# Locked units reveal nothing — no inspect popup.
+	# Locked units reveal nothing beyond the info bar's unlock condition.
 	if not SaveManager.is_hero_unlocked(unit_id):
 		return
 	var unit := DataManager.get_unit(unit_id) as UnitData
@@ -841,8 +827,7 @@ func _on_tile_long_pressed(_global_position: Vector2, unit_id: String, anchor: C
 	InspectPopup.open(self, unit_inspect_payload(unit), anchor_rect, anchor.get_instance_id())
 
 
-# The unit's inspect popup on squad select: its kit plus the picker blurb that
-# used to sit in the detail box (B3 moved unit info to long-press).
+# The unit's inspect popup on squad select: its kit plus the picker blurb.
 static func unit_inspect_payload(unit: UnitData) -> Dictionary:
 	var payload: Dictionary = InspectResolver.resolve_unit(unit)
 	if unit.picker_blurb.strip_edges() != "":
@@ -856,7 +841,6 @@ func _toggle_unit_selection(unit_id: String) -> void:
 		_selected_unit_ids.erase(unit_id)
 		return
 	if _selected_unit_ids.size() >= MAX_SELECTED_UNITS:
-		# 4th pick is a no-op; the detail bar still updates to show the tapped unit.
 		return
 	AudioManager.play_select()
 	_selected_unit_ids.append(unit_id)
@@ -871,15 +855,16 @@ func _refresh_unit_tiles() -> void:
 		var frame: PanelContainer = tile["frame"]
 		var name_label: Label = tile["name"]
 		var is_selected := _selected_unit_ids.has(unit_id)
-		# Components: Selected (strong cyan) / Normal hero tile.
-		# Keep the border-width content margin so the portrait stays INSIDE the frame
-		# (matches _build_unit_tile; otherwise the portrait would cover the border).
-		# Flat pixel B: player color, brighter when picked (same geometry).
+		# Keep the border-width content margin so the portrait stays INSIDE the frame.
 		var frame_style: StyleBoxFlat = PixelUI.player_tile_style(is_selected)
-		# Unpicked heroes are not the squad yet: their name reads CHROME.
 		frame_style.set_content_margin_all(float(PANEL_BORDER))
 		frame.add_theme_stylebox_override("panel", frame_style)
 		name_label.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT if is_selected else PixelUI.UI_TEXT_DIM)
+		# The info bar's unit: a bone outline just outside the frame.
+		var ring_style: StyleBoxFlat = PixelUI.make_hard_style(Color.TRANSPARENT, PixelUI.CHROME if unit_id == _focus_unit_id else Color.TRANSPARENT, FOCUS_RING)
+		ring_style.draw_center = false
+		ring_style.set_expand_margin_all(float(FOCUS_RING))
+		(tile["ring"] as PanelContainer).add_theme_stylebox_override("panel", ring_style)
 		# Slot badge = the on-portrait selection indicator (1/2/3 pick order).
 		var slot_badge: Variant = tile.get("slot_badge")
 		var slot_label: Variant = tile.get("slot_label")
@@ -897,13 +882,24 @@ func _refresh_squad_counter() -> void:
 		_counter_label.text = "%d / %d" % [_selected_unit_ids.size(), MAX_SELECTED_UNITS]
 
 
-# Compatibility aliases for the established screen contract (flow smoke test etc.).
+# Compatibility aliases for the established screen contract (flow smoke test,
+# captures).
 func _refresh_unit_thumbs() -> void:
 	_refresh_unit_tiles()
 
 
 func _refresh_begin_button() -> void:
 	_refresh_deploy()
+
+
+func _refresh_detail() -> void:
+	_refresh_info()
+
+
+func _show_unit_detail(unit_id: String) -> void:
+	_focus_unit_id = unit_id
+	_refresh_unit_tiles()
+	_refresh_info()
 
 
 func _on_back_to_title() -> void:
@@ -917,41 +913,7 @@ func _encounter_accent() -> Color:
 	return accent if accent.a > 0.0 else PixelUI.DT_ENEMY_BORDER
 
 
-# The detail box shows ENCOUNTER info only (B3): the story and THREATS, or on a
-# locked encounter the lock info and "THREATS: ???". It is always present at
-# one height; unit info lives on the unit tile's long-press.
-func _refresh_detail() -> void:
-	if _detail_panel == null or _detail_desc == null or _detail_threats == null:
-		return
-	_detail_panel.visible = true
-	_detail_panel.modulate = Color.WHITE
-	_detail_threat_label.visible = true
-	var presentation: Dictionary = OPERATION_BRIEFING_OVERLAY.operation_copy(_selected_operation_id)
-	var accent: Variant = presentation.get("accent", PixelUI.DT_AMBER)
-	var threat_color: Color = PixelUI.CHROME_DIM
-	if accent is Color and not _current_op_locked:
-		threat_color = accent as Color
-	_detail_threat_label.add_theme_color_override("font_color", _encounter_accent() if not _current_op_locked else threat_color)
-	_detail_threats.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY)
-	if _current_op_locked:
-		_detail_desc.text = locked_story_text(_selected_operation_id)
-		_detail_threats.text = "???"
-		return
-	_detail_desc.text = str(presentation.get("origin", ""))
-	var threats: String = str(presentation.get("threats", ""))
-	_detail_threats.text = threats if threats != "" else "???"
-
-
-# The detail box's story line for a locked encounter.
-static func locked_story_text(op_id: String) -> String:
-	var condition: String = unlock_condition_text(op_id)
-	if condition == "":
-		return "This encounter is locked."
-	return "This encounter is locked. %s it." % condition
-
-
-# Maps a unit's focus to a DT accent color for its badge + detail chip. Driven by
-# the clean pickerCategory values (damage / defense / support / control).
+# Maps a unit's focus to a DT accent color for its (hidden) badge.
 func _role_color(unit: UnitData) -> Color:
 	match unit.picker_category.to_lower():
 		"damage", "offense", "offence":
@@ -965,24 +927,180 @@ func _role_color(unit: UnitData) -> Color:
 	return PixelUI.TEXT_MUTED
 
 
+# ─── Unit info bar ────────────────────────────────────────────────────────────
+func _build_info_bar() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.UI_PANEL, PixelUI.PLAYER_ACCENT, PANEL_BORDER)
+	style.set_content_margin_all(float(PANEL_BORDER + INFO_PAD))
+	panel.add_theme_stylebox_override("panel", style)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", INFO_ROW_GAP)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(col)
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", GAP)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(top)
+	_info_name = _make_type_label("", PixelUI.TYPE_LABEL, PixelUI.PLAYER_ACCENT_LIGHT)
+	_info_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_info_name.clip_text = true
+	top.add_child(_info_name)
+	_info_hp = _make_type_label("", PixelUI.TYPE_SMALL, PixelUI.CHROME)
+	_info_hp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(_info_hp)
+	_info_status = _make_type_label("", PixelUI.TYPE_SMALL, PixelUI.CHROME_DIM)
+	_info_status.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(_info_status)
+
+	_info_blurb = _make_type_label("", PixelUI.TYPE_SMALL, PixelUI.CHROME)
+	_info_blurb.clip_text = true
+	_info_blurb.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(PixelUI.type_px(PixelUI.TYPE_SMALL)))
+	col.add_child(_info_blurb)
+
+	# The roll band bar and its glyph row, drawn in one control on the art grid.
+	_info_strip = Control.new()
+	_info_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_info_strip.custom_minimum_size = Vector2(0, BAND_BAR_H + BAND_ICON_GAP + BAND_GLYPH * ART_PX)
+	_info_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_info_strip.draw.connect(_draw_band_strip)
+	col.add_child(_info_strip)
+
+	_info_hint = _make_type_label(HINT_TEXT, PixelUI.TYPE_SMALL, PixelUI.CHROME_DIM)
+	col.add_child(_info_hint)
+	return panel
+
+
+func _refresh_info() -> void:
+	if _info_bar == null:
+		return
+	var unit: UnitData = DataManager.get_unit(_focus_unit_id) as UnitData
+	var locked: bool = unit == null or not SaveManager.is_hero_unlocked(_focus_unit_id)
+	if unit == null:
+		_info_name.text = ""
+		_info_hp.text = ""
+		_info_status.text = ""
+		_info_blurb.text = ""
+	elif locked:
+		# Locked heroes keep their names hidden (G-16); the unlock condition
+		# stands in for the description, and there is no band bar.
+		_info_name.text = "???"
+		_info_name.add_theme_color_override("font_color", PixelUI.CHROME_DIM)
+		_info_hp.text = ""
+		_info_status.text = "LOCKED"
+		_info_status.add_theme_color_override("font_color", PixelUI.CHROME_DIM)
+		_info_blurb.text = SaveManager.hero_unlock_condition(_focus_unit_id)
+		_info_blurb.add_theme_color_override("font_color", PixelUI.CHROME_DIM)
+	else:
+		var in_squad: bool = _selected_unit_ids.has(_focus_unit_id)
+		_info_name.text = unit.battle_name().to_upper()
+		_info_name.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT)
+		_info_hp.text = "HP %d" % unit.max_hp
+		_info_status.text = "IN SQUAD" if in_squad else "ON BENCH"
+		_info_status.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT if in_squad else PixelUI.CHROME_DIM)
+		_info_blurb.text = unit.blurb if unit.blurb != "" else unit.picker_blurb
+		_info_blurb.add_theme_color_override("font_color", PixelUI.CHROME)
+	_info_hint.text = SQUAD_FULL_TEXT if _squad_full_hint else HINT_TEXT
+	_info_hint.add_theme_color_override("font_color", PixelUI.WARNING if _squad_full_hint else PixelUI.CHROME_DIM)
+	_info_strip.queue_redraw()
+
+
+## The main effect of one roll band (its raw ability data): "attack", "heal" or
+## "shield", the largest of its damage / heal / shield amounts (a tie goes to
+## heal, then shield), or "" when it has none of them (mark, cloak, freeze, roll
+## changes, taunt).
+static func band_effect(raw: Dictionary) -> String:
+	var amounts: Dictionary = {"heal": int(raw.get("heal", 0)), "shield": int(raw.get("shield", 0)), "attack": int(raw.get("dmg", 0))}
+	var best: String = ""
+	var best_amount: int = 0
+	for key: String in ["heal", "shield", "attack"]:
+		if int(amounts[key]) > best_amount:
+			best = key
+			best_amount = int(amounts[key])
+	return best
+
+
+## The band bar's segments for a unit across `width_art` art px: one per roll
+## window, in roll order, sized by the window's share of 1-20 (whole art px,
+## largest remainder), 1 art px apart. Each: {x, w (art px), min, max, effect}.
+static func band_layout(unit: UnitData, width_art: int) -> Array[Dictionary]:
+	var ranges: Array = unit.dice_ranges.duplicate()
+	ranges.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.get("min", 0)) < int(b.get("min", 0)))
+	var out: Array[Dictionary] = []
+	if ranges.is_empty():
+		return out
+	var free: int = width_art - (ranges.size() - 1)
+	var total: int = 0
+	for entry: Dictionary in ranges:
+		total += int(entry.get("max", 0)) - int(entry.get("min", 0)) + 1
+	var widths: Array[int] = []
+	var remainders: Array[float] = []
+	var used: int = 0
+	for entry: Dictionary in ranges:
+		var share: float = float(free) * float(int(entry.get("max", 0)) - int(entry.get("min", 0)) + 1) / float(maxi(total, 1))
+		widths.append(int(floorf(share)))
+		remainders.append(share - floorf(share))
+		used += int(floorf(share))
+	while used < free:
+		var best: int = remainders.find(remainders.max())
+		widths[best] += 1
+		remainders[best] = -1.0
+		used += 1
+	var x: int = 0
+	for i in ranges.size():
+		var entry: Dictionary = ranges[i]
+		out.append({"x": x, "w": widths[i], "min": int(entry.get("min", 0)), "max": int(entry.get("max", 0)),
+			"effect": band_effect(entry.get("raw", {}) as Dictionary)})
+		x += widths[i] + 1
+	return out
+
+
+static func band_color(effect: String) -> Color:
+	match effect:
+		"attack":
+			return PixelUI.KW_DAMAGE
+		"heal":
+			return PixelUI.KW_HEAL
+		"shield":
+			return PixelUI.KW_SHIELD
+	return PixelUI.CHROME_DIM
+
+
+func _draw_band_strip() -> void:
+	var unit: UnitData = DataManager.get_unit(_focus_unit_id) as UnitData
+	if unit == null or not SaveManager.is_hero_unlocked(_focus_unit_id):
+		return
+	for band: Dictionary in band_layout(unit, int(_info_strip.size.x / ART_PX)):
+		var effect: String = band["effect"]
+		var ink: Color = band_color(effect)
+		var x: float = float(band["x"]) * ART_PX
+		var w: float = float(band["w"]) * ART_PX
+		_info_strip.draw_rect(Rect2(x, 0.0, w, BAND_BAR_H), ink.darkened(0.6) if effect != "" else PixelUI.UI_ROW)
+		var glyph_x: float = (float(band["x"]) + floorf(float(int(band["w"]) - BAND_GLYPH) * 0.5)) * ART_PX
+		var rows: Array = BAND_GLYPHS[effect]
+		for gy in rows.size():
+			var line: String = rows[gy]
+			for gx in line.length():
+				if line[gx] == "#":
+					_info_strip.draw_rect(Rect2(glyph_x + gx * ART_PX, BAND_BAR_H + BAND_ICON_GAP + gy * ART_PX, ART_PX, ART_PX), ink)
+
+
 # ─── DEPLOY ───────────────────────────────────────────────────────────────────
 func _build_deploy_button() -> Control:
 	_deploy_panel = PanelContainer.new()
 	_deploy_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# ui-cleanup: a holder only. The theme's default Panel style drew a thin dark
-	# ring around the button.
+	# A holder only (the theme's default Panel style drew a thin dark ring).
 	_deploy_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 
 	_deploy_button = Button.new()
 	_deploy_button.focus_mode = Control.FOCUS_NONE
-	# Constant height (Batch 6): the armed DEPLOY (font 84 + corner brackets) is 145 px
-	# tall while the locked gate (font 64) is only ~130 — so arming used to grow the
-	# button 15 px and the two centering spacers rebalanced, shifting the whole cluster.
-	# Pinning the minimum to the armed height makes both states render at 145: the button
-	# never resizes, the screen never shifts.
+	# Constant height: both states render at DEPLOY_BUTTON_HEIGHT, so arming
+	# never resizes the button or shifts the cluster.
 	_deploy_button.custom_minimum_size = Vector2(0, DEPLOY_BUTTON_HEIGHT)
 	_deploy_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_deploy_button.text = "DEPLOY SQUAD (%d MORE)" % MAX_SELECTED_UNITS
+	_deploy_button.text = "PICK %d MORE" % MAX_SELECTED_UNITS
 	_deploy_button.pressed.connect(_on_begin_run_pressed)
 	_deploy_panel.add_child(_deploy_button)
 	return _deploy_panel
@@ -995,19 +1113,17 @@ func _refresh_deploy() -> void:
 	var units_ready := _selected_unit_ids.size() == MAX_SELECTED_UNITS
 	var ready := units_ready and op_unlocked
 	if ready:
-		# Requirement met → actionable teal primary button.
 		_deploy_button.text = "DEPLOY SQUAD"
 		PixelUI.style_ui_primary_button(_deploy_button, DEPLOY_FONT)
 		_deploy_button.disabled = false
 		_deploy_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:
-		# Requirement unmet → the button states its own gate (redesign §5): what it
-		# is + what's missing. A locked operation blocks deploy even with a full squad.
+		# The disabled button states its own gate: picks still missing, or a
+		# locked operation (which blocks deploy even with a full squad).
 		if units_ready and not op_unlocked:
 			_deploy_button.text = "OPERATION LOCKED"
 		else:
-			var missing: int = MAX_SELECTED_UNITS - _selected_unit_ids.size()
-			_deploy_button.text = "DEPLOY SQUAD (%d MORE)" % missing
+			_deploy_button.text = "PICK %d MORE" % (MAX_SELECTED_UNITS - _selected_unit_ids.size())
 		PixelUI.style_locked_button(_deploy_button, DEPLOY_GATE_FONT)
 		_deploy_button.disabled = true
 		_deploy_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1031,6 +1147,8 @@ func _on_begin_run_pressed() -> void:
 
 
 func _launch_run(directive_relic_id: String) -> void:
+	# Squad select reopens on this operation and squad next time.
+	SaveManager.remember_deploy(_selected_operation_id, _selected_unit_ids)
 	GameState.start_run(_selected_unit_ids, _selected_operation_id)
 	# Encounter start: the ONE crossfade to the faction's track. It then plays
 	# unbroken across every battle and between-battle screen until encounter end.
@@ -1160,30 +1278,3 @@ func _make_pixel_label(text: String, size_logical: int, color: Color) -> Label:
 	label.add_theme_constant_override("outline_size", 0)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
-
-
-func _make_header_label(text: String, color: Color, align: int = HORIZONTAL_ALIGNMENT_CENTER) -> Label:
-	var label := _make_pixel_label(text, HEADER_FONT, color)
-	label.horizontal_alignment = align
-	return label
-
-
-func _apply_button_font(button: Button, size_logical: int, color: Color) -> void:
-	button.add_theme_font_override("font", PixelUI.get_pixel_font())
-	button.add_theme_font_size_override("font_size", PixelUI.text_px(size_logical))
-	_set_button_text_color(button, color)
-	button.add_theme_constant_override("outline_size", 0)
-
-
-func _set_button_text_color(button: Button, color: Color) -> void:
-	button.add_theme_color_override("font_color", color)
-	button.add_theme_color_override("font_hover_color", color)
-	button.add_theme_color_override("font_pressed_color", color)
-	button.add_theme_color_override("font_focus_color", color)
-	button.add_theme_color_override("font_disabled_color", color)
-
-
-# Thin wrapper over the PixelUI factory (component gate: this file constructs
-# no styleboxes). PANEL_RADIUS was already 0 — behavior-identical.
-func _make_panel_style(bg: Color, border: Color, border_width: int = PANEL_BORDER) -> StyleBoxFlat:
-	return PixelUI.make_hard_style(bg, border, border_width)
