@@ -99,7 +99,20 @@ on 390's scale. `PixelUI.bind_m5x7_snap(label, min, max)` gives the label an
 m5x7 copy rasterized at its layout size (oversampling 1) and then the Battle
 Block snap and ink snap; the label must sit in a plain Control (the ink snap
 skips container children). Used by the run-end report (font pixel 5 to 6:
-layout 96, 2 screen px per font pixel on phones, 3 at the 540 preview).
+layout 96, 2 screen px per font pixel on phones, 3 at the 540 preview) and its
+feedback line (3 to 3: 1 screen px per font pixel at 360 and 390).
+
+**Audit (2026-10-17): every other m5x7 text is uneven on phones.** One m5x7
+font pixel is size / 16 design px, so a fixed size is whole screen px only
+where size x scale / 16 is whole: at 360 (scale 1/3) only 48 and 96; at 390
+(0.361) no lattice size at all. LABEL / BODY / NUMERAL 64 draw 1.33 px at 360
+and 1.44 at 390, 80 draws 1.67 / 1.81, 112 draws 2.33 / 2.53, SMALL 48 draws
+1.08 at 390, and `text_legibility_capture.gd` + stroke runs find strokes 1 and
+2 px wide in each (menu, squad select, battle, reward, route fork, intercept,
+Help on all four tabs, the inspect pop-ups, evolution). The snap cannot keep
+those sizes: 64 at 360 is 1.33 px, so it snaps to 48 (k 1) or 96 (k 2). Making
+the rest even is a type-scale ruling (which roles go to k 1 or k 2 on phones,
+and the text floor at 390, where k 1 is 44), not a per-label fix.
 
 **HP numerals (Kev, 2026-10-17).** CARD Battle Block, "60 / 60", centred on the
 78 px bar: the line is laid out at 96, so the label grows both ways and the

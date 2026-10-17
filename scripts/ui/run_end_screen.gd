@@ -20,6 +20,9 @@ const BUTTON_SIZE := Vector2(360, 120)
 ## at font size 96, drawn so one font pixel is a whole number of screen px. On
 ## the phones that is 2 (360: 6 design px, 390: 5.54), at the 540 preview 3.
 const REPORT_FONT_PX := Vector2(5.0, 6.0)
+## The defeat panel's feedback line (SMALL, 48): one font pixel of 3 design px,
+## snapped to whole screen px (360: 1, 390: 1, at 2.77 design px).
+const FEEDBACK_FONT_PX := 3.0
 
 ## Every label kept on whole screen px (PixelUI.set_block_ink_snap).
 var _snapped: Array[Label] = []
@@ -171,6 +174,10 @@ func _report_panel(victory: bool, operation: OperationData) -> PanelContainer:
 		_feedback.text = "Thoughts? FEEDBACK on the main menu."
 		_feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		PixelUI.apply_type(_feedback, PixelUI.TYPE_SMALL, PixelUI.CHROME)
+		# SMALL is 48 (a 3 design px font pixel): 1 screen px per font pixel at
+		# 360 already, 1.08 at 390 without the snap.
+		PixelUI.bind_m5x7_snap(_feedback, FEEDBACK_FONT_PX, FEEDBACK_FONT_PX)
+		_snapped.append(_feedback)
 		_body.add_child(_feedback)
 	_body.resized.connect(_layout_body)
 	return panel

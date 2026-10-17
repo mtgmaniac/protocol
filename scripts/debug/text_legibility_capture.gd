@@ -4,8 +4,10 @@
 # line count — then saves the viewport. Run WINDOWED (headless has no renderer):
 #   <godot_console> --path . -s res://scripts/debug/text_legibility_capture.gd \
 #       --tl-screen=<name> --tl-out=<absolute dir> [--tl-window=WxH]
-# Screens: home_best home_enclocked home_locked unit_inspect fork intercept relic
-#          reward runend menu battle help loadout evolution unlock feedback
+# Screens: home_best home_enclocked home_locked unit_inspect enemy_inspect fork
+#          intercept relic reward runend menu battle help loadout evolution
+#          unlock feedback
+# --tl-tab=<id> opens that Help tab (basics, units, log, settings) for `help`.
 # Autoloads and UI classes are resolved at RUNTIME (root.get_node / load()): a
 # bare autoload identifier fails compile under -s (TRUTH's -s convention).
 extends SceneTree
@@ -86,7 +88,7 @@ func _run() -> void:
 	if screen == "evolution":
 		gs.set("pending_evolution_unit_id", "combat")
 	var scene_key := screen
-	if screen.begins_with("home") or screen in ["unit_inspect", "help", "feedback"]:
+	if screen.begins_with("home") or screen in ["unit_inspect", "enemy_inspect", "help", "feedback"]:
 		scene_key = "home"
 	elif screen == "relic":
 		scene_key = "fork"
@@ -109,8 +111,18 @@ func _run() -> void:
 			var unit: Resource = dm.call("get_unit", "combat")
 			var payload2: Dictionary = load("res://scripts/ui/inspect_resolver.gd").resolve_unit(unit)
 			load("res://scripts/ui/inspect_popup.gd").open(scene, payload2)
+		"enemy_inspect":
+			var enemy: Resource = dm.call("get_enemy_by_display_name", "Scrapmaster")
+			var payload3: Dictionary = load("res://scripts/ui/inspect_resolver.gd").resolve_unit(enemy)
+			load("res://scripts/ui/inspect_popup.gd").open(scene, payload3)
 		"help":
 			load("res://scripts/ui/help_menu.gd").open(scene)
+			var tab := _arg("tab", "")
+			if tab != "":
+				await process_frame
+				var menus: Array = root.find_children("*", "HelpMenu", true, false)
+				if not menus.is_empty():
+					(menus[0] as Node).call("_select_tab", tab)
 		"feedback":
 			load("res://scripts/ui/feedback.gd")._show_blocked_panel(scene)  # never open_form: it shell_opens a URL on desktop
 		"battle_rolled":
@@ -161,7 +173,8 @@ func _run() -> void:
 	var inherited: Array = []
 	_walk_textures(root, inherited)
 	var final_xf: Transform2D = root.get_final_transform()
-	var tag := "%s_%s" % [screen, win if win != "" else "default"]
+	var tab_tag := _arg("tab", "")
+	var tag := "%s%s_%s" % [screen, ("_" + tab_tag) if tab_tag != "" else "", win if win != "" else "default"]
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	var f := FileAccess.open(out_dir.path_join(tag + ".json"), FileAccess.WRITE)
 	f.store_string(JSON.stringify({
@@ -204,6 +217,20 @@ func _walk_textures(n: Node, out: Array) -> void:
 		_walk_textures(ch, out)
 
 
+# Which face a text node draws with: m5x7 (dynamic, rasterized at the window's
+# scale), m5x7_exact (PixelUI.bind_m5x7_snap's copy), battle_block, or other.
+func _font_name(font: Font) -> String:
+	if font == null:
+		return "none"
+	if font.resource_path.ends_with("m5x7.ttf"):
+		return "m5x7"
+	if font.resource_path.ends_with("battle_block.fnt"):
+		return "battle_block"
+	if font is FontFile and is_equal_approx((font as FontFile).oversampling, 1.0):
+		return "m5x7_exact"
+	return font.resource_path if font.resource_path != "" else font.get_class()
+
+
 func _walk(n: Node, rows: Array) -> void:
 	if n is Label or n is Button or n is RichTextLabel or n is LineEdit:
 		var c := n as Control
@@ -225,6 +252,8 @@ func _walk(n: Node, rows: Array) -> void:
 				"type": c.get_class(),
 				"text": text.substr(0, 60).replace("\n", " / "),
 				"size": c.get_theme_font_size("normal_font_size" if rtl else "font_size"),
+				"font": _font_name(c.get_theme_font("normal_font" if rtl else "font")),
+				"scale": c.get_global_transform_with_canvas().get_scale().x,
 				"color": c.get_theme_color("default_color" if rtl else "font_color").to_html(true),
 				"outline": c.get_theme_constant("outline_size"),
 				"filter": _effective_filter(c),
