@@ -642,6 +642,7 @@ func _load_operation_from_entry(operation_id: String, mode_entry: Dictionary) ->
 	operation.victory_title = str(mode_entry.get("victoryTitle", ""))
 	operation.victory_subtitle = str(mode_entry.get("victorySub", ""))
 	operation.victory_backdrop = str(mode_entry.get("victoryBackdrop", ""))
+	operation.victory_backdrop_offset = mode_entry.get("victoryBackdropOffset", {}) as Dictionary
 	operation.track_hp_scale = float(mode_entry.get("trackHpScale", 1.0))
 	operation.battles = _build_operation_battles(mode_entry.get("battles", []))
 	operations[operation.id] = operation

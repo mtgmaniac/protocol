@@ -64,6 +64,9 @@ func _ready() -> void:
 func _build(victory: bool, operation: OperationData, operation_name: String) -> void:
 	var painter: Control = ART_PAINTER.new()
 	painter.set("image_path", operation.victory_backdrop if operation != null else "")
+	if operation != null:
+		# Per operation and screen (G-85): the focal subject clears the panel.
+		painter.set("offset_y", int(operation.victory_backdrop_offset.get("victory" if victory else "defeat", 0)))
 	if not victory:
 		# A loss reads differently: the same image, darker and grayer.
 		painter.set("darken", PixelUI.DEFEAT_BACKDROP_DARKEN)

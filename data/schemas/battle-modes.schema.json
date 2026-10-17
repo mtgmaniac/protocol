@@ -27,6 +27,15 @@
             "type": "string",
             "description": "The Operation Cleared screen's image (Kev, 2026-10-17, DECISIONS_RESOLVED G-76): a res:// path to a 338 x 660 art px bleed canvas (docs/ART_SPEC.md). Absent or missing: the plain dark background."
           },
+          "victoryBackdropOffset": {
+            "type": "object",
+            "description": "Per-screen vertical shift of the victoryBackdrop image (Kev, 2026-10-17, DECISIONS_RESOLVED G-85), in whole art px (4 design px), negative = up, so the image's focal subject sits above the report panel (taller on defeat). The painter clamps it to the bleed the screen leaves, so no edge is ever exposed. Absent: 0.",
+            "properties": {
+              "victory": { "type": "integer" },
+              "defeat": { "type": "integer" }
+            },
+            "additionalProperties": false
+          },
           "callsign": {
             "type": "string",
             "description": "Short operation callsign shown in UI (e.g. FACILITY)."

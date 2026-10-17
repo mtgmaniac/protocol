@@ -16,6 +16,8 @@
       "victoryTitle": "VICTORY",
       "victorySub": "Scrapmaster destroyed. Foundry secured.",
       "victoryBackdrop": "res://assets/ui/victory/victory_facility.png",
+      "victoryBackdropOffset": { "victory": 0, "defeat": 0 },
+      "victoryBackdrop": "res://assets/ui/victory/victory_facility.png",
       "battles": [
         {
           "enemies": [
@@ -102,6 +104,8 @@
       "blurb": "Acid-spitting swarms feed on the wounded and breed unchecked.",
       "victoryTitle": "VICTORY",
       "victorySub": "Matriarch slain. Brood scattered.",
+      "victoryBackdrop": "res://assets/ui/victory/victory_hive.png",
+      "victoryBackdropOffset": { "victory": -30, "defeat": -30 },
       "battles": [
         {
           "enemies": [
@@ -179,6 +183,8 @@
       "blurb": "Alien Veil troops defend the relay with linked energy shields.",
       "victoryTitle": "VICTORY",
       "victorySub": "Overseer eliminated. Relay secured.",
+      "victoryBackdrop": "res://assets/ui/victory/victory_veil.png",
+      "victoryBackdropOffset": { "victory": -30, "defeat": -30 },
       "battles": [
         {
           "enemies": [
@@ -261,6 +267,8 @@
       "blurb": "Machine cultists corrupt targeting systems and drain power.",
       "victoryTitle": "VICTORY",
       "victorySub": "Hierarch eliminated. Broadcast silenced.",
+      "victoryBackdrop": "res://assets/ui/victory/victory_signal.png",
+      "victoryBackdropOffset": { "victory": -20, "defeat": -30 },
       "battles": [
         {
           "enemies": [
@@ -344,6 +352,8 @@
       "blurb": "Stone-plated predators grow armor as they stalk the squad.",
       "victoryTitle": "VICTORY",
       "victorySub": "Tyrant slain. Mining perimeter secured.",
+      "victoryBackdrop": "res://assets/ui/victory/victory_mantle.png",
+      "victoryBackdropOffset": { "victory": -30, "defeat": -30 },
       "battles": [
         {
           "enemies": [

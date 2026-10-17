@@ -1,8 +1,8 @@
 """Build the title backdrop and the Operation Cleared images from raw sources.
 
-Kev, 2026-10-17 (DECISIONS_RESOLVED G-76): a space backdrop on the title
+Kev, 2026-10-17 (DECISIONS_RESOLVED G-76, G-85): a space backdrop on the title
 screen; one "Operation Cleared" image per operation on the victory screen
-(Facility first). Raw AI-generated sources sit in assets/art_incoming/ (never
+(victory_<op>_raw.png -> assets/ui/victory/victory_<op>.png, all five). Raw AI-generated sources sit in assets/art_incoming/ (never
 imported, never shipped); this script writes the final-size art through
 tools/pixelize.py (area downscale, median-cut quantize, no dithering).
 
@@ -10,7 +10,8 @@ Both outputs are the bleed canvas of docs/ART_SPEC.md: the 270 x 600 art px
 core (the 20:9 screen) centred in 338 x 660, so 16:9 and 21:9 phones see art,
 not the plain screen colour, at their extra edges.
 
-    python tools/build_backdrops.py            # writes both, prints the checks
+    python tools/build_backdrops.py            # writes them all, prints the checks
+    python tools/build_backdrops.py --victory-only   # the victory images only
     python tools/build_backdrops.py --check    # measures the shipped files only
 
 Title treatment (ART_SPEC "Title screen backdrop"):
@@ -42,10 +43,18 @@ import pixelize  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 INCOMING = ROOT / "assets/art_incoming"
-VICTORY_SOURCE_CROP = (3, 0, 411, 935)
-VICTORY_ACCENTS = 5      # palette entries kept for the lamps and the ember eye
+## Operations with an Operation Cleared image (G-76 Facility; G-85 the rest).
+VICTORY_OPERATIONS = ("facility", "hive", "mantle", "signal", "veil")
+## Source crops: Facility's has a dark frame line down both sides (3 px left, 5
+## right), cropped or the mirrored bleed would repeat it as a seam. The other
+## sources have none (pixelize centre-crops them to the core's aspect).
+VICTORY_SOURCE_CROP = {"facility": (3, 0, 411, 935)}
+VICTORY_ACCENTS = 5      # palette entries kept for the small lit pixels (lamps, eyes)
 TITLE_OUT = ROOT / "assets/ui/title/title_backdrop.png"
-VICTORY_OUT = ROOT / "assets/ui/victory/victory_facility.png"
+
+
+def victory_out(op: str) -> Path:
+    return ROOT / f"assets/ui/victory/victory_{op}.png"
 
 CORE = (270, 600)
 CANVAS = (338, 660)
@@ -243,10 +252,10 @@ def _enforce_limits(out: np.ndarray, pad: tuple[int, int]) -> np.ndarray:
 
 # ── victory ──────────────────────────────────────────────────────────────────
 
-def build_victory() -> Image.Image:
-    # The source has a dark frame line down both sides (3 px left, 5 right):
-    # cropped, or the mirrored bleed would repeat it as a seam.
-    raw = Image.open(INCOMING / "victory_facility_raw.png").crop(VICTORY_SOURCE_CROP)
+def build_victory(op: str) -> Image.Image:
+    raw = Image.open(INCOMING / f"victory_{op}_raw.png")
+    if op in VICTORY_SOURCE_CROP:
+        raw = raw.crop(VICTORY_SOURCE_CROP[op])
     core = np.asarray(pixelize.box_downscale(raw, CORE))
     # Bleed: the scene mirrored outward (sky up, rubble down, towers sideways).
     canvas = np.pad(core, ((PAD[1], PAD[1]), (PAD[0], PAD[0]), (0, 0)), mode="symmetric")
@@ -279,13 +288,17 @@ def measure_title(path: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="measure the shipped files only")
+    parser.add_argument("--victory-only", action="store_true", help="rebuild the victory images, not the title")
     args = parser.parse_args()
     if not args.check:
-        pixelize.save(build_title(), TITLE_OUT)
-        pixelize.save(build_victory(), VICTORY_OUT)
+        if not args.victory_only:
+            pixelize.save(build_title(), TITLE_OUT)
+        for op in VICTORY_OPERATIONS:
+            pixelize.save(build_victory(op), victory_out(op))
     measure_title(TITLE_OUT)
-    v = Image.open(VICTORY_OUT).convert("RGB")
-    print(f"{VICTORY_OUT.name}: {v.size[0]}x{v.size[1]}, {len(v.getcolors(1 << 16))} colours")
+    for op in VICTORY_OPERATIONS:
+        v = Image.open(victory_out(op)).convert("RGB")
+        print(f"{victory_out(op).name}: {v.size[0]}x{v.size[1]}, {len(v.getcolors(1 << 16))} colours")
 
 
 if __name__ == "__main__":

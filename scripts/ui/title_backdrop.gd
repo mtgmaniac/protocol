@@ -20,6 +20,11 @@ var image_path: String = BACKDROP_PATH
 ## Shares of brightness taken off and of saturation taken out (0 = as drawn).
 var darken: float = 0.0
 var desaturate: float = 0.0
+## Whole art px the image moves from centre, negative = up (G-85: the run-end
+## screens' per-operation focal offset). Clamped to the bleed the screen leaves,
+## so an edge of the image never shows; a screen as tall as the canvas (22:9)
+## draws it centred.
+var offset_y: int = 0
 var _image: Texture2D = null
 
 
@@ -46,5 +51,15 @@ func _draw() -> void:
 	if _image != null:
 		var drawn: Vector2 = _image.get_size() * ART_PX
 		var origin: Vector2 = (((screen - drawn) * 0.5) / ART_PX).round() * ART_PX
+		origin.y += shift_for(screen.y, drawn.y, origin.y, offset_y)
 		draw_texture_rect(_image, Rect2(origin, drawn), false)
 	draw_set_transform(Vector2.ZERO)
+
+
+## The design px the image actually moves for `offset` art px: as far as the
+## image still covers the screen top and bottom (no move when it is shorter).
+static func shift_for(screen_h: float, drawn_h: float, origin_y: float, offset: int) -> float:
+	var shift: float = float(offset) * ART_PX
+	if drawn_h < screen_h:
+		return 0.0
+	return clampf(shift, screen_h - drawn_h - origin_y, -origin_y)
