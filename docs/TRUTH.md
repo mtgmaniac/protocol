@@ -7,6 +7,8 @@ Settings' default-ON “Share anonymous gameplay data” opt-out clears the queu
 and cancels delivery immediately. Debug/editor play sends nothing without an
 explicit flag. Bounded profile queue, asynchronous delivery, silent retry.
 Exact schema and privacy contract: `docs/TELEMETRY.md`.
+The local HTML5 lifecycle probe received 7/7 accepted responses; independent
+database row counting remains blocked pending scoped dashboard approval.
 
 **v0.4 copy and matched balance (2026-10-17):** Hive's threats read
 `BURN · SWARM · LEECH` (was SIPHON), matching its enemy `lifestealPct` abilities.
@@ -28,6 +30,10 @@ and victory/defeat use a centered column capped at 1080 design px, including
 the shared header. Existing edge padding and vertical rhythm stay inside the
 cap; windows at or below that width keep their layout. Background art and
 modal scrims still cover the window. `PixelUI.cap_portrait_width` owns the cap.
+The parked debug-only forced-landscape experiment keeps its approved wide
+geometry; AUTO landscape remains disabled for players. Release verification:
+one full invocation, one repaired layout regression, all 92 hard gates green
+after targeted rechecks, both balance tripwires unchanged (`docs/V04_POLISH.md`).
 
 **UI authority (Kev, 2026-10-16, G-75):** `docs/UI_STYLE.md` is the authority for
 all UI work (color ownership, components, type roles, GAP, Protocol color,

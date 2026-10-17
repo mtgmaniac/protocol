@@ -4,9 +4,10 @@ extends RefCounted
 const PORTRAIT_WIDTH := 1080.0
 
 
-static func cap_portrait_width(content: Control) -> void:
+static func cap_portrait_width(content: Control, enabled: bool = true) -> void:
 	var cap := load("res://scripts/ui/portrait_column.gd").new() as Node
 	cap.name = "PortraitWidthCap"
+	cap.set("enabled", enabled)
 	content.add_child(cap)
 
 

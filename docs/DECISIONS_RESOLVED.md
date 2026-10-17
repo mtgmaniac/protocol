@@ -6,7 +6,7 @@ Finish the client from `codex/godot-telemetry` on the v0.4 polish branch.
 This supersedes G-90's no-telemetry build scope and the unfinished WIP design.
 Collect only run_start (operation, squad IDs, levels), battle_end (battle,
 win/loss, turns, surviving hero IDs), run_end (cleared/wiped/abandoned, battle
-reached, operation, elapsed time, relic IDs), reward_pick (offered/picked IDs
+reached, operation, active playtime, relic IDs), reward_pick (offered/picked IDs
 for items, relics, evolutions and traits), and tutorial started/completed/skipped.
 Every event carries a random profile-local install UUID, game version, UTC
 timestamp and run ID. No names, emails, IPs stored by our code/database,

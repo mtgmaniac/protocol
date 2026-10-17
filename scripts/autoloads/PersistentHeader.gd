@@ -40,6 +40,10 @@ func set_battle_landscape(enabled: bool) -> void:
 		return
 	_battle_landscape = enabled
 	_battle_style = LANDSCAPE_STYLE if enabled else {}
+	var cap := $HeaderBand.get_node_or_null("PortraitWidthCap")
+	if cap != null:
+		cap.set("enabled", not enabled)
+		cap.call("_fit")
 	_style()
 	_apply_safe_area()
 

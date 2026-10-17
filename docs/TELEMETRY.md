@@ -79,7 +79,11 @@ Count only that UUID's rows with a server-side HEAD/count query; never put
 server credentials into the browser, project, logs or export. Production build
 uses the unmodified shell and normal MainMenu scene.
 
-Local HTML5 check on 2026-10-17: **7/7 accepted**, no browser errors. Synthetic
-install UUID `e1975452-c979-40bb-a5e8-e9e606c4a8f6`, source
+Local HTML5 lifecycle check on 2026-10-17: **7/7 accepted**, no browser errors.
+Real run/battle/reward/reset/tutorial hooks generated the payloads, including
+normal hashed run IDs. Synthetic install UUID
+`cd74ca2d-cb5a-4fb6-8129-e40774d5866b`, source
 `v04_local_web_smoke`. Independent row count pending: Vercel protects the secret
-values from export and approval review blocked broad dashboard access.
+values from export and approval review blocked dashboard access.
+The earlier transport-only probe also received 7/7 accepted under
+`e1975452-c979-40bb-a5e8-e9e606c4a8f6`; both probes are explicitly marked synthetic.

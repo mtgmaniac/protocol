@@ -14,6 +14,9 @@ The full gate runs once at final release, per the task's explicit instruction.
 No combat or balance implementation changes. The width regression checks live
 centering and maximum width and captures every requested screen. Backgrounds
 and modal scrims retain their existing full-window layout.
+The parked debug-only forced-landscape experiment retains its approved wide
+layout. Player-facing battle stays portrait and capped (AUTO landscape remains
+disabled); the header restores its cap when leaving the experiment.
 
 ## Gate debt and analytics
 
@@ -29,6 +32,15 @@ and modal scrims retain their existing full-window layout.
 
 G-92 records the privacy ruling and supersedes the earlier no-telemetry scope.
 See `TELEMETRY.md` for verified backend fields, retry limits and test UUID.
+
+The full verify_gate command ran **once**: 91/92 gates and profile isolation
+passed. Its battle-layout gate exposed a cap applied to the parked forced
+landscape experiment. After repairing that scope, the failing gate plus layout
+rhythm, portrait width, component contract and panel count passed **5/5**.
+The sim leg (which the initial failure prevented) then ran separately:
+both 300-run tripwires, l1 and l1_evo2, reproduced their pins exactly.
+All 92 hard gates are now green; no thresholds or combat pins were weakened.
+Final captures: 32 files, also bundled in `debug_artifacts/v04-polish-captures.zip`.
 
 ## Matched balance (report only)
 
@@ -54,3 +66,12 @@ the matched comparison has zero change.
 Hive threats: `BURN · SWARM · SIPHON` → `BURN · SWARM · LEECH`.
 The Mite (40%), Stalker (45%) and Matriarch (35% / 40%) have `lifestealPct`
 abilities; none of the Hive kits has `siphon`. This is copy only.
+
+## Release package
+
+Existing Web preset, Godot 4.6.2, normal MainMenu entry, DEMO v0.4 stamp.
+`builds/overload-protocol-demo-v0.4-web.zip`: **48,157,114 bytes (45.93 MiB)**,
+nine root files including `index.html`; ZIP integrity passes. Framing tools
+and the temporary telemetry probe scene are absent from the export.
+SHA-256: `4fa8d10a627d23cf0587d76ecb95bd8866226946063de93de72f91f6d139dcf7`.
+The archive remains local; it is not uploaded or committed.

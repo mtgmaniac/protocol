@@ -304,8 +304,8 @@ func _ready() -> void:
 	)
 	# Bottom safe-area inset (gesture bar), live-updating on rotation/resize.
 	# The connection dies with this scene, so no explicit disconnect needed.
-	PixelUI.cap_portrait_width($Content)
-	PixelUI.cap_portrait_width(protocol_panel)
+	PixelUI.cap_portrait_width($Content, not _layout.is_landscape)
+	PixelUI.cap_portrait_width(protocol_panel, not _layout.is_landscape)
 	_apply_safe_area()
 	PersistentHeader.safe_area_changed.connect(_apply_safe_area)
 	_protocol.build_footer_buttons()
@@ -2510,7 +2510,7 @@ func _ensure_zone_divider(node_name: String, at_footer: bool) -> void:
 	divider.offset_top = (960.0 if at_footer else 144.0)
 	divider.offset_bottom = divider.offset_top + PixelUI.MIN_STROKE
 	add_child(divider)
-	PixelUI.cap_portrait_width(divider)
+	PixelUI.cap_portrait_width(divider, not _layout.is_landscape)
 
 
 # Stack "PROTOCOL" above a short segment bar (more readable, frees horizontal room).

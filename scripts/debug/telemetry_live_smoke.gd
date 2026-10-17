@@ -23,19 +23,29 @@ func _run() -> void:
 	client._install_id = client.new_id()
 	client._enabled = true
 	client._start_transport()
-	client._context = {"run_id": client.new_id(), "operation": "facility", "battle": 1, "tutorial": false}
+	client._retry_at = 1e15 # Mark the complete fixture before any deferred flush.
 	client.delivery_finished.connect(_finished)
 	label = Label.new()
 	label.add_theme_font_size_override("font_size", 32)
 	add_child(label)
 	_report("Sending")
-	client._enqueue("run_start", {"squad": ["combat", "engineer", "medic"], "levels": {"combat": 1, "engineer": 1, "medic": 1}, "source": "v04_local_web_smoke"})
-	client._enqueue("battle_end", {"result": "win", "turns": 3, "heroes_alive": ["combat", "engineer", "medic"], "source": "v04_local_web_smoke"})
-	client._enqueue("reward_pick", {"kind": "item", "offered_ids": ["synthetic_a", "synthetic_b"], "picked_id": "synthetic_a", "source": "v04_local_web_smoke"})
-	client._enqueue("run_end", {"result": "abandoned", "battle_reached": 1, "time_played": 10, "relics": [], "source": "v04_local_web_smoke"})
-	client._context.tutorial = true
-	for action in ["started", "completed", "skipped"]:
-		client._enqueue("tutorial", {"action": action, "source": "v04_local_web_smoke"})
+	var gs = get_node("/root/GameState")
+	var dm = get_node("/root/DataManager")
+	gs.start_run(["combat", "engineer", "medic"], "facility", 424242)
+	gs.advance_to_next_battle()
+	var heroes: Array = []
+	for id: String in gs.selected_units:
+		heroes.append({"unit": dm.get_unit(id), "dead": false})
+	client.battle_finished("victory", 3, heroes)
+	gs.prepare_battle_rewards()
+	gs.claim_reward(gs.pending_reward_item_ids[0], "combat")
+	gs.reset_run()
+	gs.start_tutorial_run()
+	client.tutorial("completed")
+	client.tutorial("skipped")
+	for event: Dictionary in client._queue:
+		event.payload["source"] = "v04_local_web_smoke"
+	client._retry_at = 0.0
 	client.flush()
 
 func _finished(_name: String, accepted: bool, status: int) -> void:
