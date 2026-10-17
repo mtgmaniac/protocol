@@ -85,6 +85,9 @@ func _parse_args() -> Dictionary:
 		elif arg.begins_with("--capture-hero-hp="):
 			# Set the first hero's current HP (UI precision acceptance: HP number legibility).
 			config["hero_hp"] = int(arg.get_slice("=", 1))
+		elif arg.begins_with("--capture-enemy-hp="):
+			# The first enemy's current HP (HP numeral comparison, 2026-10-17).
+			config["enemy_hp"] = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--capture-protocol="):
 			# Set the protocol pool (pip acceptance at 1/10 and 10/10).
 			config["protocol"] = int(arg.get_slice("=", 1))
@@ -331,8 +334,10 @@ func _wait_for_battle_scene(config: Dictionary) -> void:
 		await _force_enemy_shield_scenario()
 	if bool(config.get("enemy_rolls_shield", false)):
 		await _force_enemy_rolls_shield_scenario()
-	if config.has("hero_hp") or bool(config.get("hero_chips", false)):
+	if config.has("hero_hp") or config.has("enemy_hp") or bool(config.get("hero_chips", false)):
 		await _force_hero_card_state(config)
+		if config.has("enemy_hp") or config.has("hero_hp"):
+			await create_timer(2.0).timeout   # let the HP damage chip drain
 	if config.has("protocol"):
 		current_scene.set("protocol_points", clampi(int(config["protocol"]), 0, 10))
 		current_scene.call("_update_protocol_bar")
@@ -750,6 +755,11 @@ func _force_hero_card_state(config: Dictionary) -> void:
 	var state: Dictionary = (hero_views[0] as Dictionary).get("state", {})
 	if state.is_empty():
 		return
+	var enemy_views: Variant = current_scene.get("enemy_card_views")
+	if config.has("enemy_hp") and enemy_views is Array and not (enemy_views as Array).is_empty():
+		var enemy_state: Dictionary = ((enemy_views as Array)[0] as Dictionary).get("state", {})
+		if not enemy_state.is_empty():
+			enemy_state["current_hp"] = clampi(int(config["enemy_hp"]), 1, int(enemy_state.get("max_hp", 1)))
 	if config.has("hero_hp"):
 		state["current_hp"] = clampi(int(config["hero_hp"]), 1, int(state.get("max_hp", 55)))
 	if bool(config.get("hero_chips", false)):

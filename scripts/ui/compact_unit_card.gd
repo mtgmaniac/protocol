@@ -10,6 +10,18 @@ const NAME_ROW_HEIGHT := 88.0   # ui-fix: 80 -> 88 so a trait / BOSS line fits a
 const HP_BAR_HEIGHT := 78.0   # ui-fix: 86 -> 78 pays for the taller name row; the portrait window keeps its aspect
 const HP_FILL_HEIGHT := 78.0
 const ACTION_PANEL_HEIGHT := 88.0
+# HP numerals (Kev, 2026-10-17): three options, switchable here (captures pass
+# --hp-numeral=A|B|C). A: Battle Block at CARD. B: Battle Block one font pixel
+# larger, "60/60" (steps back to A where it would overrun the bar). C: m5x7
+# thickened like the dice numerals (an outline in its own ink, a dark edge
+# beneath). Comparison: debug_artifacts/ui_fix/hp_font_comparison.png.
+const HP_NUMERAL_OPTION := "A"
+# C, in font-size units at the 96 layout (one font pixel = 6): the dice's
+# 3 / 8 and 11 / 8 font px (dice_tray_3d DICE_NUMERAL_BOLD at 128).
+const HP_NUMERAL_BOLD := 2
+const HP_NUMERAL_EDGE := 8
+static var hp_numeral_option: String = HP_NUMERAL_OPTION
+static var _hp_numeral_arg_read := false
 # Card line/fill colors pull from the canonical PixelUI DT palette. Declared as
 # static var (not const) because PixelUI's DT_* tokens are themselves static var
 # and a const can't be initialized from a non-const value.
@@ -98,9 +110,8 @@ var unit_data: Resource = null
 var gear_detail_rows: Array = []
 # The unit's trait marker (G-62, G-63): its trait's name, read with the
 # callsign under it as the unit's full name. "" for a unit without a trait.
-# `trait_warning` draws it in the damage red (Volt Enforcer's VOLATILE).
+# Drawn in the card's name colour, no per-trait colour (Kev, 2026-10-17).
 var trait_marker: String = ""
-var trait_warning: bool = false
 
 var _name_label: Label = null
 var _boss_label: Label = null
@@ -113,6 +124,7 @@ var _portrait_dither: TextureRect = null
 var _cast_badge: Label = null
 var _hp_back: Panel = null
 var _hp_label: Label = null
+var _hp_edge: Label = null   # option C's dark edge, under _hp_label
 var _hp_fill: ColorRect = null
 var _hp_chip: ColorRect = null
 var _hp_ratio_shown: float = -1.0
@@ -154,7 +166,7 @@ func apply_battle_presentation(text_scale: float) -> void:
 	_boss_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
 	_trait_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
 	_name_label.get_parent().custom_minimum_size.y = NAME_ROW_HEIGHT * text_scale
-	PixelUI.apply_type(_hp_label, PixelUI.TYPE_CARD, null, text_scale)
+	_apply_hp_numeral_type(text_scale)
 	_hp_back.custom_minimum_size.y = HP_BAR_HEIGHT * text_scale
 	_hp_fill.offset_bottom = HP_FILL_HEIGHT * text_scale
 	_hp_chip.offset_bottom = HP_FILL_HEIGHT * text_scale
@@ -208,7 +220,6 @@ func configure(data: Dictionary) -> void:
 	unit_data = data.get("unit_data", unit_data) as Resource
 	gear_detail_rows = data.get("gear_rows", gear_detail_rows)
 	trait_marker = str(data.get("trait", trait_marker))
-	trait_warning = bool(data.get("trait_warning", trait_warning))
 	_refresh()
 
 
@@ -310,7 +321,7 @@ func _build() -> void:
 	_trait_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_trait_label.clip_text = true
 	_trait_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_apply_label(_trait_label, 48, PixelUI.DT_AMBER, 0)
+	_apply_label(_trait_label, 48, PixelUI.CHROME, 0)   # recoloured to the name's colour in _refresh
 	name_content.add_child(_trait_label)
 	_trait_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -418,17 +429,11 @@ func _build() -> void:
 	_hp_chip.z_index = 2
 	_hp_back.add_child(_hp_chip)
 
-	_hp_label = Label.new()
-	_hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hp_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_hp_label.z_index = 3
-	_hp_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	PixelUI.style_hp_number(_hp_label, PixelUI.type_px(PixelUI.TYPE_CARD))
-	PixelUI.apply_type(_hp_label, PixelUI.TYPE_CARD)   # ui-cleanup: Battle Block, keeps the HP ink
-	_hp_label.add_theme_color_override("font_color", PixelUI.BATTLE_HP_INK)
-	_hp_back.add_child(_hp_label)
+	_read_hp_numeral_arg()
+	if hp_numeral_option == "C":
+		_hp_edge = _make_hp_number_label(2)
+	_hp_label = _make_hp_number_label(3)
+	_apply_hp_numeral_type(_battle_text_scale)
 
 	_action_panel = PanelContainer.new()
 	_action_panel.custom_minimum_size = Vector2(0, ACTION_PANEL_HEIGHT)
@@ -565,12 +570,12 @@ func _refresh() -> void:
 	var has_trait_marker: bool = trait_marker != "" and not is_boss
 	_trait_label.visible = has_trait_marker
 	_trait_label.text = trait_marker
-	_trait_label.add_theme_color_override("font_color", PixelUI.COLOR_DAMAGE if trait_warning else PixelUI.DT_AMBER)
+	_trait_label.add_theme_color_override("font_color", _name_font_color(is_hero))
 	var two_lines: bool = is_boss or has_trait_marker
 	_layout_name_lines(two_lines)
 	if is_boss:
 		_name_label.add_theme_color_override("font_color", PixelUI.DT_BOSS_INK)
-	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
+	_set_hp_text()
 	_portrait_rect.texture = portrait
 	call_deferred("_update_portrait_rect_transform")
 
@@ -1384,7 +1389,58 @@ func _update_hp_label_preview(final_hp_preview: int) -> void:
 	preview_end_hp = final_hp_preview
 	if _hp_label == null:
 		return
-	_hp_label.text = "%d / %d" % [maxi(current_hp, 0), maxi(max_hp, 1)]
+	_set_hp_text()
+
+
+# The HP line is laid out at the CARD cap (96), taller than the 78 bar. It grows
+# both ways so it stays centred on the bar, and the snap's pivot (its centre) is
+# the bar's: growing only downward seated the numerals a font pixel low, with
+# 2 screen px of bar under them at 360 and 390 (read as "melting").
+func _make_hp_number_label(z: int) -> Label:
+	var label := Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	label.grow_vertical = Control.GROW_DIRECTION_BOTH
+	label.z_index = z
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_hp_back.add_child(label)
+	return label
+
+
+func _apply_hp_numeral_type(text_scale: float) -> void:
+	PixelUI.apply_type(_hp_label, PixelUI.TYPE_CARD, PixelUI.BATTLE_HP_INK, text_scale)
+	PixelUI.set_block_step(_hp_label, 1 if hp_numeral_option == "B" else 0)
+	if hp_numeral_option != "C":
+		return
+	# m5x7 at the same snapped size (both fonts: one font pixel = size / 16).
+	for label: Label in [_hp_edge, _hp_label]:
+		if label != _hp_label:
+			PixelUI.apply_type(label, PixelUI.TYPE_CARD, PixelUI.BLACK_EDGE, text_scale)
+		label.add_theme_font_override("font", PixelUI.get_pixel_font())
+	_hp_label.add_theme_color_override("font_outline_color", PixelUI.BATTLE_HP_INK)
+	_hp_label.add_theme_constant_override("outline_size", HP_NUMERAL_BOLD)
+	_hp_edge.add_theme_color_override("font_outline_color", PixelUI.BLACK_EDGE)
+	_hp_edge.add_theme_constant_override("outline_size", HP_NUMERAL_BOLD + HP_NUMERAL_EDGE)
+
+
+func _set_hp_text() -> void:
+	var gap: String = "/" if hp_numeral_option == "B" else " / "
+	_hp_label.text = "%d%s%d" % [maxi(current_hp, 0), gap, maxi(max_hp, 1)]
+	if _hp_edge != null:
+		_hp_edge.text = _hp_label.text
+	if hp_numeral_option == "B":
+		PixelUI.refresh_block_snap(_hp_label)   # the fit check reads the text
+
+
+static func _read_hp_numeral_arg() -> void:
+	if _hp_numeral_arg_read:
+		return
+	_hp_numeral_arg_read = true
+	for arg: String in OS.get_cmdline_args() + OS.get_cmdline_user_args():
+		if arg.begins_with("--hp-numeral="):
+			hp_numeral_option = arg.trim_prefix("--hp-numeral=").to_upper()
 
 
 func _wire_hp_passthrough() -> void:

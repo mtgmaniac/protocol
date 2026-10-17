@@ -283,6 +283,14 @@ static func block_draw_size(label: Control) -> float:
 	return block_pixel_px(px.x, px.y, at_scale) * 16.0
 
 
+## Draws a bound label one whole screen px per font pixel per `step`
+## larger than its role's snap (HP numeral option B), where the text still fits
+## its parent's width and 8 font pixels of its height; otherwise at the snap.
+static func set_block_step(label: Control, step: int) -> void:
+	label.set_meta("block_k_step", step)
+	_queue_block_snap(label)
+
+
 ## Re-applies a bound label's draw scale (after its alignment changes).
 static func refresh_block_snap(label: Control) -> void:
 	if label.has_meta("block_px"):
@@ -312,6 +320,12 @@ static func _apply_block_snap(label_ref: Variant) -> void:
 	var parent := label.get_parent() as CanvasItem
 	var at_scale: float = screen_scale_at(parent) if parent != null else 0.0
 	var f: float = block_pixel_px(px.x, px.y, at_scale) / px.y
+	var step: int = int(label.get_meta("block_k_step", 0))
+	var host := label.get_parent() as Control
+	if step != 0 and at_scale > 0.0 and host != null:
+		var stepped: float = (roundf(f * px.y * at_scale) + float(step)) / at_scale
+		if label.get_minimum_size().x * stepped / px.y <= host.size.x and stepped * 8.0 <= host.size.y:
+			f = stepped / px.y
 	# Scale about the text's anchor so alignment holds: left, centre or right.
 	var pivot := Vector2(label.size.x * 0.5, label.size.y * 0.5)
 	if label is Label:
@@ -407,8 +421,6 @@ static func chrome_index_of(id: String) -> int:
 const PLAYER_ACCENT := Color("2a6ae6")
 const PLAYER_ACCENT_LIGHT := Color("9cbcff")
 const PLAYER_ACCENT_DIM := Color("1c3f82")
-## ui-fix: light text on a solid PLAYER_ACCENT fill (the primary button), 4.5:1.
-const PLAYER_FILL_TEXT := Color("f2f6ff")
 const PLAYER_ACCENT_INK := Color("060d1c")
 #
 # ENCOUNTER: one per operation, named by token in data/raw/battle-tray-scenes.json
@@ -2862,7 +2874,8 @@ static func _ui_button_fonts(button: Button, font_size: int, normal: Color, hove
 	_refresh_corner_brackets(button, Color.TRANSPARENT)
 
 
-## ui-fix: a SOLID PLAYER_ACCENT fill with PLAYER_FILL_TEXT, the notch kept.
+## Kev, 2026-10-17: dark fill, PLAYER border and thick left edge, LIGHT text, the
+## notch (the 2026-10-16 solid fill is reverted).
 ## The NOTCH RULE (flat pixel B): this notched PLAYER button is used ONLY for a
 ## screen's one primary action: the title's CONTINUE (BEGIN with no saved run),
 ## reward CONFIRM, DEPLOY SQUAD, and the battle's centre action (END TURN, and
@@ -2873,11 +2886,11 @@ static func style_ui_primary_button(button: Button, font_size: int = 48) -> void
 	if button == null:
 		return
 	button.text = button.text.to_upper()
-	_ui_button_fonts(button, font_size, PLAYER_FILL_TEXT, PLAYER_FILL_TEXT, PLAYER_FILL_TEXT, UI_TEXT_OFF)
-	button.add_theme_stylebox_override("normal", ui_primary_style(PLAYER_ACCENT, PLAYER_ACCENT))
-	button.add_theme_stylebox_override("hover", ui_primary_style(PLAYER_ACCENT.lightened(0.12), PLAYER_ACCENT.lightened(0.12)))
+	_ui_button_fonts(button, font_size, PLAYER_ACCENT_LIGHT, PLAYER_ACCENT_LIGHT.lightened(0.25), PLAYER_ACCENT_INK, UI_TEXT_OFF)
+	button.add_theme_stylebox_override("normal", ui_primary_style(UI_BUTTON, PLAYER_ACCENT))
+	button.add_theme_stylebox_override("hover", ui_primary_style(UI_BUTTON.lightened(0.05), PLAYER_ACCENT.lightened(0.15)))
 	button.add_theme_stylebox_override("focus", _ui_focus_style())
-	button.add_theme_stylebox_override("pressed", ui_primary_style(PLAYER_ACCENT_DIM, PLAYER_ACCENT_DIM))
+	button.add_theme_stylebox_override("pressed", ui_primary_style(PLAYER_ACCENT, PLAYER_ACCENT))
 	button.add_theme_stylebox_override("disabled", _ui_disabled_style())
 
 
