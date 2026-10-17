@@ -1,7 +1,8 @@
 # Captures the main menu to disk. Non-headless only (needs a real renderer).
 #   <godot> --path . --script res://scripts/debug/main_menu_capture.gd \
 #     [--capture-output=...] [--capture-delay-ms=...] [--capture-window=WxH]
-#     [--capture-run-save]   (write a run save first, so CONTINUE / ABANDON RUN show)
+#     [--capture-run-save]   (write a run save first, so CONTINUE shows)
+#     [--capture-new-game-confirm]   (press NEW GAME first: with a run save, its confirm)
 extends SceneTree
 
 const DEFAULT_OUTPUT := "res://debug_artifacts/main_menu/latest.png"
@@ -29,6 +30,9 @@ func _run_capture() -> void:
 		save_manager.call("checkpoint_run", "battle")
 	change_scene_to_file(SCENE)
 	await create_timer(float(config.get("delay_ms", DEFAULT_DELAY_MS)) / 1000.0).timeout
+	if bool(config.get("new_game_confirm", false)):
+		(current_scene.get("_new_game_button") as Button).pressed.emit()
+		await create_timer(0.3).timeout
 	var absolute_output: String = ProjectSettings.globalize_path(str(config.get("output", DEFAULT_OUTPUT)))
 	DirAccess.make_dir_recursive_absolute(absolute_output.get_base_dir())
 	var image: Image = root.get_viewport().get_texture().get_image()
@@ -58,4 +62,6 @@ func _parse_args() -> Dictionary:
 				config["window"] = Vector2i(int(parts[0]), int(parts[1]))
 		elif arg == "--capture-run-save":
 			config["run_save"] = true
+		elif arg == "--capture-new-game-confirm":
+			config["new_game_confirm"] = true
 	return config

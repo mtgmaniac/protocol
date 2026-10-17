@@ -20,7 +20,7 @@
 #   progress    menu (still no option) -> CONTINUE with an error raised during
 #               the load -> the marker stays -> a round resolves -> it clears
 #   hang        menu -> CONTINUE -> the process dies as the screen loads
-#   after_hang  menu: CONTINUE, RESUME EARLIER POINT and its line, ABANDON RUN,
+#   after_hang  menu: CONTINUE, RESUME EARLIER POINT and its line, NEW GAME,
 #               the state code still exports; RESUME EARLIER POINT puts the
 #               rewards back and says so; CONTINUE resumes them; the battle the
 #               profile already counted is not counted twice
@@ -180,7 +180,7 @@ func _open_menu() -> void:
 	change_scene_to_file(MENU_SCENE)
 	for i in 600:
 		await process_frame
-		var begin: Button = _find_button("BEGIN")
+		var begin: Button = _find_button("NEW GAME")
 		if current_scene != null and current_scene.scene_file_path == MENU_SCENE and begin != null and not begin.disabled:
 			return
 	_errors.append("the menu never became usable")
@@ -448,7 +448,7 @@ func _after_hang_leg() -> void:
 	_expect(resume != null and not resume.disabled, "CONTINUE is still offered after a resume that hung")
 	_expect(earlier != null and not earlier.disabled, "RESUME EARLIER POINT appears after a resume that hung")
 	_expect(_has_label(ResumeGuard.LINE), "the option carries its line")
-	_expect(_find_button("ABANDON RUN") != null, "ABANDON RUN is still offered")
+	_expect(_find_button("NEW GAME") != null and _find_button("ABANDON RUN") == null, "NEW GAME is offered and the title has no ABANDON RUN")
 	if resume == null or earlier == null:
 		return
 	_expect(resume.get_global_rect().position.y < earlier.get_global_rect().position.y, "CONTINUE sits above RESUME EARLIER POINT")
@@ -471,7 +471,7 @@ func _after_hang_leg() -> void:
 	earlier.pressed.emit()
 	for i in 900:
 		await process_frame
-		if current_scene != null and current_scene != menu and current_scene.scene_file_path == MENU_SCENE and _find_button("BEGIN") != null and not _find_button("BEGIN").disabled:
+		if current_scene != null and current_scene != menu and current_scene.scene_file_path == MENU_SCENE and _find_button("NEW GAME") != null and not _find_button("NEW GAME").disabled:
 			break
 	var restored: Dictionary = SaveIO.read_dict(run_path())
 	_expect(_point(restored) == "reward/1/0", "RESUME EARLIER POINT put the rewards after battle 1 back (got %s)" % _point(restored))

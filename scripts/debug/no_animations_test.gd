@@ -372,7 +372,7 @@ func _check_menu_and_transition() -> void:
 			if current_scene != null and current_scene.scene_file_path == MENU_SCENE:
 				begin = null
 				for node in current_scene.find_children("*", "Button", true, false):
-					if (node as Button).text == "BEGIN":
+					if (node as Button).text == "NEW GAME":
 						begin = node
 				if begin != null and not begin.disabled:
 					break

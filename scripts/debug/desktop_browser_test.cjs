@@ -37,7 +37,7 @@ const failures=[]; const log=[];
   const click=async r=>{assert(r?.[2]>0 && r?.[3]>0,'target has a rectangle');await clickPoint(r[0]+r[2]/2,r[1]+r[3]/2);};
   const state=async()=>frame.evaluate(()=>{window.__tut_refresh?.();return window.__tut;});
   const centreX=async()=>{const b=await frame.locator('canvas').boundingBox();return 1200*b.width/b.height;};
-  await clickPoint(await centreX(),1304); // BEGIN on a fresh profile
+  await clickPoint(await centreX(),1304); // NEW GAME on a fresh profile
   await page.waitForTimeout(900); // Let the prompt's containers finish layout.
   await clickPoint(await centreX(),1244); // RUN TUTORIAL
   await frame.waitForFunction(()=>window.__tut?.title==='WELCOME', null, {timeout:30000});

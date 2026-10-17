@@ -1,15 +1,17 @@
-# Splash / main menu — the app's boot scene. Animated title logo, a big BEGIN (battle
-# Roll-button styling) into the squad picker, plus FEEDBACK. Tutorial replay lives
-# in Help. First-run choice (Kev 2026-07-21):
-# when SaveManager.tutorial_done is unset, BEGIN raises a one-question overlay —
+# Splash / main menu — the app's boot scene. Animated title logo, NEW GAME into the
+# squad picker, plus FEEDBACK. Tutorial replay lives in Help. First-run choice
+# (Kev 2026-07-21):
+# when SaveManager.tutorial_done is unset, NEW GAME raises a one-question overlay —
 # RUN TUTORIAL or SKIP — and either path sets the flag and continues into the squad
 # picker. Built in code (matching the rest of the UI) over a dark field; the buttons
 # stay dark until the logo's boot-in finishes.
 #
-# Save system: when a valid run.json exists, CONTINUE appears above BEGIN and
-# resumes the run on the screen it was checkpointed at; ABANDON RUN (with a
-# confirm step) destroys it. Neither control is built when there is no run save,
-# so the first-launch menu is unchanged. Two one-line notices can appear under
+# Save system: when a valid run.json exists, CONTINUE appears above NEW GAME and
+# resumes the run on the screen it was checkpointed at. NEW GAME then asks first
+# ("Start a new game?": KEEP RUN, or START NEW, which deletes the run the way
+# ABANDON RUN did and goes on into a new game). The title has no ABANDON RUN
+# (UI batch A5, Kev 2026-10-17, G-80). Without a run save, NEW GAME starts at
+# once and CONTINUE is not built. Two one-line notices can appear under
 # the buttons: a discarded run from an older build, and — on web only — a
 # warning that this browser mode will not persist progress at all.
 #
@@ -28,15 +30,15 @@ extends Control
 const TITLE_LOGO_SCENE := preload("res://scenes/ui/TitleLogo.tscn")
 const ResumeGuard := preload("res://scripts/autoloads/resume_guard.gd")
 # UI restyle A: one column of equal-width buttons. The primary action (CONTINUE
-# when a run waits, otherwise BEGIN) is taller; the rest are secondary.
-const BEGIN_SIZE := Vector2(640, 136)
-const BEGIN_FONT := 64
+# when a run waits, otherwise NEW GAME) is taller; the rest are secondary.
+const NEW_GAME_SIZE := Vector2(640, 136)
+const NEW_GAME_FONT := 64
 const SECONDARY_SIZE := Vector2(640, 116)
 const SECONDARY_FONT := 56
 const FEEDBACK_SIZE := SECONDARY_SIZE
 const FEEDBACK_FONT := SECONDARY_FONT
 const TITLE_BACKDROP := preload("res://scripts/ui/title_backdrop.gd")
-# First-run choice overlay (question card after the first BEGIN).
+# First-run choice overlay (question card after the first NEW GAME).
 const PROMPT_WIDTH := 780.0
 const PROMPT_PAD := 36
 const PROMPT_TITLE_FONT := 46
@@ -44,11 +46,9 @@ const PROMPT_BODY_FONT := 36
 const PROMPT_BUTTON_SIZE := Vector2(560, 112)
 const PROMPT_BUTTON_FONT := 40
 const PROMPT_SKIP_FONT := 30
-# CONTINUE matches BEGIN's primary weight (it is the primary action when a run
-# is waiting); ABANDON RUN is the quiet destructive option, sized like FEEDBACK.
+# CONTINUE matches NEW GAME's primary weight (it is the primary action when a
+# run is waiting).
 const CONTINUE_SIZE := Vector2(640, 136)
-const ABANDON_SIZE := SECONDARY_SIZE
-const ABANDON_FONT := 56
 const NOTICE_FONT := 28
 const EARLIER_SIZE := SECONDARY_SIZE
 const VERSION_UNDERLINE := 120.0
@@ -61,10 +61,9 @@ static var display_reload_flag_override: Variant = null
 const STATE_CODE_SIZE := Vector2(460, 84)
 
 var _logo: Control
-var _begin_button: Button
+var _new_game_button: Button
 var _feedback_button: Button
 var _continue_button: Button
-var _abandon_button: Button
 var _earlier_button: Button
 var _has_run_save: bool = false
 
@@ -124,23 +123,23 @@ func _ready() -> void:
 		resume.text = "CONTINUE"
 		resume.custom_minimum_size = CONTINUE_SIZE
 		resume.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		PixelUI.style_ui_primary_button(resume, BEGIN_FONT)
+		PixelUI.style_ui_primary_button(resume, NEW_GAME_FONT)
 		resume.pressed.connect(_on_continue_pressed)
 		col.add_child(resume)
 		_continue_button = resume
 		_add_earlier_point_option(col)
 
-	var begin := Button.new()
-	begin.text = "BEGIN"
-	begin.custom_minimum_size = SECONDARY_SIZE if _has_run_save else BEGIN_SIZE
-	begin.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var new_game := Button.new()
+	new_game.text = "NEW GAME"
+	new_game.custom_minimum_size = SECONDARY_SIZE if _has_run_save else NEW_GAME_SIZE
+	new_game.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	if _has_run_save:
-		PixelUI.style_ui_secondary_button(begin, SECONDARY_FONT)
+		PixelUI.style_ui_secondary_button(new_game, SECONDARY_FONT)
 	else:
-		PixelUI.style_ui_primary_button(begin, BEGIN_FONT)
-	begin.pressed.connect(_on_begin_pressed)
-	col.add_child(begin)
-	_begin_button = begin
+		PixelUI.style_ui_primary_button(new_game, NEW_GAME_FONT)
+	new_game.pressed.connect(_on_new_game_pressed)
+	col.add_child(new_game)
+	_new_game_button = new_game
 
 	var feedback := Button.new()
 	feedback.text = "FEEDBACK"
@@ -150,16 +149,6 @@ func _ready() -> void:
 	feedback.pressed.connect(_on_feedback_pressed)
 	col.add_child(feedback)
 	_feedback_button = feedback
-
-	if _has_run_save:
-		var abandon := Button.new()
-		abandon.text = "ABANDON RUN"
-		abandon.custom_minimum_size = ABANDON_SIZE
-		abandon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		PixelUI.style_ui_secondary_button(abandon, ABANDON_FONT)
-		abandon.pressed.connect(_on_abandon_pressed)
-		col.add_child(abandon)
-		_abandon_button = abandon
 
 	_add_notices(col)
 
@@ -175,11 +164,11 @@ func _ready() -> void:
 			return
 
 	# Buttons arrive only after the reactor ignites.
-	begin.disabled = true
-	begin.modulate.a = 0.0
+	new_game.disabled = true
+	new_game.modulate.a = 0.0
 	feedback.disabled = true
 	feedback.modulate.a = 0.0
-	for extra in [_continue_button, _earlier_button, _abandon_button]:
+	for extra in [_continue_button, _earlier_button]:
 		if extra != null:
 			extra.disabled = true
 			extra.modulate.a = 0.0
@@ -192,26 +181,36 @@ func _ready() -> void:
 	var fade := create_tween()
 	fade.set_parallel(true)
 	var fade_secs: float = 0.0 if PixelUI.no_animations_enabled() else 0.25
-	fade.tween_property(begin, "modulate:a", 1.0, fade_secs)
+	fade.tween_property(new_game, "modulate:a", 1.0, fade_secs)
 	fade.tween_property(feedback, "modulate:a", 1.0, fade_secs)
-	begin.disabled = false
+	new_game.disabled = false
 	feedback.disabled = false
-	for extra in [_continue_button, _earlier_button, _abandon_button]:
+	for extra in [_continue_button, _earlier_button]:
 		if extra != null:
 			fade.tween_property(extra, "modulate:a", 1.0, fade_secs)
 			extra.disabled = false
 
 
-func _on_begin_pressed() -> void:
-	# Locked during the flare so a double-tap can't fire the transition twice.
-	_begin_button.disabled = true
+func _on_new_game_pressed() -> void:
+	# A run is waiting: ask before it is lost (the confirm's START NEW comes back
+	# through _start_new_game).
+	if _has_run_save:
+		AudioManager.play_click()
+		_show_new_game_confirm()
+		return
 	AudioManager.play_select()
+	_start_new_game()
+
+
+func _start_new_game() -> void:
+	# Locked during the flare so a double-tap can't fire the transition twice.
+	_new_game_button.disabled = true
 	_logo.flare_out()
 	await _logo.flare_finished
 	if not is_inside_tree():
 		return
 	# First-run choice (Kev 2026-07-21, revised same day: no mid-drill Skip
-	# button — the choice happens HERE, once, after the first BEGIN): a profile
+	# button — the choice happens HERE, once, after the first NEW GAME): a profile
 	# that has never completed or skipped the drill gets one question — run the
 	# tutorial, or head straight in. Unmissable, no menu discovery required.
 	# Deleting the user:// save re-triggers first-run behavior (the intended
@@ -289,7 +288,7 @@ func _add_state_code_button() -> void:
 	button.name = "StateCodeButton"
 	button.text = "COPY STATE CODE (DEV)"
 	button.custom_minimum_size = STATE_CODE_SIZE
-	PixelUI.style_ui_secondary_button(button, ABANDON_FONT)
+	PixelUI.style_ui_secondary_button(button, SECONDARY_FONT)
 	button.anchor_left = 1.0
 	button.anchor_right = 1.0
 	button.anchor_top = 1.0
@@ -384,7 +383,7 @@ func _on_first_run_skip_pressed() -> void:
 	SceneManager.go_to_unit_select()
 
 
-# ── Run save: CONTINUE / ABANDON RUN ──────────────────────────────────────────
+# ── Run save: CONTINUE / NEW GAME's confirm ──────────────────────────────────────────
 
 func _on_continue_pressed() -> void:
 	_continue_button.disabled = true
@@ -448,7 +447,7 @@ func _add_earlier_point_option(col: VBoxContainer) -> void:
 	earlier.text = "RESUME EARLIER POINT"
 	earlier.custom_minimum_size = EARLIER_SIZE
 	earlier.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_ui_secondary_button(earlier, ABANDON_FONT)
+	PixelUI.style_ui_secondary_button(earlier, SECONDARY_FONT)
 	earlier.pressed.connect(_on_earlier_point_pressed)
 	group.add_child(earlier)
 	_earlier_button = earlier
@@ -465,20 +464,18 @@ func _on_earlier_point_pressed() -> void:
 	SceneManager.go_to_main_menu()
 
 
-func _on_abandon_pressed() -> void:
-	AudioManager.play_click()
-	_show_abandon_confirm()
-
-
-# Destroying a run is irreversible and the button sits one tap from CONTINUE,
-# so it asks first. Modal component (INVARIANTS #7 — six frames, no bespoke
-# styleboxes); tap-outside cancels, matching the discard picker's contract that
-# a dismissal never destroys anything.
-func _show_abandon_confirm() -> void:
+# NEW GAME while a run is saved (UI batch A5, Kev 2026-10-17, G-80): losing a run
+# is irreversible, so it asks first. KEEP RUN is the pop-up's primary (the
+# notch); START NEW is DESTRUCTIVE (amber, never notched). Modal component
+# (INVARIANTS #7: six frames, no bespoke styleboxes); tap-outside keeps the run,
+# matching the discard picker's contract that a dismissal never destroys anything.
+func _show_new_game_confirm() -> void:
 	var scrim := PixelUI.make_modal_scrim(0.78, true)
+	scrim.name = "NewGameScrim"
 	add_child(scrim)
 
 	var panel := PanelContainer.new()
+	panel.name = "NewGameConfirm"
 	PixelUI.style_component(panel, PixelUI.COMPONENT_MODAL)
 	panel.custom_minimum_size = Vector2(PROMPT_WIDTH, 0)
 	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -496,57 +493,61 @@ func _show_abandon_confirm() -> void:
 	pad.add_child(box)
 
 	var title := Label.new()
-	title.text = "ABANDON RUN?"
+	title.text = "START A NEW GAME?"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	PixelUI.style_label(title, PROMPT_TITLE_FONT, PixelUI.UI_WARN, 0)
+	PixelUI.style_label(title, PROMPT_TITLE_FONT, PixelUI.UI_TEXT, 0)
 	box.add_child(title)
 
 	var body := Label.new()
-	body.text = "Your saved run will be deleted. Unlocks and records are kept."
+	body.text = "Your current run will be lost."
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD
 	PixelUI.style_body_label(body, PROMPT_BODY_FONT)
 	box.add_child(body)
 
-	var confirm := Button.new()
-	confirm.text = "ABANDON RUN"
-	confirm.custom_minimum_size = PROMPT_BUTTON_SIZE
-	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_ui_destructive_button(confirm, PROMPT_BUTTON_FONT)   # destructive confirm
-	confirm.pressed.connect(_on_abandon_confirmed.bind(scrim, panel))
-	box.add_child(confirm)
-
 	var keep := Button.new()
 	keep.text = "KEEP RUN"
-	keep.custom_minimum_size = Vector2(PROMPT_BUTTON_SIZE.x, 92)
+	keep.custom_minimum_size = PROMPT_BUTTON_SIZE
 	keep.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	PixelUI.style_ui_secondary_button(keep, PROMPT_SKIP_FONT)
-	keep.pressed.connect(_dismiss_abandon_confirm.bind(scrim, panel))
+	PixelUI.style_ui_primary_button(keep, PROMPT_BUTTON_FONT)   # the pop-up's primary
+	keep.pressed.connect(_dismiss_new_game_confirm.bind(scrim, panel))
 	box.add_child(keep)
+
+	var start := Button.new()
+	start.text = "START NEW"
+	start.custom_minimum_size = PROMPT_BUTTON_SIZE
+	start.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	PixelUI.style_ui_destructive_button(start, PROMPT_BUTTON_FONT)   # destructive confirm
+	start.pressed.connect(_on_start_new_confirmed.bind(scrim, panel))
+	box.add_child(start)
 
 	scrim.gui_input.connect(func(event: InputEvent) -> void:
 		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
-			_dismiss_abandon_confirm(scrim, panel)
+			_dismiss_new_game_confirm(scrim, panel)
 	)
 
 
-func _dismiss_abandon_confirm(scrim: Control, panel: Control) -> void:
+func _dismiss_new_game_confirm(scrim: Control, panel: Control) -> void:
 	AudioManager.play_click()
 	for node in [scrim, panel]:
 		if is_instance_valid(node):
 			node.queue_free()
 
 
-func _on_abandon_confirmed(scrim: Control, panel: Control) -> void:
+func _on_start_new_confirmed(scrim: Control, panel: Control) -> void:
 	AudioManager.play_select()
-	# reset_run() is the one choke point: it clears the live run AND destroys
-	# run.json (GameState.reset_run). The profile is untouched by design.
-	GameState.reset_run()
 	for node in [scrim, panel]:
 		if is_instance_valid(node):
 			node.queue_free()
-	# Rebuild the menu so CONTINUE / ABANDON RUN go away.
-	SceneManager.go_to_main_menu()
+	# What ABANDON RUN did: reset_run() is the one choke point; it clears the
+	# live run AND destroys run.json (GameState.reset_run). The profile is
+	# untouched by design. Then the normal new-game path.
+	GameState.reset_run()
+	_has_run_save = false
+	for button in [_continue_button, _earlier_button]:
+		if button != null:
+			button.disabled = true
+	_start_new_game()
 
 
 # ── Notices ───────────────────────────────────────────────────────────────────

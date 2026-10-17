@@ -1174,7 +1174,7 @@ func _build_ui() -> void:
 	# overlay before entry (Kev 2026-07-21). Mid-drill abandonment remains via
 	# the header's back button (return-to-menu → reset_run(), which clears
 	# tutorial_mode and the continue flag — tutorial_done stays unset, so the
-	# next BEGIN asks again).
+	# next NEW GAME asks again).
 	_spot = SpotlightLayerScript.new(LAYER)
 	_spot.tapped.connect(_on_spot_tapped)
 	add_child(_spot)

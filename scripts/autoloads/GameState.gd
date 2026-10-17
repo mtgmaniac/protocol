@@ -86,7 +86,7 @@ var run_total_turns: int = 0
 var run_start_unix: int = 0
 # True only for the scripted onboarding encounter (rigged dice + coachmarks). In-memory;
 # completion/skip persistence is SaveManager.tutorial_done (first-run auto-init,
-# Kev 2026-07-21: the first BEGIN with that flag unset launches the drill).
+# Kev 2026-07-21: the first NEW GAME with that flag unset launches the drill).
 var tutorial_mode: bool = false
 var tutorial_reward_item_id: String = ""
 # Where the drill exits to (in-memory, set by start_tutorial_run): first-run

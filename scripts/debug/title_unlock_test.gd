@@ -43,7 +43,7 @@ func run() -> void:
 	check(feedback != null and not feedback.disabled, "Feedback remains enabled")
 	check(feedback.pressed.is_connected(Callable(current_scene, "_on_feedback_pressed")), "Feedback keeps its gesture handler")
 	await capture("title")
-	button_with_text(current_scene, "BEGIN").pressed.emit()
+	button_with_text(current_scene, "NEW GAME").pressed.emit()
 	await create_timer(0.4).timeout
 	var tutorial := button_with_text(current_scene, "RUN TUTORIAL")
 	check(tutorial != null, "First Begin still offers training")
@@ -56,7 +56,7 @@ func run() -> void:
 	gs.reset_run()
 	sm.mark_tutorial_done()
 	await menu()
-	button_with_text(current_scene, "BEGIN").pressed.emit()
+	button_with_text(current_scene, "NEW GAME").pressed.emit()
 	await create_timer(0.4).timeout
 	check(current_scene.scene_file_path == "res://scenes/ui/UnitSelect.tscn", "Returning player Begin goes to selection")
 	var help_script = load("res://scripts/ui/help_menu.gd")
