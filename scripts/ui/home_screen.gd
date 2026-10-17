@@ -19,9 +19,9 @@
 #   the unit shown in the info bar has its own tile border in bone (CHROME).
 # - The unit info bar, always present at one height (cobalt frame, dark fill):
 #   name, HP and IN SQUAD / ON BENCH / LOCKED (plain text); the one-line `blurb`; a roll band
-#   bar of five segments sized by the unit's real roll windows, each with one
-#   small pixel glyph for its main effect (attack / heal / shield in the keyword
-#   colours, a neutral dot otherwise); the hint line. A locked unit shows its
+#   bar of five segments sized by the unit's real roll windows, each lit in its
+#   main effect type's colour (ATTACK / SHIELD / HEAL / UTILITY, G-87) with the
+#   in-game icon of that effect under it; the hint line. A locked unit shows its
 #   unlock condition and no bar.
 # - DEPLOY SQUAD, the one primary; short of three picks it reads "PICK n MORE",
 #   disabled.
@@ -110,17 +110,29 @@ const INFO_PAD := 16
 const INFO_ROW_GAP := 8
 const BAND_BAR_H := 32             # 8 art px
 const BAND_ICON_GAP := 8
-const BAND_GLYPH := 7              # art px square
+## The icon under each segment: the in-game effect / status pip
+## (PixelUI.pip_texture_for_key) in its own colours, 12 art px square, so it
+## fits the narrowest band (a single roll, 1/20 of the bar).
+const BAND_ICON := 48
 const HINT_TEXT := "HOLD ANY UNIT FOR FULL INTEL"
 const SQUAD_FULL_TEXT := "SQUAD FULL: TAP A PICK TO REMOVE"
-## The band glyphs, 7 x 7 art px ("#" = ink). Attack: a sword; heal: a cross;
-## shield: a shield; anything else: a small neutral dot.
-const BAND_GLYPHS := {
-	"attack": ["......#", ".....#.", "....#..", ".#.#...", "..#....", ".#.#...", "#......"],
-	"heal": ["..###..", "..###..", "#######", "#######", "#######", "..###..", "..###.."],
-	"shield": ["#######", "#######", "#######", "#######", ".#####.", "..###..", "...#..."],
-	"": [".......", ".......", "..###..", "..###..", "..###..", ".......", "......."],
-}
+## A UTILITY band's icon: the first of these the ability carries, as its
+## in-game status pip key ([raw ability key, pip key]). Ordered by what the
+## ability is for: a taunt beacon that also grants spike shows taunt.
+const UTILITY_ICON_KEYS: Array = [
+	["taunt", "taunt"], ["cloak", "cloak"], ["mark", "mark"],
+	["freezeAnyDice", "freeze"], ["freezeEnemyDice", "freeze"], ["freezeAllEnemyDice", "freeze"],
+	["jam", "jam"], ["rewrite", "rewrite"], ["hijack", "hijack"],
+	["rfe", "roll_down"], ["rfm", "roll_up"], ["burn", "burn"], ["spike", "spike"],
+	["gainProtocol", "protocol"], ["cleanse", "cleanse"], ["firewall", "firewall"],
+	["revive", "revive"], ["summon", "summon"],
+]
+## Fallback for a UTILITY ability with no in-game status icon: a 4-point spark,
+## 5 x 5 art px, in CHROME ("#" = ink).
+const BAND_SPARK: Array[String] = ["..#..", "..#..", "#####", "..#..", "..#.."]
+## The ability keys that are not an effect of their own (labels, scopes, the
+## dice range): an ability with nothing past these and no amount does nothing.
+const BAND_INERT_KEYS: Array[String] = ["name", "eff", "range", "zone", "desc", "dMin", "dMax", "burnT", "rfT", "shTgt", "healTgt", "healAll", "blastAll", "rfeAll", "breachAll"]
 
 const ROSTER_ORDER := ["combat", "engineer", "medic", "pulse", "avalanche", "shield", "ghost", "breaker"]
 const DEFAULT_SQUAD := ["combat", "engineer", "medic"]
@@ -1014,7 +1026,9 @@ func _build_info_bar() -> PanelContainer:
 	# The roll band bar and its glyph row, drawn in one control on the art grid.
 	_info_strip = Control.new()
 	_info_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_info_strip.custom_minimum_size = Vector2(0, BAND_BAR_H + BAND_ICON_GAP + BAND_GLYPH * ART_PX)
+	_info_strip.custom_minimum_size = Vector2(0, BAND_BAR_H + BAND_ICON_GAP + BAND_ICON)
+	# The pip icons draw NEAREST, as on the battle cards.
+	_info_strip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_info_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_info_strip.draw.connect(_draw_band_strip)
 	col.add_child(_info_strip)
@@ -1058,10 +1072,11 @@ func _refresh_info() -> void:
 	_info_strip.queue_redraw()
 
 
-## The main effect of one roll band (its raw ability data): "attack", "heal" or
-## "shield", the largest of its damage / heal / shield amounts (a tie goes to
-## heal, then shield), or "" when it has none of them (mark, cloak, freeze, roll
-## changes, taunt).
+## One roll band's primary effect type (Kev, 2026-10-17, G-87), from its raw
+## ability data: "attack" (damage), "shield" or "heal", the largest of its
+## damage / shield / heal amounts (a tie goes to heal, then shield); otherwise
+## "utility" when the ability does anything else (mark, burn, freeze, jam,
+## taunt, cloak, Protocol gain, roll changes ...); "" only for no ability.
 static func band_effect(raw: Dictionary) -> String:
 	var amounts: Dictionary = {"heal": int(raw.get("heal", 0)), "shield": int(raw.get("shield", 0)), "attack": int(raw.get("dmg", 0))}
 	var best: String = ""
@@ -1070,12 +1085,44 @@ static func band_effect(raw: Dictionary) -> String:
 		if int(amounts[key]) > best_amount:
 			best = key
 			best_amount = int(amounts[key])
-	return best
+	if best != "":
+		return best
+	for key: String in raw.keys():
+		if key not in BAND_INERT_KEYS and key not in ["dmg", "heal", "shield"] and _raw_on(raw.get(key)):
+			return "utility"
+	return ""
+
+
+## The pip key of a band's icon: damage / shield / heal for those types; for a
+## UTILITY band the ability's own status icon (UTILITY_ICON_KEYS), or "spark"
+## when it has none; "" for no ability.
+static func band_icon(raw: Dictionary, effect: String) -> String:
+	match effect:
+		"attack":
+			return "damage"
+		"shield", "heal":
+			return effect
+		"utility":
+			for pair: Array in UTILITY_ICON_KEYS:
+				if _raw_on(raw.get(pair[0])):
+					return str(pair[1])
+			return "spark"
+	return ""
+
+
+# An ability field that does something: true, a positive number, a non-empty value.
+static func _raw_on(value: Variant) -> bool:
+	if value is bool:
+		return value
+	if value is int or value is float:
+		return float(value) > 0.0
+	return value != null and str(value) != ""
 
 
 ## The band bar's segments for a unit across `width_art` art px: one per roll
 ## window, in roll order, sized by the window's share of 1-20 (whole art px,
-## largest remainder), 1 art px apart. Each: {x, w (art px), min, max, effect}.
+## largest remainder), 1 art px apart. Each: {x, w (art px), min, max, effect,
+## icon, ability}.
 static func band_layout(unit: UnitData, width_art: int) -> Array[Dictionary]:
 	var ranges: Array = unit.dice_ranges.duplicate()
 	ranges.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.get("min", 0)) < int(b.get("min", 0)))
@@ -1102,40 +1149,60 @@ static func band_layout(unit: UnitData, width_art: int) -> Array[Dictionary]:
 	var x: int = 0
 	for i in ranges.size():
 		var entry: Dictionary = ranges[i]
+		var raw: Dictionary = entry.get("raw", {}) as Dictionary
+		var effect: String = band_effect(raw)
 		out.append({"x": x, "w": widths[i], "min": int(entry.get("min", 0)), "max": int(entry.get("max", 0)),
-			"effect": band_effect(entry.get("raw", {}) as Dictionary)})
+			"effect": effect, "icon": band_icon(raw, effect), "ability": str(entry.get("ability_name", ""))})
 		x += widths[i] + 1
 	return out
 
 
+## A segment's fill (G-87): the damage red, the in-game shield status colour
+## (the status chip's DT_STATUS shield border), the heal green, the lit utility
+## gray; a band with no ability is the empty track.
 static func band_color(effect: String) -> Color:
 	match effect:
 		"attack":
 			return PixelUI.KW_DAMAGE
+		"shield":
+			return PixelUI.DT_STATUS["shield"]["border"]
 		"heal":
 			return PixelUI.KW_HEAL
-		"shield":
-			return PixelUI.KW_SHIELD
-	return PixelUI.CHROME_DIM
+		"utility":
+			return PixelUI.UTILITY_SEGMENT
+	return PixelUI.UI_ROW
 
 
 func _draw_band_strip() -> void:
 	var unit: UnitData = DataManager.get_unit(_focus_unit_id) as UnitData
 	if unit == null or not SaveManager.is_hero_unlocked(_focus_unit_id):
 		return
+	var icon_top: float = BAND_BAR_H + BAND_ICON_GAP
 	for band: Dictionary in band_layout(unit, int(_info_strip.size.x / ART_PX)):
-		var effect: String = band["effect"]
-		var ink: Color = band_color(effect)
 		var x: float = float(band["x"]) * ART_PX
 		var w: float = float(band["w"]) * ART_PX
-		_info_strip.draw_rect(Rect2(x, 0.0, w, BAND_BAR_H), ink.darkened(0.6) if effect != "" else PixelUI.UI_ROW)
-		var glyph_x: float = (float(band["x"]) + floorf(float(int(band["w"]) - BAND_GLYPH) * 0.5)) * ART_PX
-		var rows: Array = BAND_GLYPHS[effect]
-		for gy in rows.size():
-			var line: String = rows[gy]
-			for gx in line.length():
-				if line[gx] == "#":
-					_info_strip.draw_rect(Rect2(glyph_x + gx * ART_PX, BAND_BAR_H + BAND_ICON_GAP + gy * ART_PX, ART_PX, ART_PX), ink)
+		_info_strip.draw_rect(Rect2(x, 0.0, w, BAND_BAR_H), band_color(band["effect"]))
+		var icon: String = band["icon"]
+		if icon == "":
+			continue
+		# Centred under the segment, on the art grid.
+		var icon_x: float = (float(band["x"]) + floorf((float(int(band["w"])) - float(BAND_ICON) / float(ART_PX)) * 0.5)) * ART_PX
+		if icon == "spark":
+			var spark_x: float = icon_x + float(BAND_ICON - BAND_SPARK.size() * ART_PX) * 0.5
+			var spark_y: float = icon_top + float(BAND_ICON - BAND_SPARK.size() * ART_PX) * 0.5
+			for gy in BAND_SPARK.size():
+				for gx in BAND_SPARK[gy].length():
+					if BAND_SPARK[gy][gx] == "#":
+						_info_strip.draw_rect(Rect2(spark_x + gx * ART_PX, spark_y + gy * ART_PX, ART_PX, ART_PX), PixelUI.CHROME)
+			continue
+		var texture: Texture2D = PixelUI.pip_texture_for_key(icon)
+		if texture == null:
+			continue
+		# The pip's own colours, as the battle readout draws it (roll_up and
+		# cleanse carry their shared-glyph tint).
+		var fit: Vector2 = texture.get_size() * minf(float(BAND_ICON) / texture.get_size().x, float(BAND_ICON) / texture.get_size().y)
+		var at := Vector2(icon_x, icon_top) + ((Vector2(BAND_ICON, BAND_ICON) - fit) * 0.5).round()
+		_info_strip.draw_texture_rect(texture, Rect2(at, fit.round()), false, PixelUI.pip_tint_for_key(icon))
 
 
 # ─── DEPLOY ───────────────────────────────────────────────────────────────────

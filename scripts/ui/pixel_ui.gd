@@ -540,6 +540,10 @@ const KW_DAMAGE := Color("f2584c")
 const KW_HEAL := Color("5fd17a")
 const KW_SHIELD := Color("a9bccb")      # shield steel
 const KW_PROTOCOL := PROTOCOL_ACCENT
+## Squad select's roll band bar (Kev, 2026-10-17, G-87): a UTILITY band (mark,
+## burn, freeze, jam, taunt, cloak, Protocol gain, roll changes ...), a lit steel
+## gray, clearly lit, never as dark as the empty track (UI_ROW).
+const UTILITY_SEGMENT := Color("6e7682")
 #
 # Shared inks: the dark edge on text over art, and the scrim behind modals.
 const INK_OUTLINE := Color(0.02, 0.03, 0.05, 0.98)
