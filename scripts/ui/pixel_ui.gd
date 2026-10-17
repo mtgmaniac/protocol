@@ -488,11 +488,11 @@ const PLAYER_ACCENT_INK := Color("060d1c")
 # one value per operation, no second tone. Enemies are warm, the player is cool
 # (Kev, 2026-10-17, DECISIONS_RESOLVED G-83). ENCOUNTER_ACCENT is the current
 # battle's (BattleLayout / PersistentHeader.show_operation set it).
-const ENCOUNTER_FACILITY := Color("c6483a")   # red
+const ENCOUNTER_FACILITY := Color("ce6256")   # red
 const ENCOUNTER_HIVE := Color("d6b234")       # yellow
-const ENCOUNTER_VEIL := Color("8b6bd6")       # violet
-const ENCOUNTER_SIGNAL := Color("c2408f")     # magenta
-const ENCOUNTER_MANTLE := Color("ac7048")     # brown
+const ENCOUNTER_VEIL := Color("9172d8")       # violet
+const ENCOUNTER_SIGNAL := Color("ca599e")     # magenta
+const ENCOUNTER_MANTLE := Color("b07751")     # brown
 static var ENCOUNTER_ACCENT: Color = ENCOUNTER_FACILITY
 ## ui-cleanup: enemy UI with no operation to borrow a color from (an enemy whose
 ## faction has no operation): the enemy rust, used the way ENCOUNTER_ACCENT is.

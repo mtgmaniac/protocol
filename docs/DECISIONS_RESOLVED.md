@@ -29,11 +29,11 @@ G-75's "the header battle count and rule, and enemy frames, nothing else".
 
   | Operation | Color | Token |
   |---|---|---|
-  | Facility Sweep | red `C6483A` | `ENCOUNTER_FACILITY` |
+  | Facility Sweep | red `CE6256` | `ENCOUNTER_FACILITY` |
   | Hive Incursion | yellow `D6B234` | `ENCOUNTER_HIVE` |
-  | Mantle Hunt | brown `AC7048` | `ENCOUNTER_MANTLE` |
-  | Signal Purge | magenta `C2408F` | `ENCOUNTER_SIGNAL` |
-  | Veil Breach | violet `8B6BD6` | `ENCOUNTER_VEIL` |
+  | Mantle Hunt | brown `B07751` | `ENCOUNTER_MANTLE` |
+  | Signal Purge | magenta `CA599E` | `ENCOUNTER_SIGNAL` |
+  | Veil Breach | violet `9172D8` | `ENCOUNTER_VEIL` |
 
 - **Where it lives:** the hex is the PixelUI token (the single source for
   colors); the operation data (`data/raw/battle-tray-scenes.json`, `accent`)
@@ -51,11 +51,21 @@ G-75's "the header battle count and rule, and enemy frames, nothing else".
   `lightened(0.2)`) stay derived, never stored.
 - Unchanged: dice colors (hero blue, enemy red, every operation), the neutral
   tray, `ENEMY_DEFAULT` for an enemy faction with no operation.
-- **Open (Kev's call):** Facility red and Signal magenta are under 4.5:1 as text
-  on the dark fields, and Mantle and Veil are just under on some of them (the
-  numbers and the suggested lighter values are in the delivery report,
-  `debug_artifacts/encounter_colors/REPORT.md`). The hexes above are not changed
-  until Kev approves.
+- **Legibility (Kev approved the lighter values, 2026-10-17):** the first
+  proposal (Facility `C6483A`, Mantle `AC7048`, Signal `C2408F`, Veil `8B6BD6`)
+  fell under WCAG 4.5:1 as text on the dark fields. The table above holds the
+  lightened values (Facility and Signal `lightened(0.14 / 0.13)`, Mantle and
+  Veil `0.05`). All clear 4.5:1 as the header count on `DT_PANEL_BG` and
+  `BATTLE_PANEL`, the result line on the report panel, the pop-up title on
+  `INSPECT_BG` and the op line on `UI_BG`. The mission name on its 10% tint
+  (a tint of the token itself, so it lightens with it) clears for Mantle (4.52)
+  and Veil (4.51) but not Facility (4.48) or Signal (4.42); one more step,
+  Facility `CF6358` / Signal `CB5DA0` (`lightened 0.15`), clears it. Open for
+  Kev. Hive was already clear.
+- **Kept as reported (Kev):** Veil stays violet (the one cool encounter color);
+  the Facility defeat screen keeps its two reds (accent op line, `KW_DAMAGE`
+  headline); `BATTLE_BAY_AMBER_LIT` stays (Facility's v3 tray edge, debug F9
+  only).
 
 ## G-82. Type size: keep the sizes, rely on hiDPI (Kev, 2026-10-17)
 

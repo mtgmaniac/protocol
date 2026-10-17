@@ -37,7 +37,7 @@ History and reasons: `docs/UI_UNIFY.md`, `docs/FLAT_PIXEL_PROTOTYPE.md`.
 | `PLAYER_ACCENT_DIM` | `1c3f82` | resting friendly frames |
 | `PLAYER_ACCENT_INK` | `060d1c` | text on a PLAYER fill (active tab, pressed primary) |
 | `PROTOCOL_ACCENT` | `66e0ff` (electric cyan-blue) | Protocol: meter cells, cost numbers, the keyword; the logo core's light centre |
-| `ENCOUNTER_FACILITY` / `_HIVE` / `_MANTLE` / `_SIGNAL` / `_VEIL` | `c6483a` red / `d6b234` yellow / `ac7048` brown / `c2408f` magenta / `8b6bd6` violet (G-83) | per operation, named in `data/raw/battle-tray-scenes.json` (`accent`); `ENCOUNTER_ACCENT` holds the current battle's |
+| `ENCOUNTER_FACILITY` / `_HIVE` / `_MANTLE` / `_SIGNAL` / `_VEIL` | `ce6256` red / `d6b234` yellow / `b07751` brown / `ca599e` magenta / `9172d8` violet (G-83) | per operation, named in `data/raw/battle-tray-scenes.json` (`accent`); `ENCOUNTER_ACCENT` holds the current battle's |
 | `ENEMY_DEFAULT` | `c9755a` (rust) | enemy UI with no operation (a bestiary faction that is no operation: name, and the frame darkened 0.3 as in battle) |
 | `WARNING` | `e8a33a` | warning text; the DESTRUCTIVE button |
 | `WARNING_INK` | `1a1206` | text on a WARNING fill (a pressed destructive button) |
