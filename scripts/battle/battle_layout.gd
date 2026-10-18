@@ -181,7 +181,8 @@ func get_dice_anchor_point(side: String, state_id: String) -> Vector2:
 		if card == null or not is_instance_valid(card) or not card.is_inside_tree():
 			return Vector2.INF
 		var card_rect: Rect2 = card.get_global_rect()
-		var x: float = clampf(card_rect.get_center().x, combat_zone.position.x + DICE_SNAP_HORIZONTAL_MARGIN_PX, combat_zone.end.x - DICE_SNAP_HORIZONTAL_MARGIN_PX)
+		var die_margin: float = maxf(DICE_SNAP_HORIZONTAL_MARGIN_PX, _settled_die_half_height())
+		var x: float = clampf(card_rect.get_center().x, combat_zone.position.x + die_margin, combat_zone.end.x - die_margin)
 		var y: float = lane_rect.get_center().y
 		return Vector2(x, y) - combat_zone.position
 	return Vector2.INF

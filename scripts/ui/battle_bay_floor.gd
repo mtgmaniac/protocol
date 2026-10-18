@@ -1,11 +1,9 @@
 extends Control
 ## The flat scene (default; Kev, 2026-10-17, DECISIONS_RESOLVED G-76 / G-84): no
 ## backdrop image, the plain dark background token behind the whole board, and
-## the dice tray's floor: one image per operation at the tray's exact art size (a
-## dark charcoal surface, a faint texture and one thin gray reticle at its
-## centre, `assets/battle_tray/tray_floor_<operation>.png`, copied as-is from
-## the art drop), drawn one texel per art pixel, NEAREST at 4x, centred on the
-## tray. Each operation's scene entry names its `tray_floors` entry; the tutorial
+## the dice tray's floor: one image per operation, with its central targeting
+## geometry kept at native art size and the quiet outer bands tiled to fill
+## the live tray. Each operation's scene entry names its `tray_floors` entry; the tutorial
 ## and operations without one get Facility's. The tray is neutral shared ground:
 ## never the encounter color.
 ##
@@ -57,9 +55,8 @@ var _wall: Texture2D
 var _floor: Texture2D
 var _edge := Color.TRANSPARENT
 var _streak := Color.TRANSPARENT
-## The tray floor's image, and the colour that extends it past its edges.
+## The tray floor's image.
 var _floor_image: Texture2D = null
-var _floor_fill := Color.TRANSPARENT
 ## floor_fill_color per image path (it scans every pixel once).
 static var _fill_cache := {}
 
@@ -86,7 +83,6 @@ func _load_scene() -> void:
 	_edge = DEPTH.token(str(entry.get("edge_accent", "")))
 	_streak = DEPTH.token(str(entry.get("streak", "")))
 	_floor_image = floor_texture(operation_id)
-	_floor_fill = floor_fill_color(_floor_image)
 
 
 func _texture(path: String) -> Texture2D:
@@ -125,9 +121,11 @@ func _draw() -> void:
 
 
 # The flat scene: the plain dark background token, then the tray floor on the
-# tray rect snapped to the 4 design px art grid, one texel per art pixel. The
-# image is the tray's art size at 1080 x 2400; a tray of another size (safe-area
-# insets) shows the image centred, its edges cropped, or extended with its fill.
+# tray rect snapped to the 4 design px art grid. A nine-slice keeps the center
+# 128 x 129 art pixels unchanged (all five operations' targeting marks fit
+# inside it). Only the dark peripheral texture absorbs width/height changes;
+# tile it instead of elongating pattern details (especially Hive's hexagons).
+# This keeps rings and notches circular while covering every tray pixel.
 func _draw_flat() -> void:
 	draw_rect(Rect2(Vector2.ZERO, screen), PixelUI.UI_BG)
 	var floor_rect := Rect2(_snap(tray.position), _snap(tray.end) - _snap(tray.position))
@@ -135,12 +133,46 @@ func _draw_flat() -> void:
 		return
 	var image_size: Vector2 = _floor_image.get_size()
 	var art_size: Vector2 = floor_rect.size / ART_PX
-	# Whole art px: the image's top-left, centred on the tray.
-	var image_rect := Rect2(floor_rect.position + ((art_size - image_size) * 0.5).floor() * ART_PX, image_size * ART_PX)
-	var shown: Rect2 = image_rect.intersection(floor_rect)
-	if shown.size != floor_rect.size:
-		draw_rect(floor_rect, _floor_fill)
-	draw_texture_rect_region(_floor_image, shown, Rect2((shown.position - image_rect.position) / ART_PX, shown.size / ART_PX))
+	var core := Vector2(minf(128.0, art_size.x), minf(129.0, art_size.y))
+	var source_left: float = floorf((image_size.x - core.x) * 0.5)
+	var source_top: float = floorf((image_size.y - core.y) * 0.5)
+	var target_left: float = floorf((art_size.x - core.x) * 0.5)
+	var target_top: float = floorf((art_size.y - core.y) * 0.5)
+	var source_x := [0.0, source_left, source_left + core.x, image_size.x]
+	var source_y := [0.0, source_top, source_top + core.y, image_size.y]
+	var target_x := [0.0, target_left, target_left + core.x, art_size.x]
+	var target_y := [0.0, target_top, target_top + core.y, art_size.y]
+	for row in range(3):
+		for column in range(3):
+			var src := Rect2(source_x[column], source_y[row],
+				source_x[column + 1] - source_x[column], source_y[row + 1] - source_y[row])
+			var dst := Rect2(floor_rect.position + Vector2(target_x[column], target_y[row]) * ART_PX,
+				Vector2(target_x[column + 1] - target_x[column], target_y[row + 1] - target_y[row]) * ART_PX)
+			if src.size.x > 0.0 and src.size.y > 0.0 and dst.size.x > 0.0 and dst.size.y > 0.0:
+				_draw_floor_patch(dst, src, column == 0, row == 0)
+
+
+# Draw at native art-pixel scale. Left/top patches repeat outward from the
+# protected center, while right/bottom patches repeat outward in the other
+# direction. Godot's `tile` flag repeats the WHOLE source texture here, which
+# paints reticle pieces into the side bands, so repeat the selected region.
+func _draw_floor_patch(destination: Rect2, source: Rect2, from_right: bool, from_bottom: bool) -> void:
+	var target_size: Vector2 = destination.size / ART_PX
+	var used_y := 0.0
+	while used_y < target_size.y:
+		var chunk_h: float = minf(source.size.y, target_size.y - used_y)
+		var dest_y: float = target_size.y - used_y - chunk_h if from_bottom else used_y
+		var src_y: float = source.end.y - chunk_h if from_bottom else source.position.y
+		var used_x := 0.0
+		while used_x < target_size.x:
+			var chunk_w: float = minf(source.size.x, target_size.x - used_x)
+			var dest_x: float = target_size.x - used_x - chunk_w if from_right else used_x
+			var src_x: float = source.end.x - chunk_w if from_right else source.position.x
+			draw_texture_rect_region(_floor_image,
+				Rect2(destination.position + Vector2(dest_x, dest_y) * ART_PX, Vector2(chunk_w, chunk_h) * ART_PX),
+				Rect2(src_x, src_y, chunk_w, chunk_h))
+			used_x += chunk_w
+		used_y += chunk_h
 
 
 ## The tray floor image an operation uses (`tray_floors` entry `image`), or null.

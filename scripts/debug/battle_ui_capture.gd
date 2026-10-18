@@ -982,7 +982,7 @@ func _print_layout_report(scene: Node) -> void:
 			var r: Rect2 = (control as Control).get_global_rect()
 			rects[key] = [r.position.x, r.position.y, r.size.x, r.size.y]
 	var header: Node = root.get_node("PersistentHeader")
-	rects["header_band"] = [0.0, 0.0, 1080.0, float(header.call("band_height"))]
+	add.call("header_band", header.get_node_or_null("HeaderBand"))
 	add.call("header_divider", header.get_node_or_null("HeaderBand/Divider"))
 	var layout: Object = scene.get("_layout")
 	var group := func(views: Array) -> Array:

@@ -1,5 +1,17 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-94. Battle uses the portrait canvas width (Kev, 2026-10-18)
+
+Supersedes G-91's 1080-design-pixel cap for battle only. Battle content,
+header, divider, and Protocol footer span the available portrait canvas;
+squad select keeps its own centered column. Cards retain their authored size
+and spread across the extra width. The tray tracks the board rect, with dice
+walls and settled positions clamped to its live bounds. Each operation's
+260 x 223 art-pixel floor fills that rect with a nine-slice: the central
+128 x 129 art pixels stay at native scale so targeting geometry remains
+symmetrical; peripheral texture repeats at native pixel scale to fill the
+remaining space.
+
 ## G-92. Anonymous gameplay analytics (Kev, 2026-10-17)
 
 Finish the client from `codex/godot-telemetry` on the v0.4 polish branch.

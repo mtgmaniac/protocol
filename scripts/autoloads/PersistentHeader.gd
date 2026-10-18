@@ -30,6 +30,8 @@ const BUTTON_SIZE := Vector2(112, 112)
 const LANDSCAPE_STYLE := preload("res://scripts/battle/landscape_battle_style.gd").VALUES
 const DEPTH := preload("res://scripts/ui/battle_depth.gd")
 var _battle_landscape := false
+var _battle_full_width := false
+var _squad_select_full_width := false
 var _battle_visuals := false
 var _battle_style: Dictionary = {}
 
@@ -40,10 +42,7 @@ func set_battle_landscape(enabled: bool) -> void:
 		return
 	_battle_landscape = enabled
 	_battle_style = LANDSCAPE_STYLE if enabled else {}
-	var cap := $HeaderBand.get_node_or_null("PortraitWidthCap")
-	if cap != null:
-		cap.set("enabled", not enabled)
-		cap.call("_fit")
+	_fit_header_width()
 	_style()
 	_apply_safe_area()
 
@@ -51,9 +50,20 @@ func set_battle_landscape(enabled: bool) -> void:
 ## Squad select uses the whole browser canvas; the narrower content cap is
 ## restored when leaving it, so other screens keep their established framing.
 func set_squad_select_full_width(enabled: bool) -> void:
+	_squad_select_full_width = enabled
+	_fit_header_width()
+
+
+## Battle uses the whole portrait canvas; restore the shared cap on exit.
+func set_battle_full_width(enabled: bool) -> void:
+	_battle_full_width = enabled
+	_fit_header_width()
+
+
+func _fit_header_width() -> void:
 	var cap := $HeaderBand.get_node_or_null("PortraitWidthCap")
 	if cap != null:
-		cap.set("enabled", not enabled and not _battle_landscape)
+		cap.set("enabled", not (_squad_select_full_width or _battle_full_width or _battle_landscape))
 		cap.call("_fit")
 
 ## Fired after safe-area insets are re-measured on a root size change (device

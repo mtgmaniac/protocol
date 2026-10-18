@@ -49,6 +49,13 @@ func geometry(landscape: bool) -> void:
 	check(s._layout.is_landscape == landscape, "selected mode")
 	var header: Node = root.get_node("PersistentHeader")
 	check(header.band_height() == (192.0 if landscape else 144.0) + PixelUI.safe_top, "scoped header height")
+	if not landscape:
+		var board_rect: Rect2 = s.board.get_global_rect()
+		var tray_rect: Rect2 = s._layout.get_combat_zone_rect()
+		check(board_rect.size.x >= visible_rect.size.x - 32.0, "portrait battle board fills viewport width")
+		check(tray_rect.size.x >= visible_rect.size.x - 64.0, "portrait dice tray follows board width")
+		check(absf((header.get_node("HeaderBand") as Control).size.x - visible_rect.size.x) < 2.0, "portrait header fills viewport width")
+		check(absf(footer.size.x - visible_rect.size.x) < 2.0, "portrait Protocol footer fills viewport width")
 	# Type roles: HEADER in portrait (x4, laid out at its 144 cap; ui-fix 2026-10-17); landscape's 144 snaps to Battle Block's lattice.
 	check(header._summary_label.get_theme_font_size("font_size") == (PixelUI.lattice_px(144, "block") if landscape else roundi((PixelUI.BLOCK_FONT_PX[PixelUI.TYPE_HEADER] as Vector2).y * 16.0)), "header typography and restoration")
 	for views in [s.hero_card_views, s.enemy_card_views]:
@@ -134,6 +141,21 @@ func run() -> void:
 		await create_timer(0.5).timeout
 		check(s.hero_rolls.size() == 3 and s.enemy_rolls.size() == 3, "six landed rolls")
 		check(s.hero_rolls == {"combat":12,"engineer":7,"medic":8}, "scripted hero landings reach engine")
+		if mode == 1:
+			for dimensions in [Vector2i(360,800), Vector2i(432,960), Vector2i(512,960), Vector2i(540,960), Vector2i(560,960), Vector2i(640,960)]:
+				root.size = dimensions
+				await create_timer(0.4).timeout
+				geometry(false)
+				var zone: Rect2 = s._layout.get_combat_zone_rect()
+				for views in [s.hero_card_views, s.enemy_card_views]:
+					var side: String = "hero" if views == s.hero_card_views else "enemy"
+					for view in views:
+						var die_bounds: Rect2 = s.dice_tray_3d.get_die_screen_bounds(side, str(view.state.id))
+						if not zone.grow(2.0).encloses(die_bounds):
+							print("[PORTRAIT_DIE_FIT] ", dimensions, " ", side, " zone=", zone, " die=", die_bounds)
+						check(zone.grow(2.0).encloses(die_bounds), "settled %s die stays inside portrait tray at %s" % [side, dimensions])
+			root.size = Vector2i(1280, 720)
+			await create_timer(0.4).timeout
 		if mode == 2:
 			var zone: Rect2 = s._layout.get_combat_zone_rect()
 			for overlay in s._die_tooltip_overlays:

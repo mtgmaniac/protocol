@@ -65,10 +65,6 @@ const RESULT_SLOT_X_GAP := DIE_RADIUS * 2.85
 const RESULT_ENEMY_ROW_Z := 2.51
 const RESULT_HERO_ROW_Z := 3.78
 const RESULT_OUTER_MARGIN := DIE_RADIUS * 0.12
-const RESULT_TOP_CLEARANCE := DIE_RADIUS * 0.42
-const RESULT_SIDE_OVERFLOW := DIE_RADIUS * 1.65
-const RESULT_HERO_BOTTOM_OVERFLOW := DIE_RADIUS * 1.25
-const RESULT_ENEMY_BOTTOM_OVERFLOW := DIE_RADIUS * 0.45
 const RESULT_HERO_SIDE_NUDGE := 0.0
 const RESULT_ENEMY_SIDE_NUDGE := 0.0
 const RESULT_HERO_DOWN_NUDGE := 0.0
@@ -129,7 +125,7 @@ var print_provider: Callable
 # A deliberate change tips the die over onto a face showing the new value.
 const TIP_OVER_TIME := 0.30
 var _landscape_projection := false
-var _last_landscape_size := Vector2.ZERO
+var _result_reflow_queued := false
 
 
 func configure_landscape_projection() -> void:
@@ -138,17 +134,27 @@ func configure_landscape_projection() -> void:
 	_landscape_projection = true
 	# Three vertical slots plus their existing result tags; physical die radius,
 	# materials, toss, outcomes and animation timing remain shared.
+	var camera_changed: bool = not is_equal_approx(_camera.size, preload("res://scripts/battle/landscape_battle_style.gd").VALUES.dice_camera_size)
 	_camera.size = preload("res://scripts/battle/landscape_battle_style.gd").VALUES.dice_camera_size
 	_update_world_bounds()
-	if not size.is_equal_approx(_last_landscape_size):
-		_last_landscape_size = size
-		call_deferred("_refresh_landscape_result_positions")
+	if camera_changed:
+		_queue_result_reflow()
 
 
-func _refresh_landscape_result_positions() -> void:
-	if _is_rolling or _dice_root == null or not _landscape_projection:
+func _queue_result_reflow() -> void:
+	if _result_reflow_queued:
+		return
+	_result_reflow_queued = true
+	call_deferred("_refresh_result_positions")
+
+
+func _refresh_result_positions() -> void:
+	_result_reflow_queued = false
+	if _is_rolling or _dice_root == null or not visible:
 		return
 	var entries: Array = _get_result_entries_for_dice(_dice_root.get_children())
+	if not entries.any(func(result: Dictionary) -> bool: return (result.die as RigidBody3D).has_meta("assigned_result_origin")):
+		return
 	var origins: Dictionary = _get_non_overlapping_result_origins(entries)
 	for result in entries:
 		var die: RigidBody3D = result.die
@@ -335,6 +341,7 @@ func settled_die_half_height_px() -> float:
 func set_combat_zone_rect(rect: Rect2) -> void:
 	if rect.size.x <= 2.0 or rect.size.y <= 2.0:
 		return
+	var size_changed: bool = not size.is_equal_approx(rect.size)
 	set_as_top_level(true)
 	anchor_left = 0.0
 	anchor_top = 0.0
@@ -344,6 +351,8 @@ func set_combat_zone_rect(rect: Rect2) -> void:
 	size = rect.size
 	custom_minimum_size = Vector2.ZERO
 	_sync_viewport_size()
+	if size_changed:
+		_queue_result_reflow()
 
 
 func reset() -> void:
@@ -1191,8 +1200,7 @@ func _finish_roll(dice: Array) -> void:
 	_is_rolling = false
 	_rigged_results.clear()
 	var dice_audio: Variant = get_node_or_null("/root/DiceAudio")
-	if _landscape_projection:
-		_refresh_landscape_result_positions()
+	_refresh_result_positions()
 	if dice_audio != null:
 		dice_audio.on_roll_finished()
 	# Stay visible so the player can read the results; reset() hides later
@@ -1292,13 +1300,9 @@ func _clamp_result_origin(origin: Vector3, side: String = "") -> Vector3:
 		origin.x = clampf(origin.x, -_bounds_half_width + DIE_RADIUS, _bounds_half_width - DIE_RADIUS)
 		origin.z = clampf(origin.z, _bounds_min_z + DIE_RADIUS, _bounds_max_z - DIE_RADIUS)
 		return origin
-	var outer_min_x: float = -TRAY_HALF_WIDTH + RESULT_OUTER_MARGIN - RESULT_SIDE_OVERFLOW
-	var outer_max_x: float = TRAY_HALF_WIDTH - RESULT_OUTER_MARGIN + RESULT_SIDE_OVERFLOW
-	var front_overflow: float = RESULT_HERO_BOTTOM_OVERFLOW if side == "hero" else RESULT_ENEMY_BOTTOM_OVERFLOW
-	origin.x = clampf(origin.x, outer_min_x, outer_max_x)
-	origin.z = clampf(origin.z, -TRAY_HALF_DEPTH + RESULT_TOP_CLEARANCE, TRAY_HALF_DEPTH - RESULT_OUTER_MARGIN + front_overflow)
-	# G-31: a settled die never rests partly outside the visible tray, whatever
-	# the tray's live size (the constants above describe the shipped layout).
+	# The viewport, camera, and physical walls already track the live tray rect.
+	# Use those same bounds for the settled result instead of the old 1080-wide
+	# art coordinates, which held wide-screen dice in an invisible narrow column.
 	var settled_radius: float = DIE_RADIUS * RESULT_SCALE
 	origin.x = clampf(origin.x, -_bounds_half_width + settled_radius, _bounds_half_width - settled_radius)
 	origin.z = clampf(origin.z, _bounds_min_z + settled_radius, _bounds_max_z - settled_radius)
@@ -1324,7 +1328,7 @@ func _get_unit_slot_origin(result_entry: Dictionary, fallback_origin: Vector3) -
 			return _clamp_result_origin(origin, side)
 	var slot_index: int = int(entry.get("slot_index", 0))
 	var side_count: int = maxi(int(entry.get("side_count", 1)), 1)
-	var usable_width: float = (TRAY_HALF_WIDTH - RESULT_OUTER_MARGIN) * 2.0
+	var usable_width: float = maxf((_bounds_half_width - RESULT_OUTER_MARGIN) * 2.0, 0.0)
 	var x_gap: float = 0.0
 	if side_count > 1:
 		x_gap = minf(RESULT_SLOT_X_GAP, usable_width / float(side_count - 1))

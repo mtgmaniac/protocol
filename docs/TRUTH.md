@@ -1,5 +1,17 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Battle portrait width (Kev 2026-10-18, DECISIONS_RESOLVED G-94):** battle
+content, the shared header, divider, and Protocol footer span the available
+portrait canvas. The 1080 design-pixel cap from G-91 no longer applies to
+battle; squad select retains its own centered column. Enemy and hero cards
+keep their current size while spreading across the width. The tray follows
+the board width; its physics walls and settled dice use live tray bounds.
+Per-operation floor art uses a nine-slice with the central 128 x 129 art
+pixels drawn at native size so targeting geometry stays symmetrical; the
+outer texture repeats at native pixel scale to fill wider and narrower trays.
+The 1080 x 2400 design height
+and five-band portrait structure remain.
+
 **Squad-select viewport and state (Kev 2026-10-17, DECISIONS_RESOLVED G-93):**
 the full-viewport star/planet field and shared header span the browser canvas;
 mission and roster content center in a column capped at 1400 design px. The
