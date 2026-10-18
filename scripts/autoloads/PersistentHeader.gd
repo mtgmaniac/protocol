@@ -47,6 +47,15 @@ func set_battle_landscape(enabled: bool) -> void:
 	_style()
 	_apply_safe_area()
 
+
+## Squad select uses the whole browser canvas; the narrower content cap is
+## restored when leaving it, so other screens keep their established framing.
+func set_squad_select_full_width(enabled: bool) -> void:
+	var cap := $HeaderBand.get_node_or_null("PortraitWidthCap")
+	if cap != null:
+		cap.set("enabled", not enabled and not _battle_landscape)
+		cap.call("_fit")
+
 ## Fired after safe-area insets are re-measured on a root size change (device
 ## rotation / fold, window resize). Live screens with edge-flush content
 ## re-apply their insets on this (BattleScene does); regular screens just read

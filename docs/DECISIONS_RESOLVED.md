@@ -3934,3 +3934,16 @@ Approved concise battlefield/roll/inspection/intent teaching, remove the results
 
 ## G-16. Stable squad selection and display-name copy (Kev, 2026-09-08)
 Keep the detail-panel footprint on locked encounters with no focused hero, transparent when empty. Hide locked hero names while retaining silhouettes/LOCKED and layout space; supersedes prior named-locked-card presentation. Remove NO CLEARANCE for unplayed operations; keep meaningful progress and LOCKED. Tutorial refers to SCRAP and introduces new abilities without naming them early. Briefing title/keys stay uppercase; site, situation and objective use sentence case with proper boss names. No unlock or combat changes.
+
+## G-93. Squad select viewport and session state (Kev, 2026-10-17)
+
+Squad select fills the available portrait viewport. The shared header spans its
+full width on this screen, while mission and roster content stay centered in a
+moderately capped column. The background covers the viewport independently of
+that column. Unit info starts collapsed and opens within a reserved region above
+the fixed Deploy position. A fresh launch or NEW GAME begins with zero selected
+heroes; only a return from a completed or failed run in the same app session
+restores that run's squad. The profile's old `last_deploy` field is ignored for
+selection and no longer written. This supersedes G-81/G-88's always-on info bar
+and permanent last-deploy restore, and the squad-select portion of the wide
+window header cap.

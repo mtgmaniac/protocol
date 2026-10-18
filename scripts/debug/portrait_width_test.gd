@@ -56,8 +56,12 @@ func _run() -> void:
 			for cap: Node in caps:
 				var content: Control = cap.get_parent()
 				var rect := content.get_global_rect()
-				if rect.size.x > PixelUI.PORTRAIT_WIDTH + 0.1:
+				var cap_enabled: bool = bool(cap.get("enabled"))
+				var expected_width: float = float(cap.get("max_width")) if cap_enabled else root.get_visible_rect().size.x
+				if rect.size.x > expected_width + 0.1:
 					failures.append("%s %s exceeds cap: %s" % [dimensions, screen, content.get_path()])
+				if not cap_enabled and absf(rect.size.x - expected_width) > 1.0:
+					failures.append("%s %s does not fill viewport: %s" % [dimensions, screen, content.get_path()])
 				if absf(rect.get_center().x - root.get_visible_rect().size.x * 0.5) > 1.0:
 					failures.append("%s %s not centered: %s" % [dimensions, screen, content.get_path()])
 			await RenderingServer.frame_post_draw

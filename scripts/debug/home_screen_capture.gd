@@ -70,6 +70,8 @@ func _parse_args() -> Dictionary:
 			# UI batch A5: taps these tiles in order through the real tap handler
 			# (info bar + toggle; a locked or squad-full tap only shows the unit).
 			config["tap_units"] = arg.get_slice("=", 1).split(",", false)
+		elif arg == "--capture-expand-info":
+			config["expand_info"] = true
 		elif arg.begins_with("--capture-cleared="):
 			# UI batch A5: in memory only, mark these operations won (CLEARED tag).
 			config["cleared"] = arg.get_slice("=", 1).split(",", false)
@@ -136,6 +138,11 @@ func _wait_for_scene(config: Dictionary) -> void:
 		if current_scene != null and current_scene.has_method("_on_tile_tapped"):
 			current_scene.call("_on_tile_tapped", str(tap_id).strip_edges())
 		await process_frame
+	if bool(config.get("expand_info", false)) and current_scene != null:
+		current_scene.call("_toggle_info")
+		await process_frame
+		var deploy: Button = current_scene.get("_deploy_button")
+		print("[HOME_UI_CAPTURE] expanded Deploy y=%.2f" % deploy.global_position.y)
 	var deselect_unit: String = str(config.get("deselect_unit", ""))
 	if deselect_unit != "" and current_scene != null and current_scene.has_method("_on_tile_tapped"):
 		current_scene.call("_on_tile_tapped", deselect_unit)

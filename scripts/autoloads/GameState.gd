@@ -21,6 +21,8 @@ const MAX_RELICS := 2
 
 
 var selected_units: Array = []
+## Volatile return-to-selector choice; never serialized into a profile or run.
+var session_deploy: Dictionary = {}
 var current_battle: int = 0
 var selected_operation_id: String = ""
 var relics: Array = []
@@ -1346,6 +1348,10 @@ func is_final_battle() -> bool:
 
 func finish_run(result: String) -> void:
 	last_run_result = result
+	# A run resumed in a fresh process still carries its squad back to select
+	# after victory or defeat. This stays in memory only, never in the profile.
+	if not tutorial_mode and selected_units.size() == SQUAD_UNIT_LIMIT:
+		session_deploy = {"operation": selected_operation_id, "squad": selected_units.duplicate()}
 	# A defeat is a full squad wipe — every deployed hero fell this run.
 	if result == "defeat":
 		for unit_id in selected_units:
@@ -1937,6 +1943,9 @@ const ID_KEYED_RUN_FIELDS := [
 ## Deliberately NOT saved, each for a stated reason. Anything here is expected
 ## to be absent or default after a resume.
 const TRANSIENT_RUN_FIELDS := [
+	# Return-to-selector choice belongs to this process only. A resumed run
+	# repopulates it in finish_run, after victory or defeat.
+	"session_deploy",
 	# A Texture2D and a combat snapshot holding live UnitData Resource
 	# references — neither survives JSON. Losing the post-battle "View
 	# Battlescreen" review on reload is invisible: the button simply doesn't

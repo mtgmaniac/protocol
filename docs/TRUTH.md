@@ -1,5 +1,18 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Squad-select viewport and state (Kev 2026-10-17, DECISIONS_RESOLVED G-93):**
+the full-viewport star/planet field and shared header span the browser canvas;
+mission and roster content center in a column capped at 1400 design px. The
+selector starts at 0 / 3 on a fresh process or NEW GAME. Only a completed or
+failed run returning to select in the same process restores its squad and
+operation; the legacy profile `last_deploy` field is ignored and no longer
+written. Unit info starts collapsed and opens inside a permanently reserved
+region above DEPLOY, so its toggle never shifts the button. The info bar's
+generated icon variants draw without the former gray silhouette ring. Existing
+pixel-font nearest sampling remains; the 1080×2400 canvas still scales
+fractionally at some browser sizes, so isolated edge pixels can vary by one
+physical pixel even when text and icons are sharply sampled.
+
 **Anonymous gameplay analytics (G-92, Kev 2026-10-17):** the v0.4 client sends
 only run, battle, reward-choice and tutorial events through the existing Vercel
 endpoint. One random install UUID in the profile, no PII or fingerprints;

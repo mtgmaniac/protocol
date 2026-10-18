@@ -1,45 +1,10 @@
-# Deploy / picker screen ("A5", UI batch A5, Kev 2026-10-17, DECISIONS_RESOLVED
-# G-81): mission card, squad grid, unit info bar, DEPLOY.
-#
-# Top to bottom, under the shared header (which carries only ? and back here):
-# - MISSION (subheader, one clean step above LABEL: m5x7 96 drawn pixel-exact),
-#   then the mission card between small prev / next
-#   arrows: an ENCOUNTER_ACCENT frame over a faint tint of it; the boss portrait
-#   at the left (the shared portrait frame at the roster tile width, so the same
-#   height as the tiles, framed in the accent); the operation name (CARD_NAME,
-#   accent), a row of level pips + "LV n" + CLEARED (light cobalt) or LOCKED as
-#   plain text, and the THREATS as one plain line ("SHIELDS · JAM · REBUILD"; a
-#   locked operation shows its unlock condition there instead). No frames
-#   inside the card (the `panel count` gate pins the screen at 11). Nothing else: the flavor paragraph left
-#   this screen (it stays in data, Help and the card's long-press). Page dots
-#   under the card, the current one in the accent.
-# - A thin separator.
-# - SQUAD (subheader, as MISSION) with "n / 3" right-aligned, and the 4-column roster
-#   grid (tile sizes unchanged). Picks keep the cobalt frame and the 1-3 badge;
-#   the unit shown in the info bar has its own tile border in bone (CHROME).
-# - The unit info bar, always present at one height (cobalt frame, dark fill):
-#   name, HP and IN SQUAD / ON BENCH / LOCKED (plain text); the one-line `blurb`; a roll band
-#   bar of five segments sized by the unit's real roll windows, each lit in its
-#   main effect type's colour (ATTACK / SHIELD / HEAL / UTILITY, G-87) with the
-#   in-game icon of that effect under it; the hint line. A locked unit shows its
-#   unlock condition and no bar.
-# - DEPLOY SQUAD, the one primary; short of three picks it reads "PICK n MORE",
-#   disabled.
-# Spacing (Kev, 2026-10-17, G-86; G-88): a buffer of at least 2 GAP under the
-# header and above DEPLOY, at least one GAP between the four sections (mission
-# block, separator, squad block, info bar). The info bar sits exactly one GAP
-# under the roster, attached to the units; the height left over is shared evenly
-# by the five gaps in whole GAPs (gap_sizes), never by the elements, and the
-# info bar gap's share goes to the two section gaps above it; a short screen
-# shrinks the two buffers first, then the section gaps.
-# Tap a unit: it shows in the info bar AND toggles in or out of the squad; with
-# the squad full a bench tap only shows it, plus "SQUAD FULL: TAP A PICK TO
-# REMOVE". Long-press opens the unit's inspect pop-up. The info bar opens on
-# pick 1. The last operation and squad deployed come back next time
-# (SaveManager.last_deploy).
-#
-# Switching operations, toggling units and changing the info bar's unit move
-# nothing on screen: every slot keeps its size (the `unlock progression` gate).
+# Squad selector (DECISIONS_RESOLVED G-93). The backdrop and shared header span
+# the viewport; MISSION, SQUAD, optional UNIT INFO and DEPLOY occupy a centered
+# content column. The four-column roster is the only selection interface.
+# Unit info starts collapsed and its expanded panel paints into a permanently
+# reserved area, so Deploy stays in place. A new game starts at zero picks;
+# only a run returning in the same process restores the last deployed squad.
+# Switching missions and toggling heroes never changes the block geometry.
 extends Control
 
 const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing_overlay.gd")
@@ -120,14 +85,9 @@ const BAND_ICON_GAP := 8
 ## (PixelUI.pip_texture_for_key) in its own colours, 12 art px square, so it
 ## fits the narrowest band (a single roll, 1/20 of the bar).
 const BAND_ICON := 48
-## The info bar's band icons only (G-88): a lighter variant of each icon (its
-## faint pixels made opaque, its dark ones lifted to BAND_ICON_VALUE_FLOOR) in a
-## 1 art px ring of UI_LINE, so the dark and half-transparent ones (Ghost's
-## cloak) read on the panel. The in-game icons elsewhere stay as they are.
-const BAND_ICON_OUTLINE := ART_PX
+## The info bar's band icons retain their color and draw without a gray ring.
 const BAND_ICON_ALPHA_FLOOR := 0.06   # texels with less coverage drop out
 const BAND_ICON_VALUE_FLOOR := 0.45
-static var BAND_ICON_OUTLINE_COLOR: Color = PixelUI.UI_LINE
 const HINT_TEXT := "HOLD ANY UNIT FOR FULL INTEL"
 const SQUAD_FULL_TEXT := "SQUAD FULL: TAP A PICK TO REMOVE"
 ## A UTILITY band's icon: the first of these the ability carries, as its
@@ -149,7 +109,8 @@ const BAND_SPARK: Array[String] = ["..#..", "..#..", "#####", "..#..", "..#.."]
 const BAND_INERT_KEYS: Array[String] = ["name", "eff", "range", "zone", "desc", "dMin", "dMax", "burnT", "rfT", "shTgt", "healTgt", "healAll", "blastAll", "rfeAll", "breachAll"]
 
 const ROSTER_ORDER := ["combat", "engineer", "medic", "pulse", "avalanche", "shield", "ghost", "breaker"]
-const DEFAULT_SQUAD := ["combat", "engineer", "medic"]
+const CONTENT_MAX_WIDTH := 1400.0
+const INFO_TOGGLE_HEIGHT := 88.0
 
 
 # ─── State ────────────────────────────────────────────────────────────────────
@@ -182,6 +143,8 @@ var _dot_nodes: Array[ColorRect] = []
 var _unit_tiles: Dictionary = {}    # unit_id -> { frame, name, slot_badge, slot_label, locked, new_badge }
 var _counter_label: Label
 var _info_bar: PanelContainer
+var _info_region: Control
+var _info_toggle: Button
 var _info_name: Label
 var _info_hp: Label
 var _info_status: Label
@@ -208,6 +171,7 @@ func _ready() -> void:
 	PersistentHeader.clear_battle_actions()
 	# Back from the deploy screen returns to the title screen (Kev 2026-07-10).
 	PersistentHeader.bind_battle_actions(Callable(), Callable(), Callable(), _on_back_to_title)
+	PersistentHeader.set_squad_select_full_width(true)
 	_apply_background()
 	_gather_data()
 	_restore_last_deploy()
@@ -220,9 +184,12 @@ func _ready() -> void:
 	_refresh_deploy()
 
 
+func _exit_tree() -> void:
+	PersistentHeader.set_squad_select_full_width(false)
+
+
 func _apply_background() -> void:
-	var bg := ColorRect.new()
-	bg.color = PixelUI.UI_BG   # the screen field token
+	var bg := preload("res://scripts/ui/squad_backdrop.gd").new() as Control
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
@@ -245,11 +212,10 @@ func _gather_data() -> void:
 			_unit_ids.append(unit_id)
 
 
-# The last operation and squad deployed (SaveManager.last_deploy) come back when
-# they are still playable: an unlocked operation, three unlocked heroes.
-# Otherwise the first operation and the default squad.
+# Only a run completed in this app session can seed the next selection. A
+# profile's old last_deploy is intentionally ignored on browser reload.
 func _restore_last_deploy() -> void:
-	var last: Dictionary = SaveManager.last_deploy()
+	var last: Dictionary = GameState.session_deploy
 	var op_id: String = str(last.get("operation", ""))
 	var op_index: int = _operation_ids.find(op_id)
 	if op_index >= 0 and SaveManager.is_operation_unlocked(op_id):
@@ -260,12 +226,8 @@ func _restore_last_deploy() -> void:
 		var unit_id: String = str(unit_id_variant)
 		if _unit_ids.has(unit_id) and SaveManager.is_hero_unlocked(unit_id) and not _selected_unit_ids.has(unit_id):
 			_selected_unit_ids.append(unit_id)
-	if _selected_unit_ids.size() == MAX_SELECTED_UNITS:
-		return
-	_selected_unit_ids.clear()
-	for unit_id in DEFAULT_SQUAD:
-		if _unit_ids.has(unit_id) and SaveManager.is_hero_unlocked(unit_id):
-			_selected_unit_ids.append(unit_id)
+	if _selected_unit_ids.size() != MAX_SELECTED_UNITS:
+		_selected_unit_ids.clear()
 
 
 # ─── Layout ───────────────────────────────────────────────────────────────────
@@ -279,7 +241,7 @@ func _build_layout() -> void:
 	margin.add_theme_constant_override("margin_top", int(PersistentHeader.band_height()))
 	margin.add_theme_constant_override("margin_bottom", ROOT_MARGIN_BOTTOM + PixelUI.safe_bottom)
 	add_child(margin)
-	PixelUI.cap_portrait_width(margin)
+	PixelUI.cap_portrait_width(margin, true, CONTENT_MAX_WIDTH)
 	_layout_margin = margin
 
 	# No container separation: every space between blocks is a gap slot, sized
@@ -299,8 +261,8 @@ func _build_layout() -> void:
 	squad.add_theme_constant_override("separation", GAP)
 	squad.add_child(_build_squad_header())
 	squad.add_child(_build_roster())
-	_info_bar = _build_info_bar()
-	_blocks = [mission, _build_divider(), squad, _info_bar, _build_deploy_button()]
+	_info_region = _build_info_region()
+	_blocks = [mission, _build_divider(), squad, _info_region, _build_deploy_button()]
 	_gaps.clear()
 	for i in _blocks.size():
 		if i < GAP_FLOORS.size():
@@ -1013,6 +975,34 @@ func _role_color(unit: UnitData) -> Color:
 
 
 # ─── Unit info bar ────────────────────────────────────────────────────────────
+func _build_info_region() -> Control:
+	var region := Control.new()
+	region.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_info_toggle = Button.new()
+	_info_toggle.text = "SHOW UNIT INFO  +"
+	_info_toggle.focus_mode = Control.FOCUS_NONE
+	_info_toggle.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_info_toggle.offset_bottom = INFO_TOGGLE_HEIGHT
+	PixelUI.style_ui_secondary_button(_info_toggle, PixelUI.type_px(PixelUI.TYPE_LABEL))
+	_info_toggle.pressed.connect(_toggle_info)
+	region.add_child(_info_toggle)
+	_info_bar = _build_info_bar()
+	_info_bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_info_bar.offset_top = INFO_TOGGLE_HEIGHT + GAP
+	_info_bar.offset_bottom = _info_bar.offset_top + _info_bar.get_combined_minimum_size().y
+	_info_bar.visible = false
+	region.add_child(_info_bar)
+	# The reservation is permanent. Expanding only paints into it, so the VBox
+	# distributing the screen cannot move Deploy or any later block.
+	region.custom_minimum_size.y = _info_bar.offset_bottom
+	return region
+
+
+func _toggle_info() -> void:
+	_info_bar.visible = not _info_bar.visible
+	_info_toggle.text = "HIDE UNIT INFO  -" if _info_bar.visible else "SHOW UNIT INFO  +"
+
+
 func _build_info_bar() -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1048,7 +1038,7 @@ func _build_info_bar() -> PanelContainer:
 	# The roll band bar and its glyph row, drawn in one control on the art grid.
 	_info_strip = Control.new()
 	_info_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_info_strip.custom_minimum_size = Vector2(0, BAND_BAR_H + BAND_ICON_GAP + BAND_ICON + BAND_ICON_OUTLINE)
+	_info_strip.custom_minimum_size = Vector2(0, BAND_BAR_H + BAND_ICON_GAP + BAND_ICON)
 	# The pip icons draw NEAREST, as on the battle cards.
 	_info_strip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_info_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1229,15 +1219,13 @@ func _draw_band_strip() -> void:
 			continue
 		var fit: Vector2 = (variant[0] as Texture2D).get_size() * ART_PX
 		var at := Vector2(icon_x, icon_top) + (((Vector2(BAND_ICON, BAND_ICON) - fit) * 0.5) / ART_PX).floor() * ART_PX
-		for offset: Vector2 in [Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1), Vector2(-1, 0), Vector2(1, 0), Vector2(-1, 1), Vector2(0, 1), Vector2(1, 1)]:
-			_info_strip.draw_texture_rect(variant[1], Rect2(at + offset * BAND_ICON_OUTLINE, fit.round()), false, BAND_ICON_OUTLINE_COLOR)
 		_info_strip.draw_texture_rect(variant[0], Rect2(at, fit.round()), false, PixelUI.pip_tint_for_key(icon))
 
 
 static var _band_icon_cache: Dictionary = {}
 
-## A pip icon's info bar variant (G-88), cached per key: [the lighter icon, its
-## white silhouette for the ring]. Pixels under BAND_ICON_ALPHA_FLOOR drop out,
+## A pip icon's info bar variant, cached per key. Pixels under
+## BAND_ICON_ALPHA_FLOOR drop out,
 ## the rest go opaque with their HSV value raised to BAND_ICON_VALUE_FLOOR. The
 ## variant is BAND_ICON / ART_PX texels on its long side, drawn one texel per
 ## art px.
@@ -1259,7 +1247,6 @@ static func _band_icon_variant(key: String, texture: Texture2D) -> Array:
 	var tw: int = maxi(1, roundi(src.get_width() * k))
 	var th: int = maxi(1, roundi(src.get_height() * k))
 	img = Image.create(tw, th, false, Image.FORMAT_RGBA8)
-	var mask: Image = Image.create(tw, th, false, Image.FORMAT_RGBA8)
 	for ty in th:
 		for tx in tw:
 			var x0: int = floori(float(tx) * src.get_width() / tw)
@@ -1279,8 +1266,7 @@ static func _band_icon_variant(key: String, texture: Texture2D) -> Array:
 			var avg: Vector3 = rgb / alpha
 			var c2 := Color(avg.x, avg.y, avg.z)
 			img.set_pixel(tx, ty, Color.from_hsv(c2.h, c2.s, maxf(c2.v, BAND_ICON_VALUE_FLOOR), 1.0))
-			mask.set_pixel(tx, ty, Color.WHITE)
-	var out: Array = [ImageTexture.create_from_image(img), ImageTexture.create_from_image(mask)]
+	var out: Array = [ImageTexture.create_from_image(img)]
 	_band_icon_cache[key] = out
 	return out
 
@@ -1345,8 +1331,6 @@ func _on_begin_run_pressed() -> void:
 
 
 func _launch_run(directive_relic_id: String) -> void:
-	# Squad select reopens on this operation and squad next time.
-	SaveManager.remember_deploy(_selected_operation_id, _selected_unit_ids)
 	GameState.start_run(_selected_unit_ids, _selected_operation_id)
 	# Encounter start: the ONE crossfade to the faction's track. It then plays
 	# unbroken across every battle and between-battle screen until encounter end.

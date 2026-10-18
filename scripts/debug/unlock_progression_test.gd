@@ -208,7 +208,7 @@ func _test_first_profile_progression_and_presentation() -> void:
 	var tiles: Dictionary = home.get("_unit_tiles") as Dictionary
 	var roster: Array = home.get("_unit_ids") as Array
 	_check(roster == ["combat", "engineer", "medic", "pulse", "avalanche", "shield", "ghost", "breaker"] and tiles.size() == 8, "all eight hero roster cards render in stable order")
-	_check((home.get("_selected_unit_ids") as Array) == ["combat", "engineer", "medic"], "default selected squad remains Strike, Engineer, Medic")
+	_check((home.get("_selected_unit_ids") as Array).is_empty(), "fresh selection starts at zero heroes")
 	for hero_id in roster:
 		var tile: Dictionary = tiles.get(hero_id, {}) as Dictionary
 		var expected_locked: bool = not expected_starters.has(hero_id)
@@ -249,6 +249,43 @@ func _test_first_profile_progression_and_presentation() -> void:
 	# slot, keeps LOCKED, and its detail box shows the lock info and
 	# "THREATS: ???". Unit info is long-press only; a tap only toggles.
 	await _check_encounter_slots(home, op_order, tiles)
+	# G-93: run-end selection is volatile, while a persisted legacy last_deploy
+	# cannot repopulate a fresh launch. The reserved info region keeps Deploy put.
+	var gs := _game_state()
+	gs.set("tutorial_mode", false)
+	gs.set("selected_units", ["combat", "engineer", "medic"])
+	gs.set("selected_operation_id", "facility")
+	gs.call("finish_run", "defeat")
+	_check((gs.get("session_deploy") as Dictionary).get("squad", []) == ["combat", "engineer", "medic"], "run finish remembers the squad for this session")
+	change_scene_to_file(HOME_SCENE)
+	await _wait_for_scene(HOME_SCENE)
+	var returning_home := current_scene
+	_check((returning_home.get("_selected_unit_ids") as Array) == ["combat", "engineer", "medic"], "same-session run return restores its squad")
+	var returning_deploy: Button = returning_home.get("_deploy_button") as Button
+	_check(not returning_deploy.disabled, "three selected heroes enable Deploy")
+	var info: PanelContainer = returning_home.get("_info_bar") as PanelContainer
+	_check(not info.visible, "unit info starts collapsed after run return")
+	var deploy_y: float = returning_deploy.global_position.y
+	returning_home.call("_toggle_info")
+	for _frame in 3:
+		await process_frame
+	_check(info.visible and is_equal_approx(returning_deploy.global_position.y, deploy_y), "expanded info leaves Deploy at the exact same y")
+	returning_home.call("_toggle_info")
+	for _frame in 3:
+		await process_frame
+	_check(not info.visible and is_equal_approx(returning_deploy.global_position.y, deploy_y), "collapsed info leaves Deploy at the exact same y")
+	gs.set("session_deploy", {})
+	(sm.get("data") as Dictionary)["last_deploy"] = {"operation": "facility", "squad": ["combat", "engineer", "medic"]}
+	change_scene_to_file(HOME_SCENE)
+	await _wait_for_scene(HOME_SCENE)
+	var fresh_home := current_scene
+	var fresh_deploy: Button = fresh_home.get("_deploy_button") as Button
+	_check((fresh_home.get("_selected_unit_ids") as Array).is_empty() and fresh_deploy.disabled, "fresh selection ignores legacy profile squad")
+	for hero_id in ["combat", "engineer"]:
+		fresh_home.call("_on_tile_tapped", hero_id)
+		_check(fresh_deploy.disabled, "Deploy stays disabled after selecting %s" % hero_id)
+	fresh_home.call("_on_tile_tapped", "medic")
+	_check(not fresh_deploy.disabled and not (fresh_home.get("_info_bar") as PanelContainer).visible, "third hero enables Deploy without opening info")
 	_test_renamed_enemy_abilities()
 	_test_band_copy()
 	sm.set("_disk_enabled", original_disk_enabled)
@@ -456,13 +493,12 @@ func _check_encounter_slots(home: Node, op_order: Array, tiles: Dictionary) -> v
 		await process_frame
 	_check((home.get("_selected_unit_ids") as Array) != before_squad, "a tap toggles the hero in the squad")
 	_check(str(home.get("_focus_unit_id")) == "engineer" and (home.get("_info_name") as Label).text == "ENGINEER", "a tap shows the hero in the info bar")
-	_check((home.get("_info_status") as Label).text == "ON BENCH", "the info bar says the tapped-out hero is on the bench")
+	_check((home.get("_info_status") as Label).text == "IN SQUAD", "the info bar says the newly selected hero is in the squad")
 	home.call("_on_tile_tapped", "avalanche")
 	for _frame in 3:
 		await process_frame
 	_check((home.get("_info_status") as Label).text == "LOCKED" and (home.get("_info_blurb") as Label).text == str(_save_manager().call("hero_unlock_condition", "avalanche")),
 		"a locked hero shows its unlock condition (saw '%s')" % (home.get("_info_blurb") as Label).text)
-	home.call("_on_tile_tapped", "engineer")
 	var bench_id: String = ""
 	for hero_id in ["combat", "engineer", "medic", "pulse"]:
 		if not (home.get("_selected_unit_ids") as Array).has(hero_id):

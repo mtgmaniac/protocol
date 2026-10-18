@@ -6,6 +6,7 @@ var _content: Control
 var _left: float
 var _right: float
 var enabled := true
+var max_width := PixelUI.PORTRAIT_WIDTH
 
 
 func _ready() -> void:
@@ -21,8 +22,8 @@ func _exit_tree() -> void:
 
 
 func _fit() -> void:
-	var wide := enabled and get_viewport().get_visible_rect().size.x > PixelUI.PORTRAIT_WIDTH
+	var wide := enabled and get_viewport().get_visible_rect().size.x > max_width
 	_content.anchor_left = 0.5 if wide else 0.0
 	_content.anchor_right = 0.5 if wide else 1.0
-	_content.offset_left = _left - PixelUI.PORTRAIT_WIDTH * 0.5 if wide else _left
-	_content.offset_right = _right + PixelUI.PORTRAIT_WIDTH * 0.5 if wide else _right
+	_content.offset_left = _left - max_width * 0.5 if wide else _left
+	_content.offset_right = _right + max_width * 0.5 if wide else _right

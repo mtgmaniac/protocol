@@ -204,6 +204,9 @@ func _on_new_game_pressed() -> void:
 
 
 func _start_new_game() -> void:
+	# A title-screen NEW GAME is a fresh choice, even when the profile remembers
+	# earlier runs. Run-end returns enter UnitSelect directly and keep this value.
+	GameState.session_deploy.clear()
 	# Locked during the flare so a double-tap can't fire the transition twice.
 	_new_game_button.disabled = true
 	_logo.flare_out()
