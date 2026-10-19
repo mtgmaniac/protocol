@@ -1,5 +1,14 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Shared menu background (Kev 2026-10-18, DECISIONS_RESOLVED G-95):** Home / Title
+and Unit Selection / Squad Select use the exact approved pixel image at
+`assets/ui/backgrounds/menu_space_background.png`. A shared nearest-filtered
+renderer covers each full viewport without stretching; it centers horizontal
+crop and takes any vertical crop from the starfield above the planet, keeping
+the planet at the bottom. It ignores pointer input and sits behind the UI.
+Battle and other in-run screens keep their existing backgrounds. The older
+title-only backdrop ruling below is superseded for these two menu screens.
+
 **Battle portrait width (Kev 2026-10-18, DECISIONS_RESOLVED G-94):** battle
 content, the shared header, divider, and Protocol footer span the available
 portrait canvas. The 1080 design-pixel cap from G-91 no longer applies to

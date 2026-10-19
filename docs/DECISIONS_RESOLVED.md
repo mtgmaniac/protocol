@@ -1,5 +1,14 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-95. One approved space image behind Title and Squad Select (Kev, 2026-10-18)
+
+Title and Squad Select share the supplied pixel-art planetary-horizon image,
+unchanged. It covers each viewport with preserved aspect ratio, nearest
+sampling, centered horizontal crop and bottom-anchored vertical crop. It stays
+behind all controls and ignores input. Foreground layouts, selection behavior,
+and battle backgrounds are unchanged. This supersedes G-76's title-only image
+and G-93's procedural squad-select field.
+
 ## G-94. Battle uses the portrait canvas width (Kev, 2026-10-18)
 
 Supersedes G-91's 1080-design-pixel cap for battle only. Battle content,

@@ -37,7 +37,7 @@ const SECONDARY_SIZE := Vector2(640, 116)
 const SECONDARY_FONT := 56
 const FEEDBACK_SIZE := SECONDARY_SIZE
 const FEEDBACK_FONT := SECONDARY_FONT
-const TITLE_BACKDROP := preload("res://scripts/ui/title_backdrop.gd")
+const MENU_SPACE_BACKGROUND := preload("res://scripts/ui/menu_space_background.gd")
 # First-run choice overlay (question card after the first NEW GAME).
 const PROMPT_WIDTH := 780.0
 const PROMPT_PAD := 36
@@ -86,8 +86,8 @@ func _ready() -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	# The space backdrop on the shared pixel grid (title_backdrop.gd).
-	var backdrop: SubViewportContainer = PixelUI.make_art_grid_view(TITLE_BACKDROP.new(), "TitleBackdrop")
+	var backdrop: Control = MENU_SPACE_BACKGROUND.new()
+	backdrop.name = "MenuSpaceBackground"
 	add_child(backdrop)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 

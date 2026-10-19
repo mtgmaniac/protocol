@@ -8,6 +8,7 @@
 extends Control
 
 const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing_overlay.gd")
+const MENU_SPACE_BACKGROUND := preload("res://scripts/ui/menu_space_background.gd")
 
 const MAX_SELECTED_UNITS := 3
 
@@ -189,7 +190,8 @@ func _exit_tree() -> void:
 
 
 func _apply_background() -> void:
-	var bg := preload("res://scripts/ui/squad_backdrop.gd").new() as Control
+	var bg: Control = MENU_SPACE_BACKGROUND.new()
+	bg.name = "MenuSpaceBackground"
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
