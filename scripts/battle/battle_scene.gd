@@ -1701,7 +1701,7 @@ func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 		if _layout.presentation("tag_wrap_before_shrink", false) and effects.size() >= 2:
 			rows = _split_tag_rows(effects, target, value_font, profile, slot_w)
 		var needs_shrink: bool = rows.any(func(row): return _estimate_tag_content_width(row.effects, row.target, value_font, profile) > slot_w)
-		if needs_shrink:
+		if needs_shrink and PixelUI.TEXT_SHRINK_TO_FIT:   # crisp text step 1 preview: off
 			value_font = PixelUI.text_px(int(round(base_font * DIE_TAG_SHRINK_STEP)))
 			profile = _tag_pip_profile(value_font)
 			rows = [{"effects": effects, "target": target}]

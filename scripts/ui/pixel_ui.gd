@@ -118,6 +118,82 @@ static func text_px(font_size: int) -> int:
 	return lattice_px(maxi(font_size, TEXT_MIN_PX))
 
 
+# ── Crisp text sizes (crisp text steps 1-2, Kev 2026-10-19: PREVIEW) ──
+# The itch embed is always 640x960, a stretch scale of 0.4. m5x7 and Battle
+# Block both draw one font pixel as size / 16 design px, so only 40, 80 and 120
+# put a font pixel on a whole number of screen px there (1, 2, 3). Every size
+# that reaches a font is one of them. The sizing code above still computes the
+# old sizes (so boxes measured from them keep their size); one hook maps the
+# size each text node is given (apply_text_filter -> _crisp_apply) and Battle
+# Block maps in bind_block_snap. Old 48 / 64 / 80 -> 80, 96 -> 120; any other
+# size goes to the nearest of the three, a tie going up. Text marked with
+# mark_small_text (version stamp, Protocol cost badges, the effect-pip duration
+# superscript) draws at 40.
+const CRISP_SIZES := [40, 80, 120]
+const CRISP_MAP := {48: 80, 64: 80, 80: 80, 96: 120}
+const CRISP_SMALL := 40
+## Preview: no text shrinks to fit its box (die tags, status chips), so
+## overflow shows.
+const TEXT_SHRINK_TO_FIT := false
+## Preview: m5x7 is never drawn by the per-label exact-pixel snap
+## (bind_m5x7_snap); G-78 / G-86's rule is superseded.
+const M5X7_EXACT_SNAP := false
+
+
+## The crisp size for an old text size (design px).
+static func crisp_px(px: int) -> int:
+	if CRISP_MAP.has(px):
+		return int(CRISP_MAP[px])
+	var best: int = CRISP_SIZES[0]
+	for size: int in CRISP_SIZES:
+		if absi(size - px) <= absi(best - px):
+			best = size
+	return best
+
+
+## m5x7's raster scale (FontFile.oversampling), see get_pixel_font.
+const CRISP_FONT_OVERSAMPLING := 2.0
+
+
+## The few texts that stay small (40): call once the label exists.
+static func mark_small_text(control: Control) -> void:
+	control.set_meta("crisp_small", true)
+	_crisp_apply(control)
+
+
+const _CRISP_SIZE_NAMES := ["font_size", "normal_font_size", "bold_font_size",
+	"italics_font_size", "bold_italics_font_size", "mono_font_size"]
+
+
+static func _crisp_bind(control: Control) -> void:
+	if not control.has_meta("crisp_bound"):
+		control.set_meta("crisp_bound", true)
+		control.theme_changed.connect(_crisp_apply.bind(control))
+	_crisp_apply(control)
+
+
+## Maps the node's font size overrides. The hook remembers the size it was
+## given and the size it wrote: its own write (which fires theme_changed
+## again) maps from the remembered size, so a later mark_small_text still
+## sees the old size. Battle Block labels map in bind_block_snap instead.
+static func _crisp_apply(control: Control) -> void:
+	# A label that was Battle Block and is m5x7 again (the shared header off
+	# the battle screen) keeps its block_px meta: only the font says which.
+	if control.has_meta("block_px") and control.get_theme_font("font") == get_battle_font():
+		return
+	for size_name: String in _CRISP_SIZE_NAMES:
+		if not control.has_theme_font_size_override(size_name):
+			continue
+		var px: int = control.get_theme_font_size(size_name)
+		var wrote: int = int(control.get_meta("crisp_to_" + size_name, -1))
+		var old: int = int(control.get_meta("crisp_from_" + size_name, px)) if px == wrote else px
+		var crisp: int = CRISP_SMALL if control.has_meta("crisp_small") else crisp_px(old)
+		control.set_meta("crisp_from_" + size_name, old)
+		control.set_meta("crisp_to_" + size_name, crisp)
+		if crisp != px:
+			control.add_theme_font_size_override(size_name, crisp)
+
+
 # ── Type system (ui-unify, docs/UI_UNIFY.md + docs/UI_STYLE.md) ──
 # Two families. m5x7 (native em 16, full ASCII) carries every reading role;
 # Battle Block (bitmap, native 32, capitals and digits only) is the DISPLAY face
@@ -210,18 +286,23 @@ static func apply_type(control: Control, role: String, ink: Variant = null, scal
 #   HEADER    8..9 (128..144): 360 -> 144 (k 3), 390 -> 133 (k 3), 540 -> 128 (k 4)
 # CARD_NAME cannot reach k 3 on a phone: AVALANCHE would be 162 screen px on a
 # 115 px card at 360. HEADER's cap is 9, not 8, so the phones reach k 3 at all.
+## Crisp text (PREVIEW): one fixed size per role, drawn at that size on every
+## canvas: the size each drew on itch under the old snap (was CARD 4..6,
+## CARD_NAME 6..6, DISPLAY 6..6, HEADER 8..9).
 const BLOCK_FONT_PX := {
-	TYPE_CARD: Vector2(4.0, 6.0),
-	TYPE_CARD_NAME: Vector2(6.0, 6.0),
-	TYPE_DISPLAY: Vector2(6.0, 6.0),
-	TYPE_HEADER: Vector2(8.0, 9.0),
+	TYPE_CARD: Vector2(5.0, 5.0),        # 80 (was 64; 80 on itch)
+	TYPE_CARD_NAME: Vector2(5.0, 5.0),   # 80 (was 96; 80 on itch)
+	TYPE_DISPLAY: Vector2(5.0, 5.0),     # 80 (was 96; 80 on itch)
+	TYPE_HEADER: Vector2(7.5, 7.5),      # 120 (was 128..144; 120 on itch)
 }
 
 
 ## The Battle Block font pixel, in design px, for a role's [min_px, max_px] at a
 ## screen scale (screen px per design px): a whole number of screen px.
 static func block_pixel_px(min_px: float, max_px: float, screen_scale: float) -> float:
-	if screen_scale <= 0.0:
+	# Crisp text step 1: a role with one size draws at that size on every
+	# canvas (no per-device snap).
+	if screen_scale <= 0.0 or is_equal_approx(min_px, max_px):
 		return max_px
 	var k: int = maxi(1, ceili(min_px * screen_scale - 0.001))
 	if float(k) / screen_scale > max_px + 0.001:
@@ -236,8 +317,12 @@ static func block_pixel_px(min_px: float, max_px: float, screen_scale: float) ->
 ## Lays a Battle Block label out at max_px (font size max_px x 16) and keeps its
 ## draw scale pixel-exact across resizes, container sorts and window changes.
 static func bind_block_snap(label: Control, min_px: float, max_px: float) -> void:
-	label.add_theme_font_size_override("font_size", roundi(max_px * float(FONT_NATIVE_BLOCK) * 0.5))
+	# Crisp text step 1: one size from 40 / 80 / 120 (BLOCK_FONT_PX already is).
+	max_px = float(crisp_px(roundi(max_px * 16.0))) / 16.0
+	min_px = max_px
+	# The meta first: the crisp hook skips Battle Block labels.
 	label.set_meta("block_px", Vector2(min_px, max_px))
+	label.add_theme_font_size_override("font_size", roundi(max_px * float(FONT_NATIVE_BLOCK) * 0.5))
 	if not label.has_meta("block_snap_bound"):
 		label.set_meta("block_snap_bound", true)
 		label.resized.connect(_queue_block_snap.bind(label))
@@ -362,6 +447,13 @@ static func _apply_block_snap(label_ref: Variant) -> void:
 ## origin on a whole screen px (the label must sit in a plain Control).
 static var _pixel_font_exact: Font = null
 static func bind_m5x7_snap(label: Label, min_px: float, max_px: float) -> void:
+	# Crisp text (PREVIEW): the exact-pixel rule (G-78 run-end rows, G-86 squad
+	# select subheaders) is superseded. The label is plain m5x7 at its least
+	# size, what it drew on itch (5 -> 80; 3 -> 48, which the hook maps to 80).
+	if not M5X7_EXACT_SNAP:
+		label.add_theme_font_override("font", get_pixel_font())
+		label.add_theme_font_size_override("font_size", roundi(min_px * float(FONT_NATIVE_M5X7)))
+		return
 	if _pixel_font_exact == null:
 		var base: Font = get_pixel_font()
 		if base is FontFile:
@@ -1004,6 +1096,15 @@ static func get_pixel_font() -> Font:
 			fallback_font.font_names = PackedStringArray(["Cascadia Mono", "Consolas", "Courier New", "monospace"])
 			_pixel_font = fallback_font
 			return _pixel_font
+		# Crisp text step 2 (PREVIEW): rasterize m5x7 at 2x its size whatever
+		# the window's scale. Godot rounds font oversampling DOWN to 1/64ths, so
+		# at the itch scale (0.4) the glyphs were rasterized at 0.390625: 80 drew
+		# from a 31.25 px raster stretched 2.4% on screen, and columns and rows
+		# came out 1 and 3 px wide. At 2x, a font pixel is 5 / 10 / 15 texels at
+		# 40 / 80 / 120, a whole multiple of the 5 texels one screen px samples
+		# at 0.4, so every stroke is 1 / 2 / 3 px wherever the text sits.
+		if font is FontFile:
+			(font as FontFile).oversampling = CRISP_FONT_OVERSAMPLING
 		_pixel_font = font
 	return _pixel_font
 
@@ -1036,6 +1137,9 @@ static func apply_text_filter(node: Node) -> void:
 		var item := node as CanvasItem
 		if item.texture_filter == CanvasItem.TEXTURE_FILTER_PARENT_NODE:
 			item.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		# Crisp text step 1: the same always-on hook maps every text size.
+		if node is Control:
+			_crisp_bind(node as Control)
 
 
 static func install_text_filter(tree: SceneTree) -> void:

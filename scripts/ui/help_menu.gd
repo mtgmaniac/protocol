@@ -21,8 +21,8 @@ const BODY_FONT := PixelUI.FONT_INFO_MIN  # table rows / stats (read under dures
 # narrow enough for all five plus X at 360: their labels at the SMALL size (m5x7
 # 48), 4 design px apart.
 const HELP_TABS := [
-	{"id": "settings", "label": "SETTINGS"},
-	{"id": "basics", "label": "BASICS"},
+	{"id": "settings", "label": "PREFS"},   # crisp text: 5 letters fit a tab at 80
+	{"id": "basics", "label": "RULES"},
 	{"id": "icons", "label": "ICONS"},
 	{"id": "units", "label": "UNITS"},
 	{"id": "log", "label": "LOG"},
@@ -368,7 +368,7 @@ func _build_battle_log(host: VBoxContainer) -> void:
 # Protocol's rows are name, effect and the cost right-aligned. REPLAY TUTORIAL
 # closes the page. Copy unchanged.
 func _build_basics(host: VBoxContainer) -> void:
-	_add_section(host, "ANONYMOUS GAMEPLAY DATA", ["Anonymous run and choice data helps balance the game; turn sharing off in SETTINGS."])
+	_add_section(host, "ANONYMOUS GAMEPLAY DATA", ["Anonymous run and choice data helps balance the game; turn sharing off in PREFS."])
 	_add_section(host, "HOW A TURN WORKS", [
 		"Every unit - squad and hostile - rolls a D20 at the same time.",
 		"Assign targets, then END TURN: heroes act before enemies.",
@@ -787,6 +787,7 @@ func _build_settings(host: VBoxContainer) -> void:
 	var version_label: Label = _make_label(
 		PixelUI.version_label(),
 		24, PixelUI.UI_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT, 0)
+	PixelUI.mark_small_text(version_label)   # crisp text: the version stamp stays at 40
 	host.add_child(version_label)
 
 

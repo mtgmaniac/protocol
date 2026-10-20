@@ -9,11 +9,16 @@
 ## centred in the footer's fill (as many screen px above the caps as under the
 ## cells); every callsign draws all its columns between the card shell's inset
 ## lines (AVALANCHE lost one at 360); the header name is the HEADER role.
+## Crisp text (2026-10-19, PREVIEW): every size is 40 / 80 / 120. The itch
+## canvas (640 x 960, scale 0.4) is where they draw 1 / 2 / 3 screen px per font
+## pixel, so the pixel checks on callsigns and the header run there; the phone
+## windows check the sizes and the layout.
 ##   godot --path . -s scripts/debug/layout_rhythm_test.gd
 extends SceneTree
 
 const BATTLE := "res://scenes/battle/BattleScene.tscn"
-const WINDOWS := [Vector2i(360, 800), Vector2i(390, 867)]
+const WINDOWS := [Vector2i(640, 960), Vector2i(360, 800), Vector2i(390, 867)]
+const ITCH := Vector2i(640, 960)
 var failures: Array[String] = []
 var checks := 0
 
@@ -93,18 +98,23 @@ func battle(window: Vector2i) -> void:
 			var prev: Rect2 = (buttons[i - 1] as Control).get_global_rect()
 			check(near(r.position.x - prev.end.x, gap), "%s: footer buttons are GAP apart (%.1f)" % [tag, r.position.x - prev.end.x])
 	var label: Label = s.protocol_label
-	check(label.get_theme_font_size("font_size") == PixelUI.type_px(PixelUI.TYPE_LABEL), "%s: PROTOCOL label is the LABEL role" % tag)
+	check(label.get_theme_font_size("font_size") == PixelUI.crisp_px(PixelUI.type_px(PixelUI.TYPE_LABEL)), "%s: PROTOCOL label is the LABEL role, at 80" % tag)
 	var stack: Rect2 = s.protocol_bar.get_parent().get_global_rect()
 	check(near(stack.position.y - panel.position.y, gap) and near(panel.end.y - stack.end.y, gap), "%s: the Protocol block sits GAP from both bar edges" % tag)
 	check(near(s.protocol_bar.get_global_rect().end.y, stack.end.y), "%s: the cells sit on the Protocol block's bottom" % tag)
 	await RenderingServer.frame_post_draw
 	var frame: Image = root.get_texture().get_image()
 	footer_centred(frame, tag, s)
-	for view: Dictionary in s.get("hero_card_views") + s.get("enemy_card_views"):
-		callsign_whole(frame, tag, view.card)
 	var summary: Label = header.get("_summary_label")
-	var header_k: float = PixelUI.screen_scale_at(summary.get_parent()) * PixelUI.block_draw_size(summary) / 16.0
-	check(absf(header_k - 3.0) < 0.01, "%s: the header name draws 3 screen px per font pixel (HEADER, x4; %.2f)" % [tag, header_k])
+	check(is_equal_approx(PixelUI.block_draw_size(summary), 120.0), "%s: the header name draws at 120 (HEADER; %.1f)" % [tag, PixelUI.block_draw_size(summary)])
+	for view: Dictionary in s.get("hero_card_views") + s.get("enemy_card_views"):
+		var name_label: Label = view.card.get("_name_label")
+		check(is_equal_approx(PixelUI.block_draw_size(name_label), 80.0), "%s: %s draws at 80 (CARD_NAME)" % [tag, name_label.text])
+		if window == ITCH:
+			callsign_whole(frame, tag, view.card)
+	if window == ITCH:
+		var header_k: float = PixelUI.screen_scale_at(summary.get_parent()) * PixelUI.block_draw_size(summary) / 16.0
+		check(absf(header_k - 3.0) < 0.01, "%s: the header name draws 3 screen px per font pixel (%.2f)" % [tag, header_k])
 
 
 # Screen rows, from the frame: the footer fill (the strip colour inside its 8 px

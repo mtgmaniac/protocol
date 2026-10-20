@@ -2,11 +2,13 @@
 # Headless:  <godot> --headless --path . -s scripts/debug/text_legibility_test.gd
 # Proves, on the live screens, that every visible pixel-font node:
 #   1. samples NEAREST (PixelUI.install_text_filter owns it — audit F2),
-#   2. renders at >= PixelUI.TEXT_MIN_PX (48) — the one sanctioned exception is
-#      tagged `text_min_exempt` (EffectPip duration superscript) — audit F3,
+#   2. renders at one of PixelUI.CRISP_SIZES (40 / 80 / 120: crisp text step 1,
+#      Kev 2026-10-19, PREVIEW; superseded the >= 48 floor and its
+#      `text_min_exempt` superscript exception),
 # plus the rules behind them: the scale_font_size ladder floors at 48 and every
-# step is a multiple of the m5x7 native size (16); theme_overload.tres mirrors
-# TEXT_MIN_PX (a duplicated constant is gated, not trusted); popups sized as a
+# step is a multiple of the m5x7 native size (16) (the old sizes the crisp hook
+# maps); theme_overload.tres mirrors crisp_px(TEXT_MIN_PX) (a duplicated constant
+# is gated, not trusted); popups sized as a
 # screen fraction land on whole EVEN design px (audit F5); INSPECT_TEXT_DIM
 # clears 4.5:1 on every panel surface and stays dimmer than INSPECT_TEXT (F6).
 # Autoloads/UI classes resolve at runtime (TRUTH's -s convention).
@@ -100,8 +102,11 @@ func _check_rules(pixel_ui: GDScript, min_px: int) -> void:
 	for nominal in range(1, 121):
 		check(int(pixel_ui.scale_font_size(nominal)) >= min_px, "scale_font_size(%d) renders below the floor" % nominal)
 	var theme: Theme = load(THEME_PATH)
-	check(theme != null and theme.default_font_size == min_px,
-		"theme_overload.tres default_font_size (%s) must mirror PixelUI.TEXT_MIN_PX (%d)" % [str(theme.default_font_size) if theme != null else "?", min_px])
+	var crisp_min: int = pixel_ui.crisp_px(min_px)
+	check(theme != null and theme.default_font_size == crisp_min,
+		"theme_overload.tres default_font_size (%s) must mirror PixelUI.crisp_px(TEXT_MIN_PX) (%d)" % [str(theme.default_font_size) if theme != null else "?", crisp_min])
+	for old in [48, 64, 80, 96, 32, 112, 128, 144]:
+		check(int(pixel_ui.crisp_px(old)) in pixel_ui.CRISP_SIZES, "crisp_px(%d) is not one of %s" % [old, str(pixel_ui.CRISP_SIZES)])
 	for v in [993.6, 43.2, 1021.5, 7.0, 0.0, -3.0]:
 		var snapped: float = pixel_ui.even_px(v)
 		check(is_equal_approx(fmod(absf(snapped), 2.0), 0.0) and absf(snapped - v) <= 1.0, "even_px(%s) = %s" % [v, snapped])
@@ -164,8 +169,10 @@ func _walk_text(n: Node, where: String, min_px: int) -> void:
 			var f: int = _effective_filter(c)
 			check(f == CanvasItem.TEXTURE_FILTER_NEAREST, "%s: '%s' samples filter %d, not NEAREST" % [where, text.left(30), f])
 			var size: int = c.get_theme_font_size("normal_font_size" if n is RichTextLabel else "font_size")
-			if not c.has_meta("text_min_exempt"):
-				check(size >= min_px, "%s: '%s' renders at %d px (< %d)" % [where, text.left(30), size, min_px])
+			var drawn: float = float(size) * c.get_global_transform_with_canvas().get_scale().x
+			var crisp: Array = load("res://scripts/ui/pixel_ui.gd").CRISP_SIZES
+			check(roundi(drawn) in crisp and is_equal_approx(drawn, roundf(drawn)),
+				"%s: '%s' renders at %.1f px (not one of %s)" % [where, text.left(30), drawn, str(crisp)])
 	for ch in n.get_children():
 		_walk_text(ch, where, min_px)
 

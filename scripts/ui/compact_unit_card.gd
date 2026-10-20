@@ -927,6 +927,8 @@ func build_status_chip(status: Dictionary, plate_w: float = 0.0) -> Control:
 # every piece renders at STATUS_CONTENT_SCALE_STEP; it never scales further
 # and never pixel-clips (name text ellipsizes instead).
 func _status_content_scale(status: Dictionary, plate_w: float) -> float:
+	if not PixelUI.TEXT_SHRINK_TO_FIT:   # crisp text step 1 preview: off
+		return 1.0
 	var inner_w: float = plate_w - 10.0  # 2px border + 3px content margin per side
 	if _battle_text_scale != 1.0 and str(status.get("mode", "named")) == "numeric":
 		# Large landscape chips still share the fixed four-slot row. Measure

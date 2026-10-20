@@ -251,6 +251,7 @@ func _add_version_stamp() -> void:
 	stamp.text = PixelUI.version_label()
 	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	PixelUI.style_label(stamp, 24, PixelUI.UI_TEXT_DIM, 0)
+	PixelUI.mark_small_text(stamp)   # crisp text: the version stamp stays at 40
 	stamp.anchor_left = 0.0
 	stamp.anchor_right = 0.0
 	stamp.anchor_top = 1.0

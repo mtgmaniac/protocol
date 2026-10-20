@@ -56,8 +56,9 @@ func geometry(landscape: bool) -> void:
 		check(tray_rect.size.x >= visible_rect.size.x - 64.0, "portrait dice tray follows board width")
 		check(absf((header.get_node("HeaderBand") as Control).size.x - visible_rect.size.x) < 2.0, "portrait header fills viewport width")
 		check(absf(footer.size.x - visible_rect.size.x) < 2.0, "portrait Protocol footer fills viewport width")
-	# Type roles: HEADER in portrait (x4, laid out at its 144 cap; ui-fix 2026-10-17); landscape's 144 snaps to Battle Block's lattice.
-	check(header._summary_label.get_theme_font_size("font_size") == (PixelUI.lattice_px(144, "block") if landscape else roundi((PixelUI.BLOCK_FONT_PX[PixelUI.TYPE_HEADER] as Vector2).y * 16.0)), "header typography and restoration")
+	# Crisp text (2026-10-19, PREVIEW): every size that reaches a font is 40, 80
+	# or 120. The run header is HEADER, 120, in both orientations.
+	check(header._summary_label.get_theme_font_size("font_size") == 120 and header._summary_label.scale.is_equal_approx(Vector2.ONE), "header typography and restoration (HEADER draws at 120)")
 	for views in [s.hero_card_views, s.enemy_card_views]:
 		var last := Rect2()
 		for view in views:
@@ -67,11 +68,12 @@ func geometry(landscape: bool) -> void:
 			check(rect.end.y <= footer.position.y, "card clears Protocol")
 			check(not last.intersects(rect), "cards do not overlap")
 			var card_font: int = card._name_label.get_theme_font_size("font_size")
-			# ui-fix: CARD_NAME lays out at its cap (x3) and draws pixel-exact (see below).
-			check(card_font >= 88 and card_font <= 108 if landscape else card_font == roundi((PixelUI.BLOCK_FONT_PX[PixelUI.TYPE_CARD_NAME] as Vector2).y * 16.0), "card font is scoped and fits")
+			# Crisp text: the callsign is CARD_NAME, 80 in portrait; landscape's
+			# fitted size lands on 40 / 80 / 120 too.
+			check(card_font in PixelUI.CRISP_SIZES if landscape else card_font == 80, "card font is scoped and fits (%d)" % card_font)
 			for block_label: Control in [card._name_label, card._hp_label]:
-				var screen_font_px: float = PixelUI.screen_scale_at(block_label.get_parent()) * block_label.get_theme_font_size("font_size") / 16.0 * block_label.scale.x
-				check(absf(screen_font_px - roundf(screen_font_px)) < 0.01 and screen_font_px >= 0.99, "Battle Block font pixel is whole screen px (%.3f)" % screen_font_px)
+				var drawn: float = block_label.get_theme_font_size("font_size") * block_label.scale.x
+				check(is_equal_approx(drawn, roundf(drawn)) and roundi(drawn) in PixelUI.CRISP_SIZES, "Battle Block draws at 40 / 80 / 120 (%.2f)" % drawn)
 			for corner in [Vector2.ZERO, Vector2(card._hp_back.size.x, 0), card._hp_back.size, Vector2(0, card._hp_back.size.y)]:
 				check(rect.grow(1).has_point(card._hp_back.get_global_transform() * corner), "HP band stays inside card in either orientation")
 			if landscape:
@@ -284,7 +286,7 @@ func run() -> void:
 	await frames(16)
 	var header: Node = root.get_node("PersistentHeader")
 	check(header.band_height() == 144.0 + PixelUI.safe_top, "non-battle header height restored")
-	check(header._summary_label.get_theme_font_size("font_size") == PixelUI.type_px(PixelUI.TYPE_DISPLAY), "non-battle header font restored")
+	check(header._summary_label.get_theme_font_size("font_size") == PixelUI.crisp_px(PixelUI.type_px(PixelUI.TYPE_DISPLAY)), "non-battle header font restored")
 	check(header._help_button.custom_minimum_size == Vector2(112,112), "non-battle header button restored")
 	POLICY.dev_override = 0
 	print("[BATTLE_LAYOUT] %s: %d checks, %d failures" % ["PASS" if failures.is_empty() else "FAIL", checks, failures.size()])
