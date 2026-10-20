@@ -198,6 +198,11 @@ GATES = [
     # window size).
     ("layout rhythm", [GODOT, "--path", str(ROOT), "-s", "scripts/debug/layout_rhythm_test.gd"], "[LAYOUT_RHYTHM] PASS", False),
     ("portrait width", [GODOT, "--path", str(ROOT), "-s", "scripts/debug/portrait_width_test.gd"], "[PORTRAIT_WIDTH] PASS", False),
+    # Top bar (crisp text step 3a, 2026-10-20): the shared PersistentHeader
+    # spans the full window on every screen with a top bar, at 640x960,
+    # 1080x2400 and 1920x1080, and matches squad select's height, background,
+    # bottom rule and ? / < button positions. Windowed (needs a real window size).
+    ("top bar", [GODOT, "--path", str(ROOT), "-s", "scripts/debug/top_bar_test.gd"], "[TOP_BAR] PASS", False),
     # Android Build #1: safe-area insets (cutout/gesture bar) — header grows,
     # protocol row lifts, desktop reads all-zero (no-regression guarantee).
     ("safe area", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/safe_area_test.gd"], "[SAFE_AREA] PASS", False),

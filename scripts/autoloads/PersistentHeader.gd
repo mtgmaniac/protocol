@@ -30,8 +30,8 @@ const BUTTON_SIZE := Vector2(112, 112)
 const LANDSCAPE_STYLE := preload("res://scripts/battle/landscape_battle_style.gd").VALUES
 const DEPTH := preload("res://scripts/ui/battle_depth.gd")
 var _battle_landscape := false
-var _battle_full_width := false
-var _squad_select_full_width := false
+## Only the title face: Battle Block on squad select and in a run, m5x7 on the
+## title. The bar's chrome is the same on every screen (see _style).
 var _battle_visuals := false
 var _battle_style: Dictionary = {}
 
@@ -42,29 +42,8 @@ func set_battle_landscape(enabled: bool) -> void:
 		return
 	_battle_landscape = enabled
 	_battle_style = LANDSCAPE_STYLE if enabled else {}
-	_fit_header_width()
 	_style()
 	_apply_safe_area()
-
-
-## Squad select uses the whole browser canvas; the narrower content cap is
-## restored when leaving it, so other screens keep their established framing.
-func set_squad_select_full_width(enabled: bool) -> void:
-	_squad_select_full_width = enabled
-	_fit_header_width()
-
-
-## Battle uses the whole portrait canvas; restore the shared cap on exit.
-func set_battle_full_width(enabled: bool) -> void:
-	_battle_full_width = enabled
-	_fit_header_width()
-
-
-func _fit_header_width() -> void:
-	var cap := $HeaderBand.get_node_or_null("PortraitWidthCap")
-	if cap != null:
-		cap.set("enabled", not (_squad_select_full_width or _battle_full_width or _battle_landscape))
-		cap.call("_fit")
 
 ## Fired after safe-area insets are re-measured on a root size change (device
 ## rotation / fold, window resize). Live screens with edge-flush content
@@ -109,7 +88,11 @@ func _ready() -> void:
 	_apply_chrome_arg()
 	_fit_desktop_window()
 	_apply_capture_window_arg()
-	PixelUI.cap_portrait_width($HeaderBand)
+	# Top bar ruling (Kev, 2026-10-19, crisp text step 3): the bar spans the
+	# full window on every screen at every size, a fixed frame around the
+	# game. It takes no PortraitWidthCap (G-91's cap was lifted for squad select
+	# by G-93 and battle by G-94; now for every screen). Content below it keeps
+	# its own cap. Gate: `top bar` (scripts/debug/top_bar_test.gd).
 	# Draw above scene content; the band itself only occupies the top HEADER_HEIGHT.
 	layer = 8
 	_background.draw.connect(_draw_battle_frame)
@@ -228,14 +211,13 @@ func _dispatch(action: Callable, play_click: bool = true) -> void:
 
 
 # Styling mirrors the old battle header exactly (was in battle_scene._apply_battle_theme)
-# so the bar looks identical now that it lives here.
+# so the bar looks identical now that it lives here. Top bar ruling (2026-10-19):
+# every screen draws this one chrome, the framed strip squad select and the run
+# screens already had; the title no longer has a flat variant.
 func _style() -> void:
-	_background.color = PixelUI.DT_PANEL_BG
-	_background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if _battle_visuals else CanvasItem.TEXTURE_FILTER_PARENT_NODE
-	_divider.color = PixelUI.DT_LINE
-	if _battle_visuals:
-		_background.color = PixelUI.BATTLE_PANEL
-		_divider.color = PixelUI.BATTLE_BORDER
+	_background.color = PixelUI.BATTLE_PANEL
+	_background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_divider.color = PixelUI.BATTLE_BORDER
 	PixelUI.apply_pixel_font(_summary_label)
 	_summary_label.add_theme_font_size_override("font_size", _battle_style.get("header_font", SUMMARY_FONT_SIZE))
 	_summary_label.add_theme_color_override("font_color", PixelUI.TEXT_PRIMARY.darkened(0.15))
@@ -257,12 +239,12 @@ func _style() -> void:
 		PixelUI.bind_block_snap(_count_label, block_px.x, block_px.y)
 	_refresh_summary()
 	_background.queue_redraw()
-	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
+	PixelUI.style_dt_icon_button(_help_button, PixelUI.ICON_HELP, PixelUI.DT_BTN_BORDER, Color.WHITE, true, PixelUI.CHROME)
 	if is_instance_valid(_debug_button):
-		PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
+		PixelUI.style_dt_icon_button(_debug_button, PixelUI.ICON_DEBUG, PixelUI.DT_BTN_BORDER, Color.WHITE, true, PixelUI.CHROME)
 	if is_instance_valid(_debug2_button):
-		PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
-	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK, PixelUI.DT_BTN_BORDER, Color.WHITE, _battle_visuals, PixelUI.CHROME)
+		PixelUI.style_dt_icon_button(_debug2_button, PixelUI.ICON_DEBUG2, PixelUI.DT_BTN_BORDER, Color.WHITE, true, PixelUI.CHROME)
+	PixelUI.style_dt_icon_button(_back_button, PixelUI.ICON_BACK, PixelUI.DT_BTN_BORDER, Color.WHITE, true, PixelUI.CHROME)
 	for b: Button in [_help_button, _debug_button, _debug2_button, _back_button]:
 		if is_instance_valid(b):
 			b.custom_minimum_size = _battle_style.get("header_button_size", BUTTON_SIZE)
@@ -290,16 +272,17 @@ func _header_block_px() -> Vector2:
 var _battle_frame: StyleBox = null
 
 
+# The framed strip on every screen (top bar ruling); the rule under the title
+# only with a count tint.
 func _draw_battle_frame() -> void:
-	if _battle_visuals:
-		if _battle_frame == null:
-			_battle_frame = PixelUI.battle_strip_style()
-		_background.draw_style_box(_battle_frame, Rect2(Vector2.ZERO, _background.size))
-		if _count_tint.a > 0.0:
-			# The thin rule under the title, from the bar's edge to the buttons.
-			var right: float = _bar.position.x + (_bar.get_node("ButtonRow") as Control).position.x - BAR_PAD_X
-			# Flat pixel A: the rule is in the operation's ENCOUNTER accent, like the count.
-			_background.draw_rect(Rect2(_bar.position.x, HEADER_HEIGHT - HEADER_RULE_INSET, right - _bar.position.x, HEADER_RULE_PX), _count_tint)
+	if _battle_frame == null:
+		_battle_frame = PixelUI.battle_strip_style()
+	_background.draw_style_box(_battle_frame, Rect2(Vector2.ZERO, _background.size))
+	if _count_tint.a > 0.0:
+		# The thin rule under the title, from the bar's edge to the buttons.
+		var right: float = _bar.position.x + (_bar.get_node("ButtonRow") as Control).position.x - BAR_PAD_X
+		# Flat pixel A: the rule is in the operation's ENCOUNTER accent, like the count.
+		_background.draw_rect(Rect2(_bar.position.x, HEADER_HEIGHT - HEADER_RULE_INSET, right - _bar.position.x, HEADER_RULE_PX), _count_tint)
 
 
 const HEADER_RULE_PX := 4.0

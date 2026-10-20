@@ -172,7 +172,6 @@ func _ready() -> void:
 	PersistentHeader.clear_battle_actions()
 	# Back from the deploy screen returns to the title screen (Kev 2026-07-10).
 	PersistentHeader.bind_battle_actions(Callable(), Callable(), Callable(), _on_back_to_title)
-	PersistentHeader.set_squad_select_full_width(true)
 	_apply_background()
 	_gather_data()
 	_restore_last_deploy()
@@ -183,10 +182,6 @@ func _ready() -> void:
 	_refresh_squad_counter()
 	_refresh_info()
 	_refresh_deploy()
-
-
-func _exit_tree() -> void:
-	PersistentHeader.set_squad_select_full_width(false)
 
 
 func _apply_background() -> void:

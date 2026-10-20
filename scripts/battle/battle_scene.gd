@@ -302,7 +302,6 @@ func _ready() -> void:
 		_on_auto_battle_button_pressed,
 		_on_return_to_menu_button_pressed,
 	)
-	PersistentHeader.set_battle_full_width(true)
 	# Bottom safe-area inset (gesture bar), live-updating on rotation/resize.
 	# The connection dies with this scene, so no explicit disconnect needed.
 	_apply_safe_area()
@@ -979,7 +978,6 @@ func _exit_tree() -> void:
 	# Header survives scene changes; release this battle's button bindings so its
 	# buttons go inert on the screens that follow (reward / evolution / home).
 	if is_instance_valid(PersistentHeader):
-		PersistentHeader.set_battle_full_width(false)
 		PersistentHeader.clear_battle_actions()
 		PersistentHeader.set_debug_enabled(true)
 		PersistentHeader.set_debug2_enabled(true)
