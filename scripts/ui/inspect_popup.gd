@@ -307,7 +307,7 @@ func _build_roll_table(rows: Array) -> Control:
 		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		line.add_theme_constant_override("separation", 12)
 		var range_label := _make_label(str(entry.get("range", "")), BODY_FONT, _accent.lightened(0.3))
-		range_label.custom_minimum_size = Vector2(120, 0)
+		PixelUI.set_roll_column(range_label)
 		line.add_child(range_label)
 		var zone_label := _make_label(str(entry.get("zone", "")), META_FONT, PixelUI.INSPECT_TEXT_DIM)
 		zone_label.custom_minimum_size = Vector2(180, 0)
@@ -325,17 +325,16 @@ func _build_ability(ability: Dictionary) -> Control:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 20)
+	# "1-4" or "20" (PixelUI.roll_range_text).
 	var roll_text: String = str(ability.get("roll", ""))
-	var limits := roll_text.split(" - ")
-	if limits.size() == 2 and limits[0] == limits[1]:
-		roll_text = limits[0]
 	# An item / relic row has no roll and no name (UI batch B5): leave both
-	# out, or a blank name line and an empty 120 px roll column open a band
-	# between the header and the effect.
+	# out, or a blank name line and an empty roll column open a band between
+	# the header and the effect.
 	if roll_text != "":
 		var roll := _make_label(roll_text, ROLL_FONT, _accent.lightened(0.3))
-		roll.custom_minimum_size.x = 120
-		roll.size_flags_horizontal = Control.SIZE_FILL
+		# The fixed roll column (PixelUI.set_roll_column): every ability name
+		# starts at one x.
+		PixelUI.set_roll_column(roll)
 		roll.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 		row.add_child(roll)
 	var body := VBoxContainer.new()
@@ -514,7 +513,7 @@ func _make_label(text: String, font_size: int, color: Color, wrap: bool = false,
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if wrap:
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	PixelUI.style_label(label, font_size, color, outline)
 	return label

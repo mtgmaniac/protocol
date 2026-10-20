@@ -15,6 +15,7 @@ const GRID_NAME_FONT := 40
 const BUTTON_FONT := 56
 const BUTTON_SIZE := Vector2(360, 120)
 const GRID_COLUMNS := 4
+const GRID_GAP := 24
 const GRID_ICON_BOX := 128.0
 const BOSS_RELIC_ICON_BOX := 256.0
 const HERO_PORTRAIT_W := 144.0  # NEW UNIT portrait width; PixelUI.make_portrait_frame owns the height
@@ -39,6 +40,8 @@ const SECTION_LABELS := {
 @onready var award_group: VBoxContainer = %AwardGroup
 @onready var award_scroll: ScrollContainer = %Scroll
 var _award_fit_pending := false
+var _award_refits := 0
+const MAX_AWARD_REFITS := 4
 var _compact_awards := false
 
 
@@ -63,22 +66,37 @@ func _ready() -> void:
 	_apply_visual_theme()
 	_build_sections(unlocks)
 	get_viewport().size_changed.connect(_queue_award_fit)
+	# The grid names wrap at the cells' laid-out width, which arrives after
+	# the first fit: refit when the sections' height settles (a few times at
+	# most; crisp text step 3b's full-width grid).
+	sections.minimum_size_changed.connect(_on_sections_resized)
 	_queue_award_fit()
+
+
+func _on_sections_resized() -> void:
+	if _award_refits < MAX_AWARD_REFITS:
+		_award_refits += 1
+		_queue_award_fit()
 
 
 func _queue_award_fit() -> void:
 	if _award_fit_pending:
 		return
 	_award_fit_pending = true
-	# Drop the old minimum before measuring a smaller viewport.
+	# Drop the old minimum height before measuring a smaller viewport. The
+	# width stays the award space's: the grid names wrap at the cells' width,
+	# so a collapsed group would measure them tall (crisp text step 3b).
 	award_scroll.custom_minimum_size.y = 0
-	award_group.custom_minimum_size = Vector2.ZERO
+	award_group.custom_minimum_size = Vector2(award_space.size.x, 0)
 	award_group.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	window_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_fit_awards.call_deferred()
 
 
 func _fit_awards() -> void:
+	# Two frames: the group's width, then the grid's cells and their wrapped
+	# names, lay out before the sections are measured.
+	await get_tree().process_frame
 	await get_tree().process_frame
 	if not is_inside_tree():
 		return
@@ -201,7 +219,7 @@ func _make_boss_relic_card(entry: Dictionary) -> Control:
 	row.add_child(info)
 	var name_label := Label.new()
 	name_label.text = str(entry.get("display_name", ""))
-	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_style_label(name_label, NAME_FONT, PixelUI.GOLD_ACCENT)
 	info.add_child(name_label)
 	var tag := Label.new()
@@ -211,7 +229,7 @@ func _make_boss_relic_card(entry: Dictionary) -> Control:
 	if item != null and item.description != "":
 		var desc := Label.new()
 		desc.text = item.description
-		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD
 		desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		PixelUI.style_body_label(desc)
 		info.add_child(desc)
@@ -272,7 +290,7 @@ func _make_operation_row(entry: Dictionary) -> Control:
 		var lore := Label.new()
 		lore.text = origin
 		lore.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lore.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lore.autowrap_mode = TextServer.AUTOWRAP_WORD
 		lore.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lore.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		PixelUI.style_body_label(lore)
@@ -288,26 +306,28 @@ func _make_operation_row(entry: Dictionary) -> Control:
 # NEW RELICS / NEW ITEMS: 4-across icon grid, name beneath each, long-press
 # for the description (same InspectPopup as everywhere). A reveal, not a
 # decision — no reward-row anatomy, and icons NEVER shrink to fit (the screen
-# scrolls instead).
+# scrolls instead). The four columns share the panel's width (crisp text step
+# 3b: the old fixed 212 px cells left the names 200 px and broke them
+# mid-word), and every cell is top-aligned so the icons sit in one row.
 func _make_icon_grid(entries: Array) -> Control:
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var grid := GridContainer.new()
-	grid.columns = GRID_COLUMNS
-	grid.add_theme_constant_override("h_separation", 24)
-	grid.add_theme_constant_override("v_separation", 24)
-	center.add_child(grid)
+	# Fewer awards than columns share the width between them (centred).
+	grid.columns = clampi(entries.size(), 1, GRID_COLUMNS)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", GRID_GAP)
+	grid.add_theme_constant_override("v_separation", GRID_GAP)
 	for entry_variant in entries:
 		var entry: Dictionary = entry_variant as Dictionary
 		grid.add_child(_make_grid_cell(entry))
-	return center
+	return grid
 
 
 func _make_grid_cell(entry: Dictionary) -> Control:
 	var item: ItemData = DataManager.get_item(str(entry.get("id", ""))) as ItemData
 	var cell := VBoxContainer.new()
-	cell.alignment = BoxContainer.ALIGNMENT_CENTER
-	cell.custom_minimum_size = Vector2(212, 0)
+	cell.alignment = BoxContainer.ALIGNMENT_BEGIN
+	cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cell.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	cell.add_theme_constant_override("separation", 8)
 	cell.set_meta("unlock_grid_cell", str(entry.get("id", "")))
 	if item != null and item.icon != null:
@@ -321,10 +341,12 @@ func _make_grid_cell(entry: Dictionary) -> Control:
 	var name_label := Label.new()
 	name_label.text = str(entry.get("display_name", ""))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_label.custom_minimum_size = Vector2(200, 0)
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_style_label(name_label, GRID_NAME_FONT, PixelUI.CHROME)
+	# Names are compact secondary text (m3x6 at 80).
+	PixelUI.apply_compact(name_label)
 	cell.add_child(name_label)
 	if item != null:
 		var long_press := LongPressInput.new()

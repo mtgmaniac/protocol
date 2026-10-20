@@ -21,9 +21,13 @@ const GAP := PixelUI.GAP
 ## DEPLOY.
 const GAP_FLOORS: Array[int] = [2 * GAP, GAP, GAP, GAP, 2 * GAP]
 ## The squad block -> info bar gap stays at its floor, one GAP (G-88): the info
-## bar reads as attached to the units. Its share of the leftover height goes to
-## the two section gaps (mission -> separator, separator -> squad).
+## bar reads as attached to the units.
 const INFO_GAP_INDEX := 3
+## The two section gaps around the divider (mission -> separator, separator ->
+## squad) stay at their floor, one GAP (crisp text step 3b, Kev 2026-10-20: the
+## MISSION card sat 160 px above the SQUAD header). The leftover height goes to
+## the two buffers (gap_sizes).
+const SECTION_GAP_INDICES: Array[int] = [1, 2]
 ## Subheaders (MISSION, SQUAD and its n / 3): one clean step above LABEL's 64,
 ## m5x7 laid out at 96 and drawn pixel-exact (PixelUI.bind_m5x7_snap), as the
 ## run-end report's rows: 2 screen px per font pixel on the phones, 3 at the
@@ -80,6 +84,8 @@ const DEPTH := preload("res://scripts/ui/battle_depth.gd")
 # Unit info bar.
 const INFO_PAD := 16
 const INFO_ROW_GAP := 8
+## The unit description wraps onto at most this many lines (Kev 2026-10-20).
+const INFO_BLURB_LINES := 2
 const BAND_BAR_H := 32             # 8 art px
 const BAND_ICON_GAP := 8
 ## The icon under each segment: the in-game effect / status pip
@@ -150,6 +156,7 @@ var _info_name: Label
 var _info_hp: Label
 var _info_status: Label
 var _info_blurb: Label
+var _info_top: HBoxContainer
 var _info_strip: Control
 var _info_hint: Label
 var _deploy_panel: PanelContainer
@@ -288,11 +295,12 @@ func _distribute_gaps() -> void:
 
 
 ## The five gaps for `free` design px left by the blocks (G-86). Each starts at
-## its floor (GAP_FLOORS); the rest is shared evenly in whole GAPs, the odd
-## GAPs to the section gaps from the middle out, then the buffers; under one
-## GAP of it stays below DEPLOY (the bottom margin). The info bar gap then
-## gives its share to the two section gaps above it (G-88). Short of the floors, the
-## two buffers shrink first (to 0), then the section gaps, on the 4 px art grid.
+## its floor (GAP_FLOORS). The section gaps (SECTION_GAP_INDICES) and the info
+## bar gap (INFO_GAP_INDEX) stay there; the rest is shared by the two buffers
+## (header -> mission, info bar -> DEPLOY) in whole GAPs, an odd GAP to the one
+## above DEPLOY; under one GAP of it stays below DEPLOY (the bottom margin).
+## Short of the floors, the two buffers shrink first (to 0), then the section
+## gaps, on the 4 px art grid.
 static func gap_sizes(free: float) -> Array[int]:
 	var sizes: Array[int] = GAP_FLOORS.duplicate()
 	var floors := 0
@@ -300,18 +308,8 @@ static func gap_sizes(free: float) -> Array[int]:
 		floors += floor_px
 	if free >= float(floors):
 		var units: int = int(floorf((free - float(floors)) / float(GAP)))
-		var each: int = units / sizes.size()
-		for i in sizes.size():
-			sizes[i] += each * GAP
-		var order: Array[int] = [2, 1, 3, 0, 4]
-		for n in units - each * sizes.size():
-			sizes[order[n]] += GAP
-		# The info bar stays attached (G-88): its share moves to the section
-		# gaps above, middle out.
-		var moved: int = (sizes[INFO_GAP_INDEX] - GAP_FLOORS[INFO_GAP_INDEX]) / GAP
-		sizes[INFO_GAP_INDEX] = GAP_FLOORS[INFO_GAP_INDEX]
-		for n in moved:
-			sizes[2 if n % 2 == 0 else 1] += GAP
+		sizes[0] += (units / 2) * GAP
+		sizes[4] += (units - units / 2) * GAP
 		return sizes
 	var inner: float = float(floors - GAP_FLOORS[0] - GAP_FLOORS[4])
 	var buffers: float = maxf(free - inner, 0.0)
@@ -461,28 +459,32 @@ func _build_mission_row() -> Control:
 	_enc_level_label = _make_type_label("", PixelUI.TYPE_LABEL, PixelUI.CHROME)
 	_enc_level_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_enc_level_row.add_child(_enc_level_label)
-	# CLEARED / LOCKED: plain text after the level, no outline.
-	_enc_status_label = _make_type_label("", PixelUI.TYPE_SMALL, PixelUI.CHROME_DIM)
+	# CLEARED / LOCKED: plain text after the level, no outline, compact
+	# secondary text (m3x6).
+	_enc_status_label = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.CHROME_DIM)
 	_enc_status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_enc_level_row.add_child(_enc_status_label)
 
-	# The threats slot: the THREATS as one plain line, or a locked operation's
-	# unlock condition, in one fixed-height row.
+	# The threats slot: the THREATS (compact secondary text, m3x6), or a locked
+	# operation's unlock condition, in one fixed-height slot. Both wrap at
+	# words; the slot reserves the most lines any operation needs at its real
+	# width (_reserve_tags_slot), so switching missions moves nothing.
 	_enc_tags_slot = Control.new()
 	_enc_tags_slot.custom_minimum_size.y = _small_row_height()
 	_enc_tags_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_enc_tags_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text_col.add_child(_enc_tags_slot)
-	_enc_threats_label = _make_type_label("", PixelUI.TYPE_SMALL, PixelUI.CHROME)
+	_enc_threats_label = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.CHROME)
 	_enc_threats_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_enc_threats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_enc_threats_label.clip_text = true
+	_enc_threats_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_enc_threats_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_enc_tags_slot.add_child(_enc_threats_label)
 	_enc_unlock_label = _make_type_label("", PixelUI.TYPE_SMALL, PixelUI.CHROME_DIM)
 	_enc_unlock_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_enc_unlock_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_enc_unlock_label.clip_text = true
+	_enc_unlock_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_enc_unlock_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_enc_tags_slot.add_child(_enc_unlock_label)
+	_enc_tags_slot.resized.connect(_reserve_tags_slot)
 
 	row.add_child(_make_nav_button(1))
 	return row
@@ -998,9 +1000,84 @@ func _build_info_region() -> Control:
 	_info_bar.visible = false
 	region.add_child(_info_bar)
 	# The reservation is permanent. Expanding only paints into it, so the VBox
-	# distributing the screen cannot move Deploy or any later block.
+	# distributing the screen cannot move Deploy or any later block. It is
+	# measured at the region's real width (_reserve_info_region): the bar is
+	# hidden until toggled, and a hidden container never lays its children out.
 	region.custom_minimum_size.y = _info_bar.offset_bottom
+	region.resized.connect(_reserve_info_region)
 	return region
+
+
+# The tallest the threats slot needs: every operation's threats (m3x6) and
+# unlock condition, wrapped at the slot's width.
+func _reserve_tags_slot() -> void:
+	var width: float = _enc_tags_slot.size.x
+	if width < 1.0:
+		return
+	var height: float = _small_row_height()
+	for op_id: String in _operation_ids:
+		height = maxf(height, PixelUI.wrapped_text_height(_enc_threats_label, " · ".join(threat_tags(op_id)), width))
+		height = maxf(height, PixelUI.wrapped_text_height(_enc_unlock_label, unlock_condition_text(op_id), width))
+	if not is_equal_approx(_enc_tags_slot.custom_minimum_size.y, height):
+		_enc_tags_slot.custom_minimum_size.y = height
+		_distribute_gaps.call_deferred()
+
+
+# The info bar's text width at the region's width.
+func _info_text_width() -> float:
+	return _info_region.size.x - 2.0 * float(PANEL_BORDER + INFO_PAD)
+
+
+# A unit's description and its unlock condition: what the bar's description
+# row can show for it.
+func _info_blurb_texts(unit_id: String) -> Array[String]:
+	var texts: Array[String] = [SaveManager.hero_unlock_condition(unit_id)]
+	var unit: UnitData = DataManager.get_unit(unit_id) as UnitData
+	if unit != null:
+		texts.append(unit.blurb if unit.blurb != "" else unit.picker_blurb)
+	return texts
+
+
+# The region reserves the expanded bar's tallest form: every row at its fixed
+# height plus the longest description wrapped at the real width. The bar itself
+# stays as tall as what it shows (_fit_info_blurb).
+func _reserve_info_region() -> void:
+	var width: float = _info_text_width()
+	if width < 1.0:
+		return
+	var blurb_h: float = 0.0
+	for unit_id: String in _unit_ids:
+		for text: String in _info_blurb_texts(unit_id):
+			blurb_h = maxf(blurb_h, _info_blurb_height(text, width))
+	var fixed: float = 2.0 * float(PANEL_BORDER + INFO_PAD) + 3.0 * float(INFO_ROW_GAP)
+	for row: Control in [_info_top, _info_strip, _info_hint]:
+		fixed += row.get_combined_minimum_size().y
+	var bottom: float = _info_bar.offset_top + fixed + blurb_h
+	if not is_equal_approx(_info_region.custom_minimum_size.y, bottom):
+		_info_region.custom_minimum_size.y = bottom
+		_distribute_gaps.call_deferred()
+	_fit_info_blurb()
+
+
+# One description's height in the bar, at most INFO_BLURB_LINES lines.
+func _info_blurb_height(text: String, width: float) -> float:
+	var font: Font = _info_blurb.get_theme_font("font")
+	var size: int = PixelUI.drawn_font_px(_info_blurb)
+	var lines: int = clampi(PixelUI.wrapped_line_count(text, font, size, width), 1, INFO_BLURB_LINES)
+	var spacing := float(_info_blurb.get_theme_constant("line_spacing"))
+	return ceilf(lines * (font.get_height(size) + spacing) - spacing)
+
+
+# The shown description's row: as tall as its own lines at the real width; the
+# bar (anchored at its top, no height of its own) follows its content.
+func _fit_info_blurb() -> void:
+	if _info_blurb == null or _info_region == null:
+		return
+	var width: float = _info_text_width()
+	if width < 1.0:
+		return
+	_info_blurb.custom_minimum_size.y = _info_blurb_height(_info_blurb.text, width)
+	_info_bar.offset_bottom = _info_bar.offset_top
 
 
 func _toggle_info() -> void:
@@ -1024,6 +1101,7 @@ func _build_info_bar() -> PanelContainer:
 	top.add_theme_constant_override("separation", GAP)
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(top)
+	_info_top = top
 	_info_name = _make_type_label("", PixelUI.TYPE_LABEL, PixelUI.PLAYER_ACCENT_LIGHT)
 	_info_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_info_name.clip_text = true
@@ -1035,9 +1113,16 @@ func _build_info_bar() -> PanelContainer:
 	_info_status.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	top.add_child(_info_status)
 
-	_info_blurb = _make_type_label("", PixelUI.TYPE_SMALL, PixelUI.CHROME)
+	# The description: compact secondary text (m3x6), wrapped at words onto
+	# up to INFO_BLURB_LINES lines. Its row is sized by measure at the bar's
+	# real width (_fit_info_blurb); clip_text keeps the Label's own minimum
+	# (shaped at whatever width it last had) out of it.
+	_info_blurb = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.CHROME)
+	_info_blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_info_blurb.max_lines_visible = INFO_BLURB_LINES
+	_info_blurb.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_info_blurb.clip_text = true
-	_info_blurb.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(PixelUI.type_px(PixelUI.TYPE_SMALL)))
+	_info_blurb.custom_minimum_size.y = ceilf(PixelUI.get_compact_font().get_height(PixelUI.COMPACT_PX))
 	col.add_child(_info_blurb)
 
 	# The roll band bar and its glyph row, drawn in one control on the art grid.
@@ -1087,6 +1172,7 @@ func _refresh_info() -> void:
 	_info_hint.text = SQUAD_FULL_TEXT if _squad_full_hint else HINT_TEXT
 	_info_hint.add_theme_color_override("font_color", PixelUI.WARNING if _squad_full_hint else PixelUI.CHROME_DIM)
 	_info_strip.queue_redraw()
+	_fit_info_blurb()
 
 
 ## One roll band's primary effect type (Kev, 2026-10-17, G-87), from its raw
@@ -1389,7 +1475,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 	PixelUI.apply_type(picker_title, PixelUI.TYPE_LABEL)
 	col.add_child(picker_title)
 	var blurb := _make_pixel_label("Open the run with a trophy from a fallen boss.", DETAIL_DESC_FONT, PixelUI.CHROME)
-	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
 	col.add_child(blurb)
 
 	for relic_id_variant in relic_ids:
@@ -1421,7 +1507,7 @@ func _open_directive_picker(relic_ids: Array) -> void:
 			icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(icon)
 		var text_label := _make_pixel_label("%s - %s" % [relic.display_name.to_upper(), relic.description], DETAIL_DESC_FONT, PixelUI.UI_TEXT)
-		text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		text_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 		text_label.add_theme_constant_override("line_spacing", PixelUI.BODY_LINE_SPACING)
 		text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		text_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER

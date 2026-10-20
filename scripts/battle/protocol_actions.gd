@@ -773,7 +773,7 @@ func _open_set_value_popup() -> void:
 	var hint: Label = Label.new()
 	hint.text = "Drag to choose - costs %d Protocol" % _scene.SET_DIE_COST
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# Cost disclosure is info-carrying — floor it (UI review S-1).
 	PixelUI.style_label(hint, PixelUI.FONT_INFO_MIN, PixelUI.INSPECT_TEXT_MUTED, 2)

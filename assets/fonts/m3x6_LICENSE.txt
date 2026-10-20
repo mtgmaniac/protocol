@@ -1,0 +1,9 @@
+m3x6, a font by Daniel Linssen
+https://managore.itch.io/m3x6 (downloaded 2026-10-20, m3x6.ttf, 10,044 bytes,
+sha256 28c3c6a48d75a9e0b9c72b0ee99fbdc2ffc2cba669498fd5354da3dfee04c8e9)
+
+Terms, as the page states them: "free to use with attribution."
+The page names no other licence and no restriction on commercial use.
+
+Attribution is REQUIRED: the shipped game must credit "m3x6 by Daniel Linssen".
+(m5x7, by the same author, is CC0 with attribution appreciated, not required.)

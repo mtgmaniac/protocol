@@ -8,7 +8,8 @@ signal dismissed(mode: String)
 
 const PANEL_MARGIN := 32
 const PANEL_PAD := 24
-const KEY_COLUMN_WIDTH := 240
+## The briefing rows' labels, the key column sized to the longest of them.
+const KEY_LABELS: Array[String] = ["SITE", "SITUATION", "OBJECTIVE"]
 const KEY_VALUE_SEPARATION := 32
 const DEPLOYMENT_GRID_WIDTH := 900
 const TITLE_FONT := 64
@@ -201,7 +202,7 @@ func _add_section(text: String, color: Color) -> void:
 
 func _add_body(text: String) -> void:
 	var label := _make_label(text, BODY_FONT, PixelUI.CHROME, 1)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_constant_override("line_spacing", PixelUI.BODY_LINE_SPACING)
 	_content().add_child(label)
@@ -220,9 +221,19 @@ func _add_deployment_grid(copy: Dictionary) -> void:
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	grid.add_theme_constant_override("separation", 12)
 	center.add_child(grid)
-	_add_key_value(grid, "SITE", str(copy["site"]), copy["accent"] as Color)
-	_add_key_value(grid, "SITUATION", str(copy["failure"]), PixelUI.ENCOUNTER_ACCENT.lightened(0.2))
-	_add_key_value(grid, "OBJECTIVE", str(copy["directive"]), PixelUI.TEXT_PRIMARY)
+	_add_key_value(grid, KEY_LABELS[0], str(copy["site"]), copy["accent"] as Color)
+	_add_key_value(grid, KEY_LABELS[1], str(copy["failure"]), PixelUI.ENCOUNTER_ACCENT.lightened(0.2))
+	_add_key_value(grid, KEY_LABELS[2], str(copy["directive"]), PixelUI.TEXT_PRIMARY)
+
+
+## The key column's width: the longest label in the compact face (crisp text
+## step 3b; the fixed 240 px cut SITUATION and OBJECTIVE at m5x7 80).
+static func key_column_width() -> float:
+	var font: Font = PixelUI.get_compact_font()
+	var widest := 0.0
+	for key: String in KEY_LABELS:
+		widest = maxf(widest, font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, PixelUI.COMPACT_PX).x)
+	return PixelUI.even_px(ceilf(widest) + 1.0)
 
 
 func _add_key_value(grid: VBoxContainer, key: String, value: String, value_color: Color) -> void:
@@ -235,21 +246,25 @@ func _add_key_value(grid: VBoxContainer, key: String, value: String, value_color
 	# fixed-width slot so every value column has exactly the same start.
 	var key_slot := Control.new()
 	key_slot.name = "DeploymentKeySlot%s" % key.capitalize()
-	key_slot.custom_minimum_size = Vector2(KEY_COLUMN_WIDTH, 0)
+	key_slot.custom_minimum_size = Vector2(key_column_width(), 0)
 	key_slot.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	key_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(key_slot)
+	# Labels and values are compact secondary text (m3x6 at 80, Kev
+	# 2026-10-20); the title and ENGAGE stay m5x7.
 	var key_label := _make_label(key, SECTION_FONT, PixelUI.TEXT_MUTED, 1)
+	PixelUI.apply_compact(key_label)
 	key_label.name = "DeploymentKey%s" % key.capitalize()
 	key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	key_label.clip_text = true
+	key_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	key_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	key_slot.add_child(key_label)
 	var value_label := _make_label(value, SECTION_FONT, value_color, 2)
+	PixelUI.apply_compact(value_label)
 	value_label.name = "DeploymentValue%s" % key.capitalize()
 	# The accepted operation values are authored to fit this full-width slate at
 	# 540x1200. Keep each row to one decisive scan line rather than introducing
-	# operation-specific wraps or positioning.
+	# operation-specific wraps or positioning (operation lore gate: it fits).
 	value_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -275,7 +290,7 @@ func _make_label(text: String, font_size: int, color: Color, outline: int) -> La
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	PixelUI.style_label(label, font_size, color, outline)
 	return label
 

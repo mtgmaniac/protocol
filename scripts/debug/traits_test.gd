@@ -949,15 +949,15 @@ func _check_prestige_pick() -> void:
 		_expect((card.find_child("TraitMarker", true, false) as Label).visible == bool(case[1]), "card: the title line is %s for trait '%s'" % ["shown" if case[1] else "hidden", str(case[0])])
 		card.free()
 
-	# The 100 XP picker: each branch previews the two traits it can earn; what
-	# each does is in the expanded view.
+	# The 100 XP picker: the branch's two traits are described in the expanded
+	# view only (crisp text step 3b removed the header's "AT 250 XP" line).
 	gs.reset_run()
 	gs.start_run(["pulse", "combat", "medic"], "facility", 5)
 	gs.pending_evolution_unit_id = "pulse"
 	screen = load("res://scenes/ui/EvolutionScreen.tscn").instantiate()
 	root.add_child(screen)
 	await _frames(3)
-	_expect(_labels_of(screen, "TraitLine") == ["AT 250 XP: SMOLDERING or SEARING", "AT 250 XP: CHARGED or FORKING"], "100 XP picker: each branch previews its two traits (%s)" % str(_labels_of(screen, "TraitLine")))
+	_expect(_labels_of(screen, "TraitLine").is_empty(), "100 XP picker: no AT 250 XP line on the branch cards (%s)" % str(_labels_of(screen, "TraitLine")))
 	var effects: Array = _labels_of(screen, "TraitEffect_*")
 	_expect(effects.size() == 4 and effects.has(_traits.line(_traits.build("afterburn"))) and effects.has(_traits.line(_traits.build("flashpoint"))) and effects.has(_traits.line(_traits.build("conductor"))), "100 XP picker: the expanded view prints each trait's effect (%s)" % str(effects))
 	for label in screen.find_children("TraitEffect_*", "Label", true, false):

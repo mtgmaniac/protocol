@@ -359,6 +359,11 @@ GATES = [
     # the theme mirror, popup grid alignment and the INSPECT_TEXT_DIM contrast
     # floor are asserted at the source.
     ("text legibility", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/text_legibility_test.gd"], "[TEXT_LEGIBILITY] PASS", False),
+    # Text fit (crisp text step 3b, Kev 2026-10-20): at 640x960 and 1080x2400,
+    # no text is cut off without wrapping or an ellipsis, and nothing wraps
+    # inside a word (live screens, plus no AUTOWRAP_WORD_SMART / ARBITRARY in
+    # the source).
+    ("text fit", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/text_fit_test.gd"], "[TEXT_FIT] PASS", False),
     ("checkpoint lifecycle", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/checkpoint_lifecycle_test.gd"], "[CHECKPOINT_LIFECYCLE] PASS", False),
     # Framing (docs/tools/FRAMING_TOOL.md): ONE framing entry per asset in
     # portrait_anchors.json — ids exist and values are in range; every

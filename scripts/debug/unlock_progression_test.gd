@@ -216,7 +216,8 @@ func _test_first_profile_progression_and_presentation() -> void:
 		_check(bool(tile.get("locked", false)) == expected_locked, "%s card reports its lock state" % hero_id)
 		if expected_locked:
 			_check(title != null and title.text.is_empty(), "%s locked card hides its name" % hero_id)
-			_check(title != null and title.get_parent().find_child("LockedLabel", true, false) != null, "%s locked card displays LOCKED" % hero_id)
+			# The name sits in a holder in the cell (9e5b03f); LOCKED is in the cell.
+			_check(title != null and title.get_parent().get_parent().find_child("LockedLabel", true, false) != null, "%s locked card displays LOCKED" % hero_id)
 	var before_locked_tap: Array = (home.get("_selected_unit_ids") as Array).duplicate()
 	home.call("_on_tile_tapped", "avalanche")
 	_check(home.get("_selected_unit_ids") == before_locked_tap, "locked hero cards remain unselectable")
@@ -470,18 +471,19 @@ func _check_encounter_slots(home: Node, op_order: Array, tiles: Dictionary) -> v
 				var want_condition: String = "Clear %s to unlock" % prev_op.display_name
 				_check(unlock_label.visible and unlock_label.text == want_condition, "%s tags slot shows the unlock condition (saw '%s')" % [op_id, unlock_label.text])
 				_check((home.get("_enc_status_label") as Label).text == "LOCKED", "%s shows LOCKED" % op_id)
-				var font: Font = unlock_label.get_theme_font("font")
-				var w: float = font.get_string_size(unlock_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, unlock_label.get_theme_font_size("font_size")).x
-				_check(w <= tags_slot.size.x, "%s unlock condition fits unclipped (%.0f <= %.0f px)" % [op_id, w, tags_slot.size.x])
-				# Its threats line, once unlocked, fits the same slot.
+				# Crisp text step 3b (Kev 2026-10-20): the unlock condition and the
+				# threats (m3x6) wrap at words; the slot reserves the most lines
+				# any operation needs, so each fits it unclipped.
+				var h: float = PixelUI.wrapped_text_height(unlock_label, unlock_label.text, tags_slot.size.x)
+				_check(h <= tags_slot.size.y + 0.5, "%s unlock condition fits the slot unclipped (%.0f <= %.0f px tall)" % [op_id, h, tags_slot.size.y])
+				# Its threats, once unlocked, fit the same slot.
 				var locked_threats: String = " · ".join(home.call("threat_tags", op_id))
-				var locked_threats_w: float = font.get_string_size(locked_threats, HORIZONTAL_ALIGNMENT_LEFT, -1, unlock_label.get_theme_font_size("font_size")).x
-				_check(locked_threats_w <= tags_slot.size.x, "%s threats fit one line once unlocked (%.0f <= %.0f px)" % [op_id, locked_threats_w, tags_slot.size.x])
+				var locked_h: float = PixelUI.wrapped_text_height(threats_label, locked_threats, tags_slot.size.x)
+				_check(locked_h <= tags_slot.size.y + 0.5, "%s threats fit the slot once unlocked (%.0f <= %.0f px tall)" % [op_id, locked_h, tags_slot.size.y])
 			else:
-				_check(threats_label.visible and threats_label.text != "", "%s shows its threats as one plain line (saw '%s')" % [op_id, threats_label.text])
-				var threats_font: Font = threats_label.get_theme_font("font")
-				var threats_w: float = threats_font.get_string_size(threats_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, threats_label.get_theme_font_size("font_size")).x
-				_check(threats_w <= tags_slot.size.x, "%s threats fit one line (%.0f <= %.0f px)" % [op_id, threats_w, tags_slot.size.x])
+				_check(threats_label.visible and threats_label.text != "", "%s shows its threats (saw '%s')" % [op_id, threats_label.text])
+				var threats_h: float = PixelUI.wrapped_text_height(threats_label, threats_label.text, tags_slot.size.x)
+				_check(threats_h <= tags_slot.size.y + 0.5, "%s threats fit the slot (%.0f <= %.0f px tall)" % [op_id, threats_h, tags_slot.size.y])
 	# A tap shows the unit in the info bar and toggles it; nothing moves.
 	home.set("_operation_index", 0)
 	home.set("_selected_operation_id", str(op_order[0]))

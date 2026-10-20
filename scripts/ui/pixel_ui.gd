@@ -132,9 +132,6 @@ static func text_px(font_size: int) -> int:
 const CRISP_SIZES := [40, 80, 120]
 const CRISP_MAP := {48: 80, 64: 80, 80: 80, 96: 120}
 const CRISP_SMALL := 40
-## Preview: no text shrinks to fit its box (die tags, status chips), so
-## overflow shows.
-const TEXT_SHRINK_TO_FIT := false
 ## Preview: m5x7 is never drawn by the per-label exact-pixel snap
 ## (bind_m5x7_snap); G-78 / G-86's rule is superseded.
 const M5X7_EXACT_SNAP := false
@@ -209,6 +206,14 @@ const TYPE_DISPLAY := "display"   # screen titles, the battle header
 const TYPE_LABEL := "label"       # buttons, tabs, section headers, unit names
 const TYPE_BODY := "body"         # descriptions, help text, the battle log
 const TYPE_SMALL := "small"       # rarity labels, version tag, cost labels
+## Crisp text step 3b (Kev, 2026-10-20): compact secondary text, m3x6 at 80
+## (Daniel Linssen, m5x7's designer: the same 16 px grid and vertical metrics,
+## so a line is as tall as m5x7's at 80; capitals 6 font px, advance 4 against
+## m5x7's 7 and 6). Only for the secondary lines Kev named: squad select's
+## mission CLEARED / threats line and unit description, the operation briefing
+## rows, item and relic names in the unlock panel, the reward rarity line.
+## Request it with apply_compact, never a per-node font override.
+const TYPE_COMPACT := "compact"
 const TYPE_NUMERAL := "numeral"   # HP, intent and pip numbers
 ## ui-cleanup: battle card HP numbers, Battle Block. ui-fix: 64 is its least
 ## size; it is laid out at x3 (a three-digit HP is 324 px in the card's 332 px
@@ -225,6 +230,7 @@ const TYPE_ROLES := {
 	TYPE_LABEL: {"family": "m5x7", "size": 64},   # primary buttons step up the lattice
 	TYPE_BODY: {"family": "m5x7", "size": 64},
 	TYPE_SMALL: {"family": "m5x7", "size": 48},
+	TYPE_COMPACT: {"family": "m3x6", "size": 80},
 	TYPE_NUMERAL: {"family": "m5x7", "size": 64},
 	TYPE_CARD: {"family": "block", "size": 64},
 	TYPE_CARD_NAME: {"family": "block", "size": 96},
@@ -241,7 +247,12 @@ static func lattice_px(size: int, family: String = "m5x7", floor_px: int = -1) -
 
 
 static func type_font(role: String) -> Font:
-	return get_battle_font() if str(TYPE_ROLES[role]["family"]) == "block" else get_pixel_font()
+	match str(TYPE_ROLES[role]["family"]):
+		"block":
+			return get_battle_font()
+		"m3x6":
+			return get_compact_font()
+	return get_pixel_font()
 
 
 ## The role's size in design px, times `scale` (landscape presentation), kept
@@ -255,7 +266,8 @@ static func type_px(role: String, scale: float = 1.0) -> int:
 ## Battle Block treatment (no shadow, dark edge).
 static func apply_type(control: Control, role: String, ink: Variant = null, scale: float = 1.0) -> void:
 	control.add_theme_font_override("font", type_font(role))
-	control.add_theme_font_size_override("font_size", type_px(role, scale))
+	# The compact face has one size (80) whatever the caller's scale.
+	control.add_theme_font_size_override("font_size", COMPACT_PX if role == TYPE_COMPACT else type_px(role, scale))
 	# DISPLAY, LABEL and CARD are capitals (a display transform; the copy is
 	# unchanged, and Battle Block has no lowercase glyphs).
 	if control is Label and role in [TYPE_DISPLAY, TYPE_LABEL, TYPE_CARD, TYPE_CARD_NAME, TYPE_HEADER]:
@@ -514,6 +526,65 @@ static func _snap_block_ink(label: Label) -> void:
 ## are not covered; NEAREST text sampling keeps those crisp.)
 static func even_px(value: float) -> float:
 	return roundf(value * 0.5) * 2.0
+
+
+# ── Measuring text (crisp text step 3b, 2026-10-20) ──
+## The size a text node draws at: its override mapped by the crisp hook, which
+## runs only once the node is in the tree (a label measured before it is added
+## still holds the old size).
+static func drawn_font_px(control: Control, size_name: String = "font_size") -> int:
+	if control.has_meta("crisp_small"):
+		return CRISP_SMALL
+	if control.has_meta("block_px"):
+		return control.get_theme_font_size(size_name)
+	return crisp_px(control.get_theme_font_size(size_name))
+
+
+## How many lines `text` takes in `font` at `size` when word-wrapped to `width`
+## design px, breaking only between words, as a Label with AUTOWRAP_WORD does.
+## Measure at the container's real width (never through a hidden node's
+## minimum size, which is laid out at whatever width it last had).
+static func wrapped_line_count(text: String, font: Font, size: int, width: float) -> int:
+	if text == "":
+		return 0
+	var para := TextParagraph.new()
+	para.add_string(text, font, size)
+	para.width = width
+	para.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND
+	return para.get_line_count()
+
+
+## A label's wrapped text height at `width` (lines x line height + spacing).
+static func wrapped_text_height(label: Label, text: String, width: float) -> float:
+	var font: Font = label.get_theme_font("font")
+	var size: int = drawn_font_px(label)
+	var lines: int = maxi(1, wrapped_line_count(text.to_upper() if label.uppercase else text, font, size, width))
+	var spacing := float(label.get_theme_constant("line_spacing"))
+	return ceilf(lines * (font.get_height(size) + spacing) - spacing)
+
+
+# ── Roll ranges (crisp text step 3b, Kev 2026-10-20) ──
+# Every list of roll bands writes a range without spaces ("1-4", one number for
+# a one-face band) in a fixed-width column as wide as the widest range, so each
+# ability name and description starts at the same x.
+const ROLL_RANGE_WIDEST := "15-19"
+
+
+## "1-4", or "20" for a band of one face.
+static func roll_range_text(low: int, high: int) -> String:
+	return str(low) if low == high else "%d-%d" % [low, high]
+
+
+## The roll column's width for a label: the widest range at the size it draws.
+static func roll_column_width(label: Control) -> float:
+	var font: Font = label.get_theme_font("font")
+	return even_px(ceilf(font.get_string_size(ROLL_RANGE_WIDEST, HORIZONTAL_ALIGNMENT_LEFT, -1, drawn_font_px(label)).x) + 1.0)
+
+
+## Gives a range label the fixed roll column (call once its font is set).
+static func set_roll_column(label: Control) -> void:
+	label.custom_minimum_size.x = roll_column_width(label)
+	label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 
 # ── Long-form body copy (Polish Build A, Task 3) ──
 # Help/reference panels, ability descriptions, lore, and intel-popup prose use
@@ -1107,6 +1178,30 @@ static func get_pixel_font() -> Font:
 			(font as FontFile).oversampling = CRISP_FONT_OVERSAMPLING
 		_pixel_font = font
 	return _pixel_font
+
+
+## The compact secondary face (TYPE_COMPACT): m3x6 at 80, rasterized at the
+## same 2x oversampling as m5x7 (crisp text step 2's fix) so its strokes are
+## whole screen px on the itch canvas. A missing font fails loudly and falls
+## back to m5x7 (never a system font).
+const COMPACT_FONT_PATH := "res://assets/fonts/m3x6.ttf"
+const COMPACT_PX := 80
+static var _compact_font: Font = null
+static func get_compact_font() -> Font:
+	if _compact_font == null:
+		var font: Font = load(COMPACT_FONT_PATH) as Font
+		if font == null:
+			push_error("[PixelUI] m3x6 failed to load from '%s' - falling back to m5x7." % COMPACT_FONT_PATH)
+			return get_pixel_font()
+		if font is FontFile:
+			(font as FontFile).oversampling = CRISP_FONT_OVERSAMPLING
+		_compact_font = font
+	return _compact_font
+
+
+## Sets a label (or button) in the compact secondary face, m3x6 at 80.
+static func apply_compact(control: Control, ink: Variant = null) -> void:
+	apply_type(control, TYPE_COMPACT, ink)
 
 
 static func apply_pixel_font(control: Control) -> void:

@@ -149,7 +149,7 @@ static func resolve_unit(data: Resource, state: Dictionary = {}) -> Dictionary:
 		var raw: Dictionary = entry.get("raw", {})
 		abilities.append({
 			"name": str(entry.get("ability_name", "")),
-			"roll": "%d - %d" % [int(entry.get("min", 0)), int(entry.get("max", 0))],
+			"roll": PixelUI.roll_range_text(int(entry.get("min", 0)), int(entry.get("max", 0))),
 			"effects": EffectPip.effects_from_ability_raw(
 				_with_resolved_revive_pct(raw, state, str(entry.get("ability_name", ""))), side) if not raw.is_empty() else [],
 			# fix-2.4: the authored eff string IS the ability text — same live

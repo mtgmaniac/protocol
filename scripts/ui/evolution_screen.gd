@@ -184,7 +184,7 @@ func _build_help_overlay() -> void:
 		"Select a branch, then confirm your permanent choice.",
 	]:
 		var label: Label = _make_label(line, BODY_FONT_SIZE, PixelUI.CHROME, 1)
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD
 		content.add_child(label)
 
 
@@ -254,7 +254,7 @@ func _create_trait_card(unit_trait: Dictionary, base_unit: UnitData) -> PanelCon
 	vbox.add_child(title)
 	var desc: Label = _make_label(str(unit_trait.get("text", "")), BODY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
 	desc.name = "TraitText"
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD
 	desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_child(desc)
 	if base_unit != null:
@@ -341,7 +341,7 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	for trait_variant in path.get("traits", []):
 		var trait_effect: Label = _make_label(CombatManager.UnitTraits.line(trait_variant), ABILITY_DESC_FONT_SIZE, PixelUI.CHROME, 1)
 		trait_effect.name = "TraitEffect_%s" % str((trait_variant as Dictionary).get("id", ""))
-		trait_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		trait_effect.autowrap_mode = TextServer.AUTOWRAP_WORD
 		trait_effects.add_child(trait_effect)
 	vbox.add_child(trait_effects)
 	var expand := Button.new()
@@ -392,24 +392,18 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 	# Branch name is a selection, not a rarity — cyan, not green (UI review S-2).
 	var path_name: Label = _make_label(str(path.get("name", "Evolution")), CARD_TITLE_FONT_SIZE, PixelUI.PLAYER_ACCENT_LIGHT, 3)
 	PixelUI.apply_type(path_name, PixelUI.TYPE_LABEL)
-	path_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	path_name.autowrap_mode = TextServer.AUTOWRAP_WORD
 	text_stack.add_child(path_name)
 
 	var focus_text: String = str(path.get("focus", ""))
 	if focus_text != "":
 		var focus: Label = _make_label(focus_text, BODY_FONT_SIZE, PixelUI.TEXT_PRIMARY, 2)
-		focus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		focus.autowrap_mode = TextServer.AUTOWRAP_WORD
 		text_stack.add_child(focus)
 
-	# What the branch can earn (G-71): the two traits it chooses between at
-	# 250 XP, by name, in the header the minimized card always shows. What
-	# each does is in the expanded view.
-	var trait_line: String = CombatManager.UnitTraits.preview_line(path.get("traits", []))
-	if trait_line != "":
-		var trait_label: Label = _make_label(trait_line, BODY_FONT_SIZE, PixelUI.CHROME, 2)
-		trait_label.name = "TraitLine"
-		trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		text_stack.add_child(trait_label)
+	# The branch's two 250 XP traits are described in the expanded view only
+	# (crisp text step 3b, Kev 2026-10-20, removed the header's "AT 250 XP:
+	# <TRAIT> or <TRAIT>" line).
 
 	var hp_value: int = int(path.get("hp", 0))
 	var hp_label_text: String = "MAX HP UNCHANGED"
@@ -432,19 +426,20 @@ func _create_ability_row(entry: Dictionary) -> VBoxContainer:
 	box.add_child(row)
 	var low := int(entry.get("min", 0))
 	var high := int(entry.get("max", 0))
-	var roll := _make_label(str(low) if low == high else "%d-%d" % [low, high], SMALL_FONT_SIZE, PixelUI.PLAYER_ACCENT_LIGHT, 1)
-	roll.custom_minimum_size.x = 120
+	var roll := _make_label(PixelUI.roll_range_text(low, high), SMALL_FONT_SIZE, PixelUI.PLAYER_ACCENT_LIGHT, 1)
+	# The fixed roll column: every ability name starts at one x.
+	PixelUI.set_roll_column(roll)
 	roll.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	row.add_child(roll)
 	var body := VBoxContainer.new()
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(body)
 	var name_label := _make_label(str(entry.get("ability_name", "Ability")), ABILITY_NAME_FONT_SIZE, PixelUI.TEXT_MUTED, 1)
-	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	body.add_child(name_label)
 	var raw: Dictionary = entry.get("raw", {})
 	var desc := _make_label(str(raw.get("eff", entry.get("description", ""))), ABILITY_DESC_FONT_SIZE, PixelUI.TEXT_PRIMARY, 1)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD
 	body.add_child(desc)
 	return box
 

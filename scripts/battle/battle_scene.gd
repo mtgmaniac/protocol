@@ -54,7 +54,6 @@ const DIE_TAG_FONT_RATIO := 0.72    # value-font size as a fraction of the tag h
 # overflows → the SAME shrunk size wrapped onto two lines. Content never
 # escapes the slot sideways again.
 const DIE_TAG_SLOT_WIDTH_RATIO := 1.8
-const DIE_TAG_SHRINK_STEP := 0.72   # tier-2/3 font step (matches the chip law)
 const DIE_TAG_DIAMETER_FALLBACK := 90.0
 # The turn/phase machine (architecture review §1 rec 2): a real enum with ONE
 # transition() choke point routing every phase change. The PHASE_* aliases keep
@@ -109,9 +108,10 @@ const PROTOCOL_VALUE_FONT_SIZE := 48
 # the pip bar (bottom-anchored; the overlap eats m5x7's below-baseline pad).
 # Batch 3: label sized up 52→60; it grows UPWARD into the footer's free band
 # (bottom-anchored box raised to match) so the pips below never move.
-const PROTOCOL_STACK_LABEL_FONT := 64   # LABEL (ui-fix; ui-unify had SMALL 48)
-const PROTOCOL_LABEL_BOX_H := 64.0   # ui-fix: one LABEL line
-const PROTOCOL_LABEL_CAP_PAD := 16.0   # m5x7's pad above its caps at 64 (4 px x4)
+const PROTOCOL_STACK_LABEL_FONT := 80   # LABEL, at 80 (crisp text; ui-fix had 64)
+const PROTOCOL_LABEL_BOX_H := 80.0   # one LABEL line
+const PROTOCOL_LABEL_CAP_PAD := 20.0   # m5x7's pad above its caps at 80 (4 font px x5; was 16 at 64,
+                                       # which left the label 1 screen px high on the itch canvas)
 const PROTOCOL_PIP_BAR_H := 52.0
 
 const BattleCheckpoint := preload("res://scripts/battle/battle_checkpoint.gd")
@@ -867,7 +867,7 @@ func _build_abandon_confirm() -> void:
 	body.text = "Progress will be lost."
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD
 	PixelUI.style_body_label(body, PixelUI.FONT_BODY_MIN, PixelUI.CHROME)
 	column.add_child(body)
 
@@ -1666,51 +1666,57 @@ func _tag_pip_profile(value_font: int) -> Dictionary:
 	}
 
 
-func _estimate_tag_content_width(effects: Array, target: String, value_font: int, profile: Dictionary) -> float:
-	var total: float = 0.0
-	for i in range(effects.size()):
-		if i > 0:
-			total += 5.0   # row separation
-		total += EffectPip.estimate_display_width(effects[i] as Dictionary, profile)
-	if target != "":
-		total += 5.0 + float(target.length()) * float(value_font) * 0.6
-	return total
+# A tag row's drawn width: the row built, its text mapped to the size it
+# draws (the crisp hook maps 64 -> 80 only once a label is in the tree, so an
+# estimate from the layout size came out a quarter short and a wrapped row ran
+# out of its slot: crisp text step 3b), measured, freed. Plus the tag field's
+# own margins (the F8 plate's 12 px a side).
+func _tag_row_width(side: String, effects: Array, target: String, value_font: int, profile: Dictionary) -> float:
+	var row: Control = _build_tag_content(side, effects, target, value_font, profile)
+	_map_text_sizes(row)
+	var width: float = row.get_combined_minimum_size().x
+	row.free()
+	var field: PanelContainer = _layout.make_tag_field()
+	width += field.get_theme_stylebox("panel").get_minimum_size().x
+	field.free()
+	return width
+
+
+func _map_text_sizes(node: Node) -> void:
+	PixelUI.apply_text_filter(node)
+	for child in node.get_children():
+		_map_text_sizes(child)
 
 
 # The die tag plate: transparent (pips + numbers read directly over the tray,
 # their own text outline keeps them legible — Kev 2026-07-09), sized to the
-# die's fixed slot. Three presentation tiers (Kev 2026-07-10):
-#   1. basic ability  — full font + full pips, one line
-#   2. extended       — one-step shrink (x0.72 font + pips), one line
-#   3. complicated    — the shrunk size WRAPPED onto two centered lines
-# The slot width is fixed per die; content never overflows it sideways.
+# die's fixed slot. Two presentation tiers (Kev 2026-07-10; crisp text step 3,
+# 2026-10-19, deleted the old one-step shrink, which drew sizes outside
+# 40 / 80 / 120):
+#   1. basic ability  — full size, one line
+#   2. complicated    — the full size WRAPPED onto two centered lines, split
+#      by drawn width (_pack_tag_rows)
 func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	var tag_size: Vector2 = _die_tag_size()
 	var slot_w: float = round(_die_tag_diameter * _layout.presentation("tag_slot_width_ratio", DIE_TAG_SLOT_WIDTH_RATIO))
 	# Floored to the rendered text minimum so the fit estimates below measure
 	# the size that will actually draw (PixelUI.TEXT_MIN_PX).
-	var base_font: int = PixelUI.text_px(int(round(tag_size.y * DIE_TAG_FONT_RATIO)))
-	var value_font: int = base_font
+	var value_font: int = PixelUI.text_px(int(round(tag_size.y * DIE_TAG_FONT_RATIO)))
 	var profile: Dictionary = _tag_pip_profile(value_font)
-	var rows: Array = [{"effects": effects, "target": target}]
-	if _estimate_tag_content_width(effects, target, value_font, profile) > slot_w:
-		# Side-docked landscape tags can use two full-size lines first. The
-		# portrait tiers and shared pip builder remain unchanged.
-		if _layout.presentation("tag_wrap_before_shrink", false) and effects.size() >= 2:
-			rows = _split_tag_rows(effects, target, value_font, profile, slot_w)
-		var needs_shrink: bool = rows.any(func(row): return _estimate_tag_content_width(row.effects, row.target, value_font, profile) > slot_w)
-		if needs_shrink and PixelUI.TEXT_SHRINK_TO_FIT:   # crisp text step 1 preview: off
-			value_font = PixelUI.text_px(int(round(base_font * DIE_TAG_SHRINK_STEP)))
-			profile = _tag_pip_profile(value_font)
-			rows = [{"effects": effects, "target": target}]
-			if _estimate_tag_content_width(effects, target, value_font, profile) > slot_w and effects.size() >= 2:
-				rows = _split_tag_rows(effects, target, value_font, profile, slot_w)
+	var rows: Array = _pack_tag_rows(side, effects, target, value_font, profile, slot_w)
 
-	var row_h: float = round(tag_size.y * (1.0 if value_font == base_font else DIE_TAG_SHRINK_STEP))
+	var row_h: float = tag_size.y
+	# The tag's box is its slot, or its widest line when a line cannot fit
+	# the slot (one effect wider than it, or a split with no fitting pair):
+	# the pips and numbers never sit outside it.
+	var plate_w: float = slot_w
+	if rows.size() > 1 or _tag_row_width(side, effects, target, value_font, profile) > slot_w:
+		for row_variant in rows:
+			plate_w = maxf(plate_w, ceilf(_tag_row_width(side, (row_variant as Dictionary)["effects"], str((row_variant as Dictionary)["target"]), value_font, profile)))
 	var plate: Panel = Panel.new()
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.clip_contents = false
-	plate.custom_minimum_size = Vector2(slot_w, row_h * float(rows.size()))
+	plate.custom_minimum_size = Vector2(PixelUI.even_px(plate_w + 1.0) if plate_w > slot_w else slot_w, row_h * float(rows.size()))
 	plate.size = plate.custom_minimum_size
 	plate.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var center: CenterContainer = CenterContainer.new()
@@ -1732,18 +1738,32 @@ func _build_die_tag(side: String, effects: Array, target: String) -> Panel:
 	return plate
 
 
-# Greedy split for tier 3: the largest effect prefix that fits the slot stays on
-# line 1; the remainder (plus the target label) wraps to line 2.
-func _split_tag_rows(effects: Array, target: String, value_font: int, profile: Dictionary, slot_w: float) -> Array:
-	var split: int = 1
-	for count in range(effects.size() - 1, 0, -1):
-		if _estimate_tag_content_width(effects.slice(0, count), "", value_font, profile) <= slot_w:
-			split = count
-			break
-	return [
-		{"effects": effects.slice(0, split), "target": ""},
-		{"effects": effects.slice(split), "target": target},
-	]
+# The tag's lines, measured at their drawn width: one line when it fits the
+# slot; otherwise two (the tier rule): the largest run of effects that fits
+# stays on line 1 and the rest, with the target label, go to line 2 (the
+# target alone when every effect fits line 1). When no split fits both lines,
+# the split whose wider line is narrowest. Every real kit fits (a 2026-10-20
+# sweep of all 310 hero, evolution and enemy abilities: 20 take two lines,
+# none leaves its slot).
+func _pack_tag_rows(side: String, effects: Array, target: String, value_font: int, profile: Dictionary, slot_w: float) -> Array:
+	var last: int = effects.size() if target != "" else effects.size() - 1
+	if last < 1 or _tag_row_width(side, effects, target, value_font, profile) <= slot_w:
+		return [{"effects": effects, "target": target}]
+	var best: Array = []
+	var best_w: float = INF
+	for split in range(last, 0, -1):
+		var rows: Array = [
+			{"effects": effects.slice(0, split), "target": ""},
+			{"effects": effects.slice(split), "target": target},
+		]
+		var widest: float = maxf(_tag_row_width(side, rows[0]["effects"], "", value_font, profile),
+			_tag_row_width(side, rows[1]["effects"], target, value_font, profile))
+		if widest <= slot_w:
+			return rows
+		if widest < best_w:
+			best_w = widest
+			best = rows
+	return best
 
 
 func _build_tag_content(side: String, effects: Array, target: String, value_font: int, profile: Dictionary) -> Control:
@@ -1779,6 +1799,19 @@ func _position_die_tag(plate: Control, side: String, die_bounds: Rect2) -> void:
 		return
 	var center_x: float = die_bounds.position.x + die_bounds.size.x * 0.5
 	var x: float = center_x - tag_size.x * 0.5
+	# The pips and numbers stay on screen: an outer die's wide tag slides in
+	# from the edge rather than running off it (crisp text step 3b).
+	var field: Control = plate.get_child(0).get_child(0) as Control if plate.get_child_count() > 0 and plate.get_child(0).get_child_count() > 0 else null
+	if field != null:
+		var content_w: float = field.get_combined_minimum_size().x
+		var content_left: float = x + (tag_size.x - content_w) * 0.5
+		var screen: Rect2 = get_viewport_rect()
+		var lo: float = screen.position.x + float(PixelUI.safe_left)
+		var hi: float = screen.end.x - float(PixelUI.safe_right)
+		if content_left < lo:
+			x += lo - content_left
+		elif content_left + content_w > hi:
+			x -= content_left + content_w - hi
 	var y: float
 	if side == "hero":
 		y = die_bounds.end.y + DIE_TAG_GAP                 # flush below the die
@@ -1819,7 +1852,7 @@ func _attach_die_inspect(overlay: Control, side: String, unit_id: String, abilit
 			_on_enemy_card_pressed(unit_id)
 	)
 	long_press.long_pressed.connect(func(_global_position: Vector2) -> void:
-		var meta: String = "Roll: %d - %d" % [int(ability_entry.get("min", result)), int(ability_entry.get("max", result))]
+		var meta: String = "Roll: %s" % PixelUI.roll_range_text(int(ability_entry.get("min", result)), int(ability_entry.get("max", result)))
 		var payload: Dictionary = InspectResolver.resolve_ability(ability_entry.get("raw", {}), side, meta)
 		# fix-2.2: the ±roll chip on the die resolves too — when this unit's
 		# effective roll is shifted, the chip's definition rides along.

@@ -4,7 +4,11 @@
 #   1. samples NEAREST (PixelUI.install_text_filter owns it — audit F2),
 #   2. renders at one of PixelUI.CRISP_SIZES (40 / 80 / 120: crisp text step 1,
 #      Kev 2026-10-19, PREVIEW; superseded the >= 48 floor and its
-#      `text_min_exempt` superscript exception),
+#      `text_min_exempt` superscript exception); the compact face m3x6
+#      (crisp text step 3b, 2026-10-20) only at 80, every character it is
+#      given in the font,
+# and both pixel fonts rasterize at FontFile.oversampling 2.0 (crisp text
+# step 2's fix: anything else draws strokes 1 and 3 px wide at the itch scale),
 # plus the rules behind them: the scale_font_size ladder floors at 48 and every
 # step is a multiple of the m5x7 native size (16) (the old sizes the crisp hook
 # maps); theme_overload.tres mirrors crisp_px(TEXT_MIN_PX) (a duplicated constant
@@ -30,6 +34,7 @@ const SCREENS := {
 var failures: Array[String] = []
 var _checked := 0
 var _saw_locked_tile := false
+var _saw_compact := 0
 
 
 func _initialize() -> void:
@@ -72,6 +77,14 @@ func _run() -> void:
 		if key == "fork":
 			await _check_popup(dm, min_px)
 		if key == "home":
+			# The operation briefing's rows are the compact face.
+			var briefing: Control = load("res://scripts/ui/operation_briefing_overlay.gd").new()
+			current_scene.add_child(briefing)
+			briefing.call("present_deployment", "facility")
+			await create_timer(0.3).timeout
+			_walk_text(briefing, "briefing", min_px)
+			briefing.queue_free()
+			await process_frame
 			load("res://scripts/ui/help_menu.gd").open(current_scene)
 			await create_timer(0.4).timeout
 			_walk_text(root, "help", min_px)
@@ -85,6 +98,7 @@ func _run() -> void:
 	sm.set("_disk_enabled", disk_was)
 	check(_saw_locked_tile, "home sweep never saw a LOCKED hero tile — the smallest raw-px text went untested")
 	check(_checked >= 100, "walked only %d text nodes — the screen sweep is not reaching the UI" % _checked)
+	check(_saw_compact >= 4, "the sweep saw %d compact (m3x6) text nodes — it is not reaching them" % _saw_compact)
 
 	if failures.is_empty():
 		print("[TEXT_LEGIBILITY] PASS (%d text nodes)" % _checked)
@@ -95,6 +109,12 @@ func _run() -> void:
 
 
 func _check_rules(pixel_ui: GDScript, min_px: int) -> void:
+	# Both pixel faces rasterize at 2x (crisp text step 2; m3x6 from step 3b).
+	for face in [["m5x7", pixel_ui.get_pixel_font()], ["m3x6", pixel_ui.get_compact_font()]]:
+		var font: Font = face[1]
+		check(font is FontFile and str(font.resource_path).ends_with("%s.ttf" % face[0]), "%s does not load as its own FontFile (%s)" % [face[0], str(font.resource_path) if font != null else "null"])
+		check(font is FontFile and is_equal_approx((font as FontFile).oversampling, 2.0), "%s rasterizes at oversampling %s, not 2.0" % [face[0], str((font as FontFile).oversampling) if font is FontFile else "?"])
+	check(int(pixel_ui.COMPACT_PX) == 80 and int(pixel_ui.TYPE_ROLES[pixel_ui.TYPE_COMPACT]["size"]) == 80, "the compact role is not 80")
 	check(min_px % NATIVE_EM == 0, "TEXT_MIN_PX %d is not a multiple of the m5x7 native %d" % [min_px, NATIVE_EM])
 	for step in pixel_ui.UI_FONT_STEPS:
 		check(int(step) >= min_px, "UI_FONT_STEPS rung %d is below the floor" % int(step))
@@ -173,6 +193,15 @@ func _walk_text(n: Node, where: String, min_px: int) -> void:
 			var crisp: Array = load("res://scripts/ui/pixel_ui.gd").CRISP_SIZES
 			check(roundi(drawn) in crisp and is_equal_approx(drawn, roundf(drawn)),
 				"%s: '%s' renders at %.1f px (not one of %s)" % [where, text.left(30), drawn, str(crisp)])
+			# m5x7 at 40 / 80 / 120 (above); m3x6 only at 80, and only with
+			# characters it has (it lacks m5x7's extra symbols).
+			var font: Font = c.get_theme_font("normal_font" if n is RichTextLabel else "font")
+			if font != null and str(font.resource_path).ends_with("m3x6.ttf"):
+				_saw_compact += 1
+				check(is_equal_approx(drawn, 80.0), "%s: '%s' is m3x6 at %.1f px (m3x6 draws only at 80)" % [where, text.left(30), drawn])
+				for i in text.length():
+					if text.unicode_at(i) > 32 and not font.has_char(text.unicode_at(i)):
+						check(false, "%s: '%s' uses U+%04X, which m3x6 lacks" % [where, text.left(30), text.unicode_at(i)])
 	for ch in n.get_children():
 		_walk_text(ch, where, min_px)
 

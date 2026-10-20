@@ -42,7 +42,6 @@ const VALUES := {
 	# die's yaw-invariant reach (settled dice keep their landed yaw), which sits
 	# up to ~24 px further out at 960x600 than the old squared-up silhouette.
 	"tag_slot_width_ratio": 1.00,
-	"tag_wrap_before_shrink": true,
 	"tag_side_gap": 16.0,
 	"action_band_height": 168.0,
 }

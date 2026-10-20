@@ -61,17 +61,12 @@ const CAST_BADGE_INSET := 8.0
 const CAST_BADGE_FONT_SIZE := 48
 const STATUS_VALUE_MIN_WIDTH := 24.0
 const STATUS_NUMERIC_MIN_WIDTH := 96.0
-# m5x7 digit advance ≈ 0.35 × font size (measured in-shot: 7 glyphs at font 72
-# spanned ~166 design px). Used to estimate chip content width for the
-# one-step rule — the old 0.55 guess forced downscales that made numerals tiny.
-const STATUS_GLYPH_WIDTH_FACTOR := 0.35
 const STATUS_CHIP_HEIGHT := 64.0
 # Result-tag law for chips (UI precision batch): the status row divides into
 # this many equal constant-size plates (STATUS_MAX_VISIBLE chips + the +N
-# badge); content downscales ONE step when it would exceed the plate.
+# badge). Content draws at its full size (crisp text step 3).
 const STATUS_PLATE_SLOTS := STATUS_MAX_VISIBLE + 1
 const STATUS_PLATE_SEP := 2.0
-const STATUS_CONTENT_SCALE_STEP := 0.78
 # The component frame width (PixelUI.COMPONENT_FRAME_WIDTH). Border noise fix:
 # cards rank by border COLOR, and every component frame is 4px.
 const CARD_BORDER_WIDTH := 4
@@ -739,7 +734,7 @@ func _make_action_fallback(text: String) -> Label:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.clip_text = true
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.max_lines_visible = 2
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	# Raw (unscaled) path: 16 design px was 6.7 window px at the 450 preview —
@@ -883,9 +878,9 @@ func build_status_chip(status: Dictionary, plate_w: float = 0.0) -> Control:
 	chip.add_theme_constant_override("separation", 1)
 	badge.add_child(chip)
 
+	# Chip content draws at its full size (crisp text step 3 deleted the
+	# one-step downscale: it drew sizes outside 40 / 80 / 120).
 	var scale_step: float = _battle_text_scale
-	if plate_w > 0.0:
-		scale_step *= _status_content_scale(status, plate_w)
 	if _is_frozen_status(status):
 		chip.add_child(_make_status_icon_control(status, scale_step))
 	elif str(status.get("mode", "named")) == "icon":
@@ -920,34 +915,6 @@ func build_status_chip(status: Dictionary, plate_w: float = 0.0) -> Control:
 		var free_min: float = STATUS_NUMERIC_MIN_WIDTH if str(status.get("mode", "named")) == "numeric" else STATUS_ICON_MIN_WIDTH
 		chip.custom_minimum_size = Vector2(free_min if not _is_frozen_status(status) else STATUS_ICON_MIN_WIDTH, STATUS_CHIP_HEIGHT)
 	return badge
-
-
-# ONE-step content downscale (result-tag law): if the chip's natural content
-# (icon + value at full size) would exceed the constant plate's inner width,
-# every piece renders at STATUS_CONTENT_SCALE_STEP; it never scales further
-# and never pixel-clips (name text ellipsizes instead).
-func _status_content_scale(status: Dictionary, plate_w: float) -> float:
-	if not PixelUI.TEXT_SHRINK_TO_FIT:   # crisp text step 1 preview: off
-		return 1.0
-	var inner_w: float = plate_w - 10.0  # 2px border + 3px content margin per side
-	if _battle_text_scale != 1.0 and str(status.get("mode", "named")) == "numeric":
-		# Large landscape chips still share the fixed four-slot row. Measure
-		# multi-digit values in the actual font and choose one fitted size;
-		# the portrait path below retains its original 0.78 step exactly.
-		var value_size: int = int(roundf(STATUS_VALUE_FONT_SIZE * _battle_text_scale))
-		var value_width: float = PixelUI.get_pixel_font().get_string_size(_display_status_value(status), HORIZONTAL_ALIGNMENT_LEFT, -1, value_size).x
-		var scaled_width: float = STATUS_ICON_TEXTURE_SIZE * _battle_text_scale + 1.0 + value_width
-		return minf(STATUS_CONTENT_SCALE_STEP, (inner_w - 4.0) / scaled_width) if scaled_width > inner_w else 1.0
-	var natural_w: float = 0.0
-	if _is_frozen_status(status):
-		natural_w = STATUS_ICON_TEXTURE_SIZE
-	elif str(status.get("mode", "named")) == "numeric":
-		var digits: int = _display_status_value(status).length()
-		natural_w = STATUS_ICON_TEXTURE_SIZE + 1.0 + maxf(STATUS_VALUE_MIN_WIDTH, digits * STATUS_VALUE_FONT_SIZE * STATUS_GLYPH_WIDTH_FACTOR)
-	else:
-		var text: String = str(status.get("name", ""))
-		natural_w = text.length() * STATUS_NAME_FONT_SIZE * STATUS_GLYPH_WIDTH_FACTOR
-	return STATUS_CONTENT_SCALE_STEP if natural_w * _battle_text_scale > inner_w else 1.0
 
 
 func _make_status_icon_control(status: Dictionary, scale_step: float = 1.0) -> Control:

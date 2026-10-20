@@ -58,14 +58,14 @@ text = "Choose Reward"
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-autowrap_mode = 3
+autowrap_mode = 2
 text = "Reward screen placeholder"
 
 [node name="InventoryLabel" type="Label" parent="Content/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
-autowrap_mode = 3
+autowrap_mode = 2
 text = "Inventory summary"
 
 [node name="RewardScroll" type="ScrollContainer" parent="Content/VBox"]
@@ -120,5 +120,5 @@ mouse_filter = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
-autowrap_mode = 3
+autowrap_mode = 2
 text = "Pick one reward to continue."

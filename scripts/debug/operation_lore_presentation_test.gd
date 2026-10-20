@@ -166,6 +166,10 @@ func _test_deployment_grid(operation_id: String, overlay: Control) -> void:
 			_expect(absf(value_label.get_global_rect().position.x - value_x) < 1.0, "%s %s value aligns" % [operation_id, key])
 		_expect(value_label.autowrap_mode == TextServer.AUTOWRAP_OFF, "%s %s remains one line" % [operation_id, key])
 		_expect(value_label.get_minimum_size().x <= value_label.size.x + 1.0, "%s %s value fits column" % [operation_id, key])
+		# Crisp text step 3b: the label column fits its longest label (the old
+		# 240 px slot cut SITUATIO / OBJECTIV).
+		var key_w: float = key_label.get_theme_font("font").get_string_size(key_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, key_label.get_theme_font_size("font_size")).x
+		_expect(key_w <= (key_label.get_parent() as Control).size.x + 0.5, "%s %s label fits its column (%.0f > %.0f)" % [operation_id, key, key_w, (key_label.get_parent() as Control).size.x])
 
 
 func _expect(condition: bool, label: String) -> void:

@@ -120,7 +120,7 @@ func _ready() -> void:
 	var blurb := Label.new()
 	blurb.text = "Two paths reach the same fight. One is flagged."
 	blurb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
 	PixelUI.style_label(blurb, BODY_FONT, PixelUI.CHROME, 1)
 	column.add_child(blurb)
 
@@ -136,7 +136,7 @@ func _ready() -> void:
 	if shared:
 		var hostiles := Label.new()
 		hostiles.text = "HOSTILES: %s" % ", ".join(PackedStringArray(comp_names))
-		hostiles.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hostiles.autowrap_mode = TextServer.AUTOWRAP_WORD
 		PixelUI.style_label(hostiles, BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
 		column.add_child(hostiles)
 	column.add_child(_build_route_card(false, [] if shared else comp_names))
@@ -232,7 +232,7 @@ func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
 	if not comp_names.is_empty():
 		var comp := Label.new()
 		comp.text = "Hostiles: %s" % (", ".join(PackedStringArray(comp_names)) if not comp_names.is_empty() else "unknown")
-		comp.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		comp.autowrap_mode = TextServer.AUTOWRAP_WORD
 		PixelUI.style_label(comp, BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
 		vbox.add_child(comp)
 
@@ -240,7 +240,7 @@ func _build_route_card(flagged: bool, comp_names: Array) -> PanelContainer:
 		var modifier_info: Dictionary = GameState.BATTLE_MODIFIERS.get(_modifier_id, {})
 		var mod_chip := Label.new()
 		mod_chip.text = "RISK: %s\n%s" % [str(modifier_info.get("name", _modifier_id)), str(modifier_info.get("desc", ""))]
-		mod_chip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		mod_chip.autowrap_mode = TextServer.AUTOWRAP_WORD
 		PixelUI.style_label(mod_chip, BODY_FONT, PixelUI.TEXT_PRIMARY, 1)
 		vbox.add_child(mod_chip)
 		var reward_chip := Label.new()

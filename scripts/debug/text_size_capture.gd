@@ -5,8 +5,9 @@
 #   <godot_console> --path . -s res://scripts/debug/text_size_capture.gd \
 #       --capture-window=640x960 --tsc-screen=<name> --tsc-out=<abs png path> \
 #       [--crisp-alt=a|b]
-# Screens: title, squad (a hero selected), squad_info (and its unit info open), battle (after a roll, dice showing),
-#          inspect (squad select's unit pop-up), help_settings, help_units, reward.
+# Screens: title, and every screen text_screens.gd opens (squad, squad_info,
+#          briefing, inspect, help_units, help_settings, evolution,
+#          evolution_all, unlock, reward, run_end, run_end_victory, battle).
 # --capture-window is applied by PersistentHeader (capture_window.gd: a canvas
 # taller than the monitor renders at full size inside a half-size window).
 # Autoloads and UI classes resolve at RUNTIME (TRUTH's -s convention).
@@ -30,52 +31,20 @@ func _run() -> void:
 	await process_frame
 	pixel_ui = load("res://scripts/ui/pixel_ui.gd")
 	var sm: Node = root.get_node("/root/SaveManager")
-	var gs: Node = root.get_node("/root/GameState")
-	var dm: Node = root.get_node("/root/DataManager")
 	root.get_node("/root/AudioManager").call("set_suppressed", true)
 	sm.call("dev_reset_profile")
 	sm.get("data")["tutorial_done"] = true
 	# No first-sighting keyword primer over the rolled battle.
 	sm.get("data")["onboarding"]["primers_seen"] = sm.call("_all_primer_ids")
 	seed(424242)
-	var scene_path := "res://scenes/ui/UnitSelect.tscn"
-	match _screen:
-		"title":
-			scene_path = "res://scenes/ui/MainMenu.tscn"
-		"battle":
-			gs.call("start_run", ["combat", "avalanche", "medic"], "facility", 424242)
-			gs.call("advance_to_next_battle")
-			scene_path = "res://scenes/battle/BattleScene.tscn"
-		"reward":
-			gs.call("start_run", ["combat", "avalanche", "medic"], "facility", 424242)
-			gs.call("advance_to_next_battle")
-			gs.call("prepare_battle_rewards")
-			scene_path = "res://scenes/ui/RewardScreen.tscn"
-	change_scene_to_file(scene_path)
-	# The title's logo boot-in runs before its buttons show.
-	await create_timer(5.0 if _screen == "title" else 1.5).timeout
-	var scene: Node = current_scene
-	match _screen:
-		"squad", "squad_info":
-			scene.call("_on_tile_tapped", "combat")
-			if _screen == "squad_info":
-				scene.call("_toggle_info")
-		"inspect":
-			var unit: Resource = dm.call("get_unit", "combat")
-			load("res://scripts/ui/inspect_popup.gd").open(scene, scene.call("unit_inspect_payload", unit))
-		"help_settings", "help_units":
-			load("res://scripts/ui/help_menu.gd").open(scene)
-			await process_frame
-			var menus: Array = root.find_children("*", "HelpMenu", true, false)
-			if not menus.is_empty():
-				(menus[0] as Node).call("_select_tab", _screen.trim_prefix("help_"))
-		"battle":
-			var roll_button: Button = scene.get_node_or_null("%RollButton") as Button
-			var dice_tray: Node = scene.get_node_or_null("%DiceTray3D")
-			if roll_button != null and not roll_button.disabled:
-				roll_button.emit_signal("pressed")
-				if dice_tray != null and dice_tray.has_signal("roll_finished"):
-					await dice_tray.roll_finished
+	if _screen == "title":
+		change_scene_to_file("res://scenes/ui/MainMenu.tscn")
+		# The title's logo boot-in runs before its buttons show.
+		await create_timer(5.0).timeout
+	else:
+		# Every other screen: the shared setups (text_screens.gd, crisp text
+		# step 3b), the battle rolled so its die tags show.
+		await load("res://scripts/debug/text_screens.gd").open(self, _screen, true)
 	await create_timer(1.0).timeout
 	for i in 10:
 		await process_frame
@@ -104,6 +73,8 @@ func _font_name(font: Font) -> String:
 		return "none"
 	if font.resource_path.ends_with("m5x7.ttf"):
 		return "m5x7"
+	if font.resource_path.ends_with("m3x6.ttf"):
+		return "m3x6"
 	if font.resource_path.ends_with("battle_block.fnt"):
 		return "battle_block"
 	if font is FontFile and is_equal_approx((font as FontFile).oversampling, 1.0):

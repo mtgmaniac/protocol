@@ -116,7 +116,7 @@ func _add_label(text: String, font_size: int, color: Color, outline: int = 1) ->
 	var label := Label.new()
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	PixelUI.style_label(label, font_size, color, outline)
 	_stage_box.add_child(label)
@@ -172,7 +172,7 @@ func _add_choice_button(text: String, callback: Callable, enabled: bool = true, 
 	button.custom_minimum_size = Vector2(0, 104)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.text = text
-	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD
 	button.disabled = not enabled
 	PixelUI.style_ui_secondary_button(button, BUTTON_FONT)   # a choice: secondary (ui-unify)
 	button.pressed.connect(callback)
@@ -182,7 +182,7 @@ func _add_choice_button(text: String, callback: Callable, enabled: bool = true, 
 		note_label.text = note
 		note_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		note_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		note_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 		note_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		PixelUI.style_body_label(note_label, PixelUI.FONT_BODY_MIN, PixelUI.CHROME if enabled else PixelUI.LINE_DIM)
 		_button_box.add_child(note_label)
@@ -212,7 +212,7 @@ func _add_option_box(text: String, callback: Callable, enabled: bool, descriptio
 	if description != "":
 		var desc := Label.new()
 		desc.text = description
-		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD
 		desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		PixelUI.style_label(desc, BODY_FONT, PixelUI.TEXT_PRIMARY if enabled else PixelUI.LINE_DIM, 1)
 		vbox.add_child(desc)
@@ -221,7 +221,7 @@ func _add_option_box(text: String, callback: Callable, enabled: bool, descriptio
 	button.custom_minimum_size = Vector2(0, 96)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.text = text
-	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD
 	button.disabled = not enabled
 	PixelUI.style_ui_secondary_button(button, BUTTON_FONT)   # a choice: secondary (ui-unify)
 	button.pressed.connect(callback)

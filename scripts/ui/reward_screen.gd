@@ -378,8 +378,11 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 		meta_text = "%s %s" % [_rarity_name(item).to_upper(), meta_text]
 	if owner_id != "":
 		meta_text += "  |  EQUIPPED: %s" % _run_unit_label(owner_id)
-	# The rarity label, small caps under the name, in its rarity color.
+	# The rarity label, small caps under the name, in its rarity color: compact
+	# secondary text (m3x6, Kev 2026-10-20) so it no longer competes with the
+	# name (m5x7 80).
 	var meta_label := _make_fixed_slot_label(meta_text, ROW_META_FONT, accent, ROW_META_SLOT_HEIGHT, 0)
+	PixelUI.apply_compact(meta_label, accent)
 	meta_label.name = "RewardMetaSlot"
 	info.add_child(meta_label)
 
@@ -505,7 +508,7 @@ func _create_description_label(text: String, min_height: float = 0.0, max_lines:
 	var label := Label.new()
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -535,7 +538,7 @@ func _make_centered_label(text: String, font_size: int, color: Color, outline: i
 	label.text = text
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	PixelUI.style_label(label, font_size, color, outline)
 	return label
@@ -806,7 +809,7 @@ func _show_gear_target_overlay(item: ItemData) -> void:
 
 	var title := _make_label("EQUIP %s TO" % item.display_name.to_upper(), GEAR_TARGET_TITLE_FONT, _get_item_accent(item), 2)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD
 	vbox.add_child(title)
 
 	for unit_id_variant in GameState.selected_units:
@@ -1001,7 +1004,7 @@ func _apply_visual_theme() -> void:
 			spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	footer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	footer_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	# Header bar (label + buttons) is owned + styled by the PersistentHeader autoload.
 	title_label.text = "Choose Reward"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

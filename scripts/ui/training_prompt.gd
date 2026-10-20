@@ -27,7 +27,7 @@ static func present(parent: Node, heading: String, body: String, choices: Array)
 	for value in [heading, body]:
 		var label := Label.new()
 		label.text = value
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD
 		PixelUI.apply_type(label, PixelUI.TYPE_LABEL if value == heading else PixelUI.TYPE_BODY)
 		box.add_child(label)
 	for i in choices.size():

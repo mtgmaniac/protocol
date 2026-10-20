@@ -168,6 +168,9 @@ func _report_panel(victory: bool, operation: OperationData) -> PanelContainer:
 		value.text = str(entry[1])
 		value.set_meta("full_text", value.text)
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		# A value wider than its column wraps at words onto the next line,
+		# still right-aligned (crisp text step 3b: never clipped).
+		value.autowrap_mode = TextServer.AUTOWRAP_WORD
 		_report_type(value, PixelUI.CHROME)
 		_body.add_child(value)
 		_rows.append([key, value])
@@ -178,6 +181,9 @@ func _report_panel(victory: bool, operation: OperationData) -> PanelContainer:
 		_feedback.name = "FeedbackLabel"
 		_feedback.text = "Thoughts? FEEDBACK on the main menu."
 		_feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		# Wraps at words when it does not fit the panel (at 80 it is wider
+		# than the 1080 column's panel: crisp text step 3b).
+		_feedback.autowrap_mode = TextServer.AUTOWRAP_WORD
 		PixelUI.apply_type(_feedback, PixelUI.TYPE_SMALL, PixelUI.CHROME)
 		# SMALL is 48 (a 3 design px font pixel): 1 screen px per font pixel at
 		# 360 already, 1.08 at 390 without the snap.
@@ -228,8 +234,10 @@ func _layout_body() -> void:
 	_resnap()
 
 
-# A comma list broken onto lines that fit `width` (the FALLEN names); labels
-# here never autowrap, so their heights stay exact.
+# A comma list broken onto lines that fit `width` (the FALLEN names), each
+# line ending on its comma; anything else that does not fit wraps at words
+# (the values' and feedback line's AUTOWRAP_WORD). _place sizes a label to the
+# lines it wraps to at its width.
 func _wrap_list(text: String, label: Label, width: float) -> String:
 	var font: Font = label.get_theme_font("font")
 	var font_size: int = label.get_theme_font_size("font_size")
