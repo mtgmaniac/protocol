@@ -250,17 +250,17 @@ func _add_key_value(grid: VBoxContainer, key: String, value: String, value_color
 	key_slot.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	key_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(key_slot)
-	# Labels and values are compact secondary text (m3x6 at 80, Kev
-	# 2026-10-20); the title and ENGAGE stay m5x7.
+	# Labels and values are compact secondary text (m3x6 at 80 in the muted
+	# COMPACT_INK, Kev 2026-10-20); the title and ENGAGE stay m5x7.
 	var key_label := _make_label(key, SECTION_FONT, PixelUI.TEXT_MUTED, 1)
-	PixelUI.apply_compact(key_label)
+	PixelUI.apply_compact(key_label, PixelUI.COMPACT_INK)
 	key_label.name = "DeploymentKey%s" % key.capitalize()
 	key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	key_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	key_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	key_slot.add_child(key_label)
 	var value_label := _make_label(value, SECTION_FONT, value_color, 2)
-	PixelUI.apply_compact(value_label)
+	PixelUI.apply_compact(value_label, PixelUI.COMPACT_INK)
 	value_label.name = "DeploymentValue%s" % key.capitalize()
 	# The accepted operation values are authored to fit this full-width slate at
 	# 540x1200. Keep each row to one decisive scan line rather than introducing

@@ -95,10 +95,16 @@ func _queue_award_fit() -> void:
 
 func _fit_awards() -> void:
 	# Two frames: the group's width, then the grid's cells and their wrapped
-	# names, lay out before the sections are measured.
-	await get_tree().process_frame
-	await get_tree().process_frame
+	# names, lay out before the sections are measured. The fit is deferred and
+	# awaits, so the screen may have left the tree (get_tree() null) at any
+	# step: check before each wait.
+	for i in 2:
+		if not is_inside_tree():
+			_award_fit_pending = false
+			return
+		await get_tree().process_frame
 	if not is_inside_tree():
+		_award_fit_pending = false
 		return
 	var chrome_height: float = window_panel.get_combined_minimum_size().y - award_scroll.get_combined_minimum_size().y
 	var content_height: float = sections.get_combined_minimum_size().y + COMPACT_AWARD_PADDING

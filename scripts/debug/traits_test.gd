@@ -1174,16 +1174,16 @@ func _check_shown() -> void:
 		_expect(marker_colour.is_equal_approx(name_colour), "card: the %s %s marker is the name's colour (%s vs %s)" % [case[0], _traits.marker_text(_traits.of_unit(unit)), marker_colour.to_html(false), name_colour.to_html(false)])
 		_expect(marker_colour.is_equal_approx(PixelUI.unit_card_palette(case[0] == "hero")["name"]), "card: the %s marker is the side's home name colour (%s)" % [case[0], marker_colour.to_html(false)])
 		card.free()
-	# Help: an evolution's breakdown is built from its group, trait included.
+	# Help: an evolution's breakdown names neither 250 XP trait (crisp text
+	# step 3c, Kev 2026-10-20): traits show once a hero has one, or at the pick.
 	var help: Node = load("res://scripts/ui/help_menu.gd").new()
 	var pyro: Dictionary = {}
 	for group in help._codex_evolution_groups(dm().get_unit("pulse")):
 		if str(group.get("id", "")) == "pyro":
 			pyro = group
-	var help_payload: Dictionary = help._evolution_breakdown_payload("PYRO", int(pyro.get("hp", 0)), pyro.get("abilities", []), pyro.get("traits", []))
-	var help_statuses: Array = help_payload.get("statuses", [])
-	_expect(help_statuses.size() >= 3 and str((help_statuses[0] as Dictionary).get("text", "")) == "AT 250 XP: SMOLDERING or SEARING", "help: Pyro's breakdown leads with the 250 XP choice (%s)" % str(help_statuses))
-	_expect(help_statuses.size() >= 3 and str((help_statuses[1] as Dictionary).get("text", "")).begins_with("SMOLDERING: ") and str((help_statuses[2] as Dictionary).get("text", "")).begins_with("SEARING: "), "help: then each trait's own line (%s)" % str(help_statuses))
+	var help_payload: Dictionary = help._evolution_breakdown_payload("PYRO", int(pyro.get("hp", 0)), pyro.get("abilities", []))
+	var help_text: String = JSON.stringify(help_payload).to_upper()
+	_expect(not help_text.contains("AT 250 XP") and not help_text.contains("SMOLDERING") and not help_text.contains("SEARING"), "help: Pyro's breakdown names no 250 XP trait (%s)" % str(help_payload.get("statuses", [])))
 	_expect(str((help._enemy_breakdown_payload(volt).get("statuses", [{}]) as Array)[0].get("text", "")).begins_with("VOLATILE: "), "help: Volt Enforcer's breakdown leads with VOLATILE")
 	help.free()
 

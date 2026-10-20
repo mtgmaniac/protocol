@@ -1000,7 +1000,10 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 	row.add_child(text)
 	text.add_child(_make_wrap_label(label_text, 40, PixelUI.UI_TEXT, 0))
 	if description != "":
-		text.add_child(_make_wrap_label(description, BODY_FONT, PixelUI.UI_TEXT_DIM, 0))
+		# Compact secondary text (m3x6, crisp text step 3c).
+		var description_label: Label = _make_wrap_label(description, BODY_FONT, PixelUI.COMPACT_INK, 0)
+		PixelUI.apply_compact(description_label, PixelUI.COMPACT_INK)
+		text.add_child(description_label)
 
 	var btn := Button.new()
 	btn.toggle_mode = true
@@ -1384,8 +1387,7 @@ func _resolve_row_payload(source_kind: String, source_data: Variant) -> Dictiona
 			return _evolution_breakdown_payload(
 				str(group.get("callsign", "")).to_upper(),
 				int(group.get("hp", 0)),
-				group.get("abilities", []) as Array,
-				group.get("traits", []) as Array)
+				group.get("abilities", []) as Array)
 	return {}
 
 
@@ -1409,10 +1411,9 @@ func _enemy_breakdown_payload(enemy: EnemyData) -> Dictionary:
 # An evolution is not its own UnitData — it lives in unit.evolution_paths in the
 # SAME dice_ranges shape — so the breakdown is resolved through a throwaway
 # UnitData rather than by teaching InspectResolver a second entry point.
-# `traits`: the two the branch chooses between at 250 XP (G-71). The breakdown
-# leads with the choice ("AT 250 XP: SMOLDERING or SEARING"), then each trait's
-# own line.
-func _evolution_breakdown_payload(evo_name: String, hp: int, abilities: Array, traits: Array = []) -> Dictionary:
+# It names neither of the branch's two 250 XP traits (crisp text step 3c, Kev
+# 2026-10-20): a trait shows once a hero has one, or at the 250 XP pick.
+func _evolution_breakdown_payload(evo_name: String, hp: int, abilities: Array) -> Dictionary:
 	var stand_in := UnitData.new()
 	stand_in.id = ""
 	stand_in.display_name = evo_name
@@ -1421,15 +1422,7 @@ func _evolution_breakdown_payload(evo_name: String, hp: int, abilities: Array, t
 	for ability_variant in abilities:
 		bands.append(ability_variant as Dictionary)
 	stand_in.dice_ranges = bands
-	var payload: Dictionary = InspectResolver.resolve_unit(stand_in)
-	var entries: Array = []
-	var preview: String = CombatManager.UnitTraits.preview_line(traits)
-	if preview != "":
-		entries.append({"effects": [], "text": preview, "trait": true})
-	for trait_variant in traits:
-		entries.append({"effects": [], "text": CombatManager.UnitTraits.line(trait_variant), "trait": true})
-	payload["statuses"] = entries + (payload.get("statuses", []) as Array)
-	return payload
+	return InspectResolver.resolve_unit(stand_in)
 
 func _make_label(text: String, font_size: int, color: Color, align: int = HORIZONTAL_ALIGNMENT_LEFT, outline: int = 2) -> Label:
 	var label := Label.new()

@@ -158,7 +158,7 @@ func apply_battle_presentation(text_scale: float) -> void:
 	_battle_text_scale = text_scale
 	PixelUI.apply_type(_name_label, PixelUI.TYPE_CARD_NAME, null, text_scale)
 	_boss_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
-	_trait_label.add_theme_font_size_override("font_size", PixelUI.text_px(int(48 * text_scale)))
+	# The trait title is the compact face at its one size (crisp text 3c).
 	_name_label.get_parent().custom_minimum_size.y = NAME_ROW_HEIGHT * text_scale
 	_apply_hp_numeral_type(text_scale)
 	_hp_back.custom_minimum_size.y = HP_BAR_HEIGHT * text_scale
@@ -317,6 +317,9 @@ func _build() -> void:
 	_trait_label.clip_text = true
 	_trait_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_apply_label(_trait_label, 48, PixelUI.CHROME, 0)   # recoloured to the name's colour in _refresh
+	# The compact face (m3x6 at 80, crisp text step 3c): OVERFLOWING needs
+	# 340 px of m5x7 on the 332 px line.
+	PixelUI.apply_compact(_trait_label)
 	name_content.add_child(_trait_label)
 	_trait_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -1135,6 +1138,10 @@ const NAME_ROW_SHELL_TOP := 7.0
 const NAME_ROW_DIVIDER := 8.0
 const CAP_ROWS := 7.0               # cap height in font pixels, both faces
 const M5X7_CAP_PAD_PX := 4.0        # m5x7 pixels between the line top and the caps
+# The trait title's compact face, m3x6: the same ascent, one cap row fewer, so
+# one more font pixel between the line top and the caps.
+const M3X6_CAP_ROWS := 6.0
+const M3X6_CAP_PAD_PX := 5.0
 const BLOCK_GLYPH_FOOT := 0.3125    # Battle Block: glyph bottom is 10/32 of the line above its foot
 # Battle Block's advance ends in one blank font pixel, so a centred advance box
 # puts the ink half a font pixel left of centre. The callsign shifts right by
@@ -1148,9 +1155,10 @@ func _layout_name_lines(two_lines: bool) -> void:
 	_name_label.offset_left = NAME_INK_SHIFT * s
 	_name_label.offset_right = NAME_INK_SHIFT * s
 	var line_h: float = PixelUI.block_draw_size(_name_label)
-	var tag_px: float = float(_trait_label.get_theme_font_size("font_size")) / float(PixelUI.FONT_NATIVE_M5X7)
+	var shown_tag: Label = _trait_label if _trait_label.visible else _boss_label
+	var tag_px: float = float(shown_tag.get_theme_font_size("font_size")) / float(PixelUI.FONT_NATIVE_M5X7)
 	var interior: float = (NAME_ROW_HEIGHT - NAME_ROW_SHELL_TOP - NAME_ROW_DIVIDER) * s
-	var pad: float = (interior - CAP_ROWS * tag_px - CAP_ROWS * line_h / 16.0) / 3.0
+	var pad: float = (interior - _tag_cap_metrics(shown_tag).x * tag_px - CAP_ROWS * line_h / 16.0) / 3.0
 	if not two_lines:
 		_name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_name_label.offset_top = 0
@@ -1162,9 +1170,16 @@ func _layout_name_lines(two_lines: bool) -> void:
 	for tag: Label in [_boss_label, _trait_label]:
 		var font_px: float = float(tag.get_theme_font_size("font_size")) / float(PixelUI.FONT_NATIVE_M5X7)
 		tag.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		tag.offset_top = roundf(NAME_ROW_SHELL_TOP * s + pad - M5X7_CAP_PAD_PX * font_px)
+		tag.offset_top = roundf(NAME_ROW_SHELL_TOP * s + pad - _tag_cap_metrics(tag).y * font_px)
 		tag.offset_bottom = tag.offset_top
 	PixelUI.refresh_block_snap(_name_label)   # its pivot follows the new alignment
+
+
+# A name-row tag's [cap rows, font pixels above the caps] in its face.
+func _tag_cap_metrics(tag: Label) -> Vector2:
+	if PixelUI.is_compact_font(tag.get_theme_font("font")):
+		return Vector2(M3X6_CAP_ROWS, M3X6_CAP_PAD_PX)
+	return Vector2(CAP_ROWS, M5X7_CAP_PAD_PX)
 
 
 func _team_border_color() -> Color:

@@ -210,8 +210,11 @@ const TYPE_SMALL := "small"       # rarity labels, version tag, cost labels
 ## (Daniel Linssen, m5x7's designer: the same 16 px grid and vertical metrics,
 ## so a line is as tall as m5x7's at 80; capitals 6 font px, advance 4 against
 ## m5x7's 7 and 6). Only for the secondary lines Kev named: squad select's
-## mission CLEARED / threats line and unit description, the operation briefing
-## rows, item and relic names in the unlock panel, the reward rarity line.
+## mission CLEARED / threats / unlock-condition line and unit description, the
+## operation briefing rows, item and relic names in the unlock panel, the
+## reward rarity line, Help PREFS setting descriptions (step 3c) and the battle
+## card trait title. Drawn with one font pixel of letter spacing
+## (COMPACT_SPACING) and, as plain secondary text, in COMPACT_INK.
 ## Request it with apply_compact, never a per-node font override.
 const TYPE_COMPACT := "compact"
 const TYPE_NUMERAL := "numeral"   # HP, intent and pip numbers
@@ -1182,10 +1185,23 @@ static func get_pixel_font() -> Font:
 
 ## The compact secondary face (TYPE_COMPACT): m3x6 at 80, rasterized at the
 ## same 2x oversampling as m5x7 (crisp text step 2's fix) so its strokes are
-## whole screen px on the itch canvas. A missing font fails loudly and falls
-## back to m5x7 (never a system font).
+## whole screen px on the itch canvas, through a FontVariation that adds
+## COMPACT_SPACING between glyphs. A missing font fails loudly and falls back
+## to m5x7 (never a system font).
 const COMPACT_FONT_PATH := "res://assets/fonts/m3x6.ttf"
 const COMPACT_PX := 80
+## Letter spacing, design px: one m3x6 font pixel at 80 (5), 2 screen px on
+## the itch canvas (0.4). Crisp text step 3c (Kev 2026-10-20) asked for half a
+## font pixel (1 screen px); FontVariation spacing is whole design px, so that
+## needs a derived copy of m3x6 with wider advances, and the font's terms
+## ("free to use with attribution") do not say a modified copy is allowed, so
+## the fallback Kev named is used: a whole font pixel.
+const COMPACT_SPACING := 5
+## The compact face's ink for plain secondary text (unit descriptions,
+## threats, unlock conditions, briefing rows, Help setting descriptions): the
+## muted gray Help already uses for setting descriptions. Status and rarity
+## text keeps its own colour.
+const COMPACT_INK := UI_TEXT_DIM
 static var _compact_font: Font = null
 static func get_compact_font() -> Font:
 	if _compact_font == null:
@@ -1195,11 +1211,28 @@ static func get_compact_font() -> Font:
 			return get_pixel_font()
 		if font is FontFile:
 			(font as FontFile).oversampling = CRISP_FONT_OVERSAMPLING
-		_compact_font = font
+		var spaced := FontVariation.new()
+		spaced.base_font = font
+		spaced.spacing_glyph = COMPACT_SPACING
+		_compact_font = spaced
 	return _compact_font
 
 
+## The m3x6 file under the compact face (its oversampling and glyphs).
+static func compact_font_file() -> Font:
+	var font: Font = get_compact_font()
+	return (font as FontVariation).base_font if font is FontVariation else font
+
+
+## Whether a font is the compact face (the spaced m3x6 or the file itself).
+static func is_compact_font(font: Font) -> bool:
+	return font != null and (font == get_compact_font() or str(font.resource_path).ends_with("m3x6.ttf")
+		or (font is FontVariation and str((font as FontVariation).base_font.resource_path).ends_with("m3x6.ttf")))
+
+
 ## Sets a label (or button) in the compact secondary face, m3x6 at 80.
+## `ink` null keeps the caller's colour; plain secondary text passes
+## COMPACT_INK.
 static func apply_compact(control: Control, ink: Variant = null) -> void:
 	apply_type(control, TYPE_COMPACT, ink)
 

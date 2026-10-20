@@ -5,15 +5,19 @@
 #   squad, squad_info (unit info open), briefing (OPERATION 01 pop-up),
 #   inspect (a unit's long-press pop-up), help_units, help_settings,
 #   help_settings_end (PREFS scrolled to its end: the version stamp and the
-#   font credit),
+#   font credit), help_units_evo (UNITS with an evolution row's long-press
+#   pop-up: Pulse's Pyro), squad_locked (squad select on a locked mission),
+#   battle_trait (Splice evolved to Synth with OVERFLOWING, the longest trait
+#   title),
 #   evolution, evolution_all (VIEW ALL open on both cards), unlock (NEW RELICS /
 #   NEW ITEMS: unlock bucket 16, Deathburst Relay's), reward, run_end (defeat),
 #   run_end_victory, battle (rolled when `roll` is true; needs a renderer).
 # Autoloads and UI classes resolve at RUNTIME (TRUTH's -s convention).
 extends RefCounted
 
-const SCREENS := ["squad", "squad_info", "briefing", "inspect", "help_units", "help_settings",
-	"evolution", "evolution_all", "unlock", "reward", "run_end", "run_end_victory", "battle"]
+const SCREENS := ["squad", "squad_info", "squad_locked", "briefing", "inspect", "help_units",
+	"help_units_evo", "help_settings", "evolution", "evolution_all", "unlock", "reward", "run_end",
+	"run_end_victory", "battle", "battle_trait"]
 const SQUAD := ["combat", "avalanche", "medic"]
 ## Unlock bucket 16 (unlocks.data.json): Reverse Gimbal, Deathburst Relay,
 ## Wide Aperture, Opening Gambit; awarded at the 16th gate.
@@ -28,8 +32,13 @@ static func open(tree: SceneTree, screen: String, roll: bool = false) -> Node:
 	gs.call("reset_run")
 	var scene_path := "res://scenes/ui/UnitSelect.tscn"
 	match screen:
-		"battle":
+		"battle", "battle_trait":
 			gs.call("start_run", SQUAD, "facility", 424242)
+			if screen == "battle_trait":
+				for path in (dm.call("get_unit", "medic") as Resource).get("evolution_paths"):
+					if str(path.get("id", "")) == "synth":
+						(gs.get("unit_evolutions") as Dictionary)["medic"] = str(path.get("name", ""))
+				(gs.get("unit_directives") as Dictionary)["medic"] = "overflow"
 			gs.call("advance_to_next_battle")
 			scene_path = "res://scenes/battle/BattleScene.tscn"
 		"reward":
@@ -64,6 +73,9 @@ static func open(tree: SceneTree, screen: String, roll: bool = false) -> Node:
 			scene.call("_on_tile_tapped", "combat")
 			if screen == "squad_info":
 				scene.call("_toggle_info")
+		"squad_locked":
+			# A fresh profile has only the first mission open: the next is locked.
+			scene.call("_on_nav_pressed", 1)
 		"briefing":
 			var overlay: Control = load("res://scripts/ui/operation_briefing_overlay.gd").new()
 			scene.add_child(overlay)
@@ -71,6 +83,18 @@ static func open(tree: SceneTree, screen: String, roll: bool = false) -> Node:
 		"inspect":
 			var unit: Resource = dm.call("get_unit", "combat")
 			load("res://scripts/ui/inspect_popup.gd").open(scene, scene.call("unit_inspect_payload", unit))
+		"help_units_evo":
+			var help_script: GDScript = load("res://scripts/ui/help_menu.gd")
+			help_script.open(scene)
+			await tree.process_frame
+			var help: Node = root.find_children("*", "HelpMenu", true, false)[0]
+			help.call("_select_tab", "units")
+			await tree.process_frame
+			var group: Dictionary = {}
+			for g in help.call("_codex_evolution_groups", dm.call("get_unit", "pulse")):
+				if str((g as Dictionary).get("id", "")) == "pyro":
+					group = g
+			help.call("_on_reference_row_long_pressed", Vector2.ZERO, "evolution", group, help.get("_content_scroll"))
 		"help_settings", "help_units", "help_settings_end":
 			load("res://scripts/ui/help_menu.gd").open(scene)
 			await tree.process_frame
@@ -85,7 +109,7 @@ static func open(tree: SceneTree, screen: String, roll: bool = false) -> Node:
 		"evolution_all":
 			for button in scene.find_children("ExpandAbilities", "Button", true, false):
 				(button as Button).emit_signal("pressed")
-		"battle":
+		"battle", "battle_trait":
 			if roll:
 				var roll_button: Button = scene.get_node_or_null("%RollButton") as Button
 				var dice_tray: Node = scene.get_node_or_null("%DiceTray3D")

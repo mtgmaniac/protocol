@@ -468,8 +468,9 @@ func _build_mission_row() -> Control:
 	_enc_status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_enc_level_row.add_child(_enc_status_label)
 
-	# The threats slot: the THREATS (compact secondary text, m3x6), or a locked
-	# operation's unlock condition, in one fixed-height slot. Both wrap at
+	# The threats slot: the THREATS, or a locked operation's unlock condition
+	# (both compact secondary text, m3x6 in COMPACT_INK), in one fixed-height
+	# slot. Both wrap at
 	# words; the slot reserves the most lines any operation needs at its real
 	# width (_reserve_tags_slot), so switching missions moves nothing.
 	_enc_tags_slot = Control.new()
@@ -477,12 +478,12 @@ func _build_mission_row() -> Control:
 	_enc_tags_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_enc_tags_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text_col.add_child(_enc_tags_slot)
-	_enc_threats_label = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.CHROME)
+	_enc_threats_label = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.COMPACT_INK)
 	_enc_threats_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_enc_threats_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	_enc_threats_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_enc_tags_slot.add_child(_enc_threats_label)
-	_enc_unlock_label = _make_type_label("", PixelUI.TYPE_SMALL, PixelUI.CHROME_DIM)
+	_enc_unlock_label = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.COMPACT_INK)
 	_enc_unlock_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_enc_unlock_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	_enc_unlock_label.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -1121,7 +1122,7 @@ func _build_info_bar() -> PanelContainer:
 	# up to INFO_BLURB_LINES lines. Its row is sized by measure at the bar's
 	# real width (_fit_info_blurb); clip_text keeps the Label's own minimum
 	# (shaped at whatever width it last had) out of it.
-	_info_blurb = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.CHROME)
+	_info_blurb = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.COMPACT_INK)
 	_info_blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_info_blurb.max_lines_visible = INFO_BLURB_LINES
 	_info_blurb.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
@@ -1163,7 +1164,7 @@ func _refresh_info() -> void:
 		_info_status.text = "LOCKED"
 		_info_status.add_theme_color_override("font_color", PixelUI.CHROME_DIM)
 		_info_blurb.text = SaveManager.hero_unlock_condition(_focus_unit_id)
-		_info_blurb.add_theme_color_override("font_color", PixelUI.CHROME_DIM)
+		_info_blurb.add_theme_color_override("font_color", PixelUI.COMPACT_INK)
 	else:
 		var in_squad: bool = _selected_unit_ids.has(_focus_unit_id)
 		_info_name.text = unit.battle_name().to_upper()
@@ -1172,7 +1173,7 @@ func _refresh_info() -> void:
 		_info_status.text = "IN SQUAD" if in_squad else "ON BENCH"
 		_info_status.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT if in_squad else PixelUI.CHROME_DIM)
 		_info_blurb.text = unit.blurb if unit.blurb != "" else unit.picker_blurb
-		_info_blurb.add_theme_color_override("font_color", PixelUI.CHROME)
+		_info_blurb.add_theme_color_override("font_color", PixelUI.COMPACT_INK)
 	_info_hint.text = SQUAD_FULL_TEXT if _squad_full_hint else HINT_TEXT
 	_info_hint.add_theme_color_override("font_color", PixelUI.WARNING if _squad_full_hint else PixelUI.CHROME_DIM)
 	_info_strip.queue_redraw()

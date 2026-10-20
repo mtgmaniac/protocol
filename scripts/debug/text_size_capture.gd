@@ -73,7 +73,7 @@ func _font_name(font: Font) -> String:
 		return "none"
 	if font.resource_path.ends_with("m5x7.ttf"):
 		return "m5x7"
-	if font.resource_path.ends_with("m3x6.ttf"):
+	if font.resource_path.ends_with("m3x6.ttf") or (font is FontVariation and (font as FontVariation).base_font != null and (font as FontVariation).base_font.resource_path.ends_with("m3x6.ttf")):
 		return "m3x6"
 	if font.resource_path.ends_with("battle_block.fnt"):
 		return "battle_block"

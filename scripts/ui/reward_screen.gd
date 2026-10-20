@@ -382,7 +382,8 @@ func _create_reward_row(item: ItemData, selection_id: String = "", owner_id: Str
 	# secondary text (m3x6, Kev 2026-10-20) so it no longer competes with the
 	# name (m5x7 80).
 	var meta_label := _make_fixed_slot_label(meta_text, ROW_META_FONT, accent, ROW_META_SLOT_HEIGHT, 0)
-	PixelUI.apply_compact(meta_label, accent)
+	# Rarity keeps its colour, 30% darker so it sits under the name (3c).
+	PixelUI.apply_compact(meta_label, accent.darkened(0.3))
 	meta_label.name = "RewardMetaSlot"
 	info.add_child(meta_label)
 

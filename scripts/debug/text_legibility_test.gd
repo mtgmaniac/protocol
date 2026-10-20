@@ -110,11 +110,18 @@ func _run() -> void:
 
 func _check_rules(pixel_ui: GDScript, min_px: int) -> void:
 	# Both pixel faces rasterize at 2x (crisp text step 2; m3x6 from step 3b).
-	for face in [["m5x7", pixel_ui.get_pixel_font()], ["m3x6", pixel_ui.get_compact_font()]]:
+	for face in [["m5x7", pixel_ui.get_pixel_font()], ["m3x6", pixel_ui.compact_font_file()]]:
 		var font: Font = face[1]
 		check(font is FontFile and str(font.resource_path).ends_with("%s.ttf" % face[0]), "%s does not load as its own FontFile (%s)" % [face[0], str(font.resource_path) if font != null else "null"])
 		check(font is FontFile and is_equal_approx((font as FontFile).oversampling, 2.0), "%s rasterizes at oversampling %s, not 2.0" % [face[0], str((font as FontFile).oversampling) if font is FontFile else "?"])
 	check(int(pixel_ui.COMPACT_PX) == 80 and int(pixel_ui.TYPE_ROLES[pixel_ui.TYPE_COMPACT]["size"]) == 80, "the compact role is not 80")
+	# The compact face's letter spacing (crisp text step 3c) is a whole number
+	# of screen px on the itch canvas (0.4) and a whole number of m3x6 font
+	# pixels (5 design px at 80), so every glyph keeps the 2 px grid.
+	var compact: Font = pixel_ui.get_compact_font()
+	var spacing: int = (compact as FontVariation).spacing_glyph if compact is FontVariation else 0
+	check(spacing == int(pixel_ui.COMPACT_SPACING) and is_equal_approx(fmod(spacing * 0.4, 1.0), 0.0) and spacing % 5 == 0,
+		"the compact face's letter spacing is %d design px (want COMPACT_SPACING %d: whole screen px at 0.4, whole font px)" % [spacing, int(pixel_ui.COMPACT_SPACING)])
 	check(min_px % NATIVE_EM == 0, "TEXT_MIN_PX %d is not a multiple of the m5x7 native %d" % [min_px, NATIVE_EM])
 	for step in pixel_ui.UI_FONT_STEPS:
 		check(int(step) >= min_px, "UI_FONT_STEPS rung %d is below the floor" % int(step))
@@ -196,7 +203,7 @@ func _walk_text(n: Node, where: String, min_px: int) -> void:
 			# m5x7 at 40 / 80 / 120 (above); m3x6 only at 80, and only with
 			# characters it has (it lacks m5x7's extra symbols).
 			var font: Font = c.get_theme_font("normal_font" if n is RichTextLabel else "font")
-			if font != null and str(font.resource_path).ends_with("m3x6.ttf"):
+			if load("res://scripts/ui/pixel_ui.gd").is_compact_font(font):
 				_saw_compact += 1
 				check(is_equal_approx(drawn, 80.0), "%s: '%s' is m3x6 at %.1f px (m3x6 draws only at 80)" % [where, text.left(30), drawn])
 				for i in text.length():
