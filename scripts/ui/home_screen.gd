@@ -32,7 +32,7 @@ const SUBHEADER_FONT_PX := Vector2(5.0, 6.0)
 ## Design px per art pixel: glyphs, pips and the band bar sit on this grid.
 const ART_PX := 4
 
-const TILE_NAME_FONT := 64         # design px (text_px); AVALANCHE fits the 238 px cell
+const TILE_NAME_FONT := 64         # design px (text_px), drawn at 80; names may overhang the cell
 # Kit blurb in the Directive picker: the body-copy tier through the ONE body token.
 static var DETAIL_DESC_FONT: int = PixelUI.scale_font_size(PixelUI.FONT_BODY_MIN)
 const DETAIL_NAME_FONT := 80       # design px (text_px)
@@ -774,12 +774,20 @@ func _build_unit_tile(unit_id: String, unit: UnitData) -> Control:
 	# Locked names remain blank, with their label height reserved.
 	var tile_name: String = "" if is_locked else (unit.callsign if unit.callsign != "" else unit.display_name)
 	var tile_font: int = PixelUI.FONT_INFO_MIN if is_locked else TILE_NAME_FONT
+	# The name is not clipped: at 80 AVALANCHE (270 design px) is wider than the
+	# 238 px cell. It sits in a holder the cell's width and grows out of it
+	# evenly on both sides, into the tile gap / gutter, so the cell never widens.
+	var name_holder := Control.new()
+	name_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_holder.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(PixelUI.crisp_px(PixelUI.text_px(tile_font))))
+	name_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cell.add_child(name_holder)
 	var name_label := _make_pixel_label(tile_name.to_upper(), tile_font, PixelUI.UI_TEXT_DIM)
-	name_label.custom_minimum_size.y = ceilf(PixelUI.get_pixel_font().get_height(tile_font))
+	name_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	name_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.clip_text = true
-	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cell.add_child(name_label)
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_holder.add_child(name_label)
 
 	_unit_tiles[unit_id] = {
 		"frame": frame,
