@@ -949,8 +949,9 @@ func _check_prestige_pick() -> void:
 		_expect((card.find_child("TraitMarker", true, false) as Label).visible == bool(case[1]), "card: the title line is %s for trait '%s'" % ["shown" if case[1] else "hidden", str(case[0])])
 		card.free()
 
-	# The 100 XP picker: the branch's two traits are described in the expanded
-	# view only (crisp text step 3b removed the header's "AT 250 XP" line).
+	# The 100 XP picker never shows the branch's two traits: no header line
+	# (crisp text step 3b) and none in the expanded view (3c, Kev 2026-10-20);
+	# they appear at the 250 XP pick.
 	gs.reset_run()
 	gs.start_run(["pulse", "combat", "medic"], "facility", 5)
 	gs.pending_evolution_unit_id = "pulse"
@@ -958,10 +959,14 @@ func _check_prestige_pick() -> void:
 	root.add_child(screen)
 	await _frames(3)
 	_expect(_labels_of(screen, "TraitLine").is_empty(), "100 XP picker: no AT 250 XP line on the branch cards (%s)" % str(_labels_of(screen, "TraitLine")))
-	var effects: Array = _labels_of(screen, "TraitEffect_*")
-	_expect(effects.size() == 4 and effects.has(_traits.line(_traits.build("afterburn"))) and effects.has(_traits.line(_traits.build("flashpoint"))) and effects.has(_traits.line(_traits.build("conductor"))), "100 XP picker: the expanded view prints each trait's effect (%s)" % str(effects))
-	for label in screen.find_children("TraitEffect_*", "Label", true, false):
-		_expect(not (label as Label).is_visible_in_tree(), "100 XP picker: the effects are in the expanded view, not the minimized card")
+	_expect(_labels_of(screen, "TraitEffect_*").is_empty(), "100 XP picker: the expanded view names no trait (%s)" % str(_labels_of(screen, "TraitEffect_*")))
+	for button in screen.find_children("ExpandAbilities", "Button", true, false):
+		(button as Button).emit_signal("pressed")
+	await _frames(2)
+	for label in screen.find_children("*", "Label", true, false):
+		for trait_id in ["afterburn", "flashpoint", "conductor"]:
+			var trait_name: String = _traits.name_of(trait_id).to_upper()
+			_expect(trait_name == "" or not (label as Label).text.to_upper().contains(trait_name + ":"), "100 XP picker: VIEW ALL describes no trait ('%s')" % (label as Label).text.left(40))
 	screen.queue_free()
 	await _frames(3)
 	gs.reset_run()

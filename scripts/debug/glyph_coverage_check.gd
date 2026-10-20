@@ -48,6 +48,18 @@ func _run() -> void:
 			quit(1)
 			return
 
+	# The compact face (m3x6, crisp text step 3b) draws only short ASCII copy
+	# (threats, descriptions, names, briefing rows, rarity): it must cover all
+	# printable ASCII. Its non-ASCII characters are checked live, per string,
+	# by the text legibility gate.
+	var compact: Font = PixelUI.get_compact_font()
+	for code in range(32, 127):
+		if compact == null or not compact.has_char(code):
+			push_error("[GLYPH] m3x6 lacks ASCII U+%04X" % code)
+			print("[GLYPH] FAIL")
+			quit(1)
+			return
+
 	for path in _list_files(DATA_DIR, ".json"):
 		_sweep_json(path)
 	for dir in GD_DIRS:

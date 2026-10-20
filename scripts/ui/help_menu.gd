@@ -789,6 +789,14 @@ func _build_settings(host: VBoxContainer) -> void:
 		24, PixelUI.UI_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT, 0)
 	PixelUI.mark_small_text(version_label)   # crisp text: the version stamp stays at 40
 	host.add_child(version_label)
+	# The font credit (crisp text step 3c): m3x6's terms require it
+	# (assets/fonts/m3x6_LICENSE.txt); m5x7's appreciate it. Same 40 tier.
+	var credit_label: Label = _make_label(
+		"Fonts: m5x7 and m3x6 by Daniel Linssen",
+		24, PixelUI.UI_TEXT_DIM, HORIZONTAL_ALIGNMENT_LEFT, 0)
+	credit_label.name = "FontCredit"
+	PixelUI.mark_small_text(credit_label)
+	host.add_child(credit_label)
 
 
 func _on_send_feedback() -> void:

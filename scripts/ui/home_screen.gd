@@ -79,6 +79,9 @@ const LEVEL_ROW_GAP := 12
 const DOT_SIZE := 16
 const DOT_GAP := 16
 const THREAT_EMPTY := PixelUI.BATTLE_PROTO_EMPTY
+## Between the threats on the mission card (crisp text step 3c): m3x6 draws
+## the middle dot at cap height, where it reads as a raised tick.
+const THREAT_SEPARATOR := " / "
 const DEPTH := preload("res://scripts/ui/battle_depth.gd")
 
 # Unit info bar.
@@ -579,14 +582,15 @@ func _refresh_encounter() -> void:
 	_enc_unlock_label.visible = _current_op_locked
 	_enc_threats_label.visible = not _current_op_locked
 	_enc_unlock_label.text = unlock_condition_text(_selected_operation_id) if _current_op_locked else ""
-	_enc_threats_label.text = "" if _current_op_locked else " · ".join(threat_tags(_selected_operation_id))
+	_enc_threats_label.text = "" if _current_op_locked else THREAT_SEPARATOR.join(threat_tags(_selected_operation_id))
 
 	for i in _dot_nodes.size():
 		_dot_nodes[i].color = accent if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 	_refresh_deploy()
 
 
-## The operation's THREATS (existing briefing data, "SHIELDS · JAM · REBUILD"),
+## The operation's THREATS (existing briefing data "SHIELDS · JAM · REBUILD", shown
+## "SHIELDS / JAM / REBUILD"),
 ## one entry each.
 static func threat_tags(op_id: String) -> Array[String]:
 	var tags: Array[String] = []
@@ -1016,7 +1020,7 @@ func _reserve_tags_slot() -> void:
 		return
 	var height: float = _small_row_height()
 	for op_id: String in _operation_ids:
-		height = maxf(height, PixelUI.wrapped_text_height(_enc_threats_label, " · ".join(threat_tags(op_id)), width))
+		height = maxf(height, PixelUI.wrapped_text_height(_enc_threats_label, THREAT_SEPARATOR.join(threat_tags(op_id)), width))
 		height = maxf(height, PixelUI.wrapped_text_height(_enc_unlock_label, unlock_condition_text(op_id), width))
 	if not is_equal_approx(_enc_tags_slot.custom_minimum_size.y, height):
 		_enc_tags_slot.custom_minimum_size.y = height

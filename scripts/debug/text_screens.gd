@@ -4,6 +4,8 @@
 # scene once its text is laid out. Screens:
 #   squad, squad_info (unit info open), briefing (OPERATION 01 pop-up),
 #   inspect (a unit's long-press pop-up), help_units, help_settings,
+#   help_settings_end (PREFS scrolled to its end: the version stamp and the
+#   font credit),
 #   evolution, evolution_all (VIEW ALL open on both cards), unlock (NEW RELICS /
 #   NEW ITEMS: unlock bucket 16, Deathburst Relay's), reward, run_end (defeat),
 #   run_end_victory, battle (rolled when `roll` is true; needs a renderer).
@@ -69,12 +71,17 @@ static func open(tree: SceneTree, screen: String, roll: bool = false) -> Node:
 		"inspect":
 			var unit: Resource = dm.call("get_unit", "combat")
 			load("res://scripts/ui/inspect_popup.gd").open(scene, scene.call("unit_inspect_payload", unit))
-		"help_settings", "help_units":
+		"help_settings", "help_units", "help_settings_end":
 			load("res://scripts/ui/help_menu.gd").open(scene)
 			await tree.process_frame
 			var menus: Array = root.find_children("*", "HelpMenu", true, false)
 			if not menus.is_empty():
-				(menus[0] as Node).call("_select_tab", screen.trim_prefix("help_"))
+				(menus[0] as Node).call("_select_tab", screen.trim_prefix("help_").trim_suffix("_end"))
+				if screen.ends_with("_end"):
+					for i in 4:
+						await tree.process_frame
+					var scroll: ScrollContainer = (menus[0] as Node).get("_content_scroll")
+					scroll.scroll_vertical = int(scroll.get_v_scroll_bar().max_value)
 		"evolution_all":
 			for button in scene.find_children("ExpandAbilities", "Button", true, false):
 				(button as Button).emit_signal("pressed")

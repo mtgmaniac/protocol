@@ -477,7 +477,7 @@ func _check_encounter_slots(home: Node, op_order: Array, tiles: Dictionary) -> v
 				var h: float = PixelUI.wrapped_text_height(unlock_label, unlock_label.text, tags_slot.size.x)
 				_check(h <= tags_slot.size.y + 0.5, "%s unlock condition fits the slot unclipped (%.0f <= %.0f px tall)" % [op_id, h, tags_slot.size.y])
 				# Its threats, once unlocked, fit the same slot.
-				var locked_threats: String = " · ".join(home.call("threat_tags", op_id))
+				var locked_threats: String = str(home.get("THREAT_SEPARATOR")).join(home.call("threat_tags", op_id))
 				var locked_h: float = PixelUI.wrapped_text_height(threats_label, locked_threats, tags_slot.size.x)
 				_check(locked_h <= tags_slot.size.y + 0.5, "%s threats fit the slot once unlocked (%.0f <= %.0f px tall)" % [op_id, locked_h, tags_slot.size.y])
 			else:

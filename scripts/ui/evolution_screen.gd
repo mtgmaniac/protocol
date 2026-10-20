@@ -333,17 +333,8 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	for entry in ranges:
 		abilities.add_child(_create_ability_row(entry))
 	vbox.add_child(abilities)
-	# The expanded view also says what each of the branch's two traits does.
-	var trait_effects := VBoxContainer.new()
-	trait_effects.name = "TraitEffects"
-	trait_effects.visible = false
-	trait_effects.add_theme_constant_override("separation", 16)
-	for trait_variant in path.get("traits", []):
-		var trait_effect: Label = _make_label(CombatManager.UnitTraits.line(trait_variant), ABILITY_DESC_FONT_SIZE, PixelUI.CHROME, 1)
-		trait_effect.name = "TraitEffect_%s" % str((trait_variant as Dictionary).get("id", ""))
-		trait_effect.autowrap_mode = TextServer.AUTOWRAP_WORD
-		trait_effects.add_child(trait_effect)
-	vbox.add_child(trait_effects)
+	# The branch's two traits stay hidden until the 250 XP pick (crisp text
+	# step 3c, Kev 2026-10-20): neither the card nor VIEW ALL names them.
 	var expand := Button.new()
 	expand.name = "ExpandAbilities"
 	expand.text = "VIEW ALL %d ABILITIES" % ranges.size()
@@ -351,7 +342,6 @@ func _create_evolution_card(path: Dictionary, base_unit: UnitData) -> PanelConta
 	PixelUI.style_ui_secondary_button(expand, BUTTON_FONT_SIZE)
 	expand.pressed.connect(func() -> void:
 		abilities.visible = not abilities.visible
-		trait_effects.visible = abilities.visible
 		preview.visible = not abilities.visible
 		expand.text = "HIDE ABILITIES" if abilities.visible else "VIEW ALL %d ABILITIES" % ranges.size()
 	)
@@ -401,9 +391,9 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 		focus.autowrap_mode = TextServer.AUTOWRAP_WORD
 		text_stack.add_child(focus)
 
-	# The branch's two 250 XP traits are described in the expanded view only
-	# (crisp text step 3b, Kev 2026-10-20, removed the header's "AT 250 XP:
-	# <TRAIT> or <TRAIT>" line).
+	# The branch's two 250 XP traits are not shown here (crisp text step 3b
+	# removed the header's "AT 250 XP: <TRAIT> or <TRAIT>" line, 3c the
+	# expanded view's descriptions).
 
 	var hp_value: int = int(path.get("hp", 0))
 	var hp_label_text: String = "MAX HP UNCHANGED"
