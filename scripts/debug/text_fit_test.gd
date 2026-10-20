@@ -18,12 +18,13 @@
 extends SceneTree
 
 const CANVASES := [Vector2i(640, 960), Vector2i(1080, 2400)]
-const SCREENS := ["squad", "squad_info", "squad_locked", "briefing", "inspect", "help_units",
+const SCREENS := ["squad", "squad_info", "squad_locked", "squad_cleared", "briefing", "briefing_mantle", "inspect", "help_units",
 	"help_units_evo", "help_settings", "evolution", "evolution_all", "unlock", "reward", "run_end",
 	"run_end_victory", "battle", "battle_trait"]
 ## The pop-up screens check only the pop-up's text (the screen under it is
 ## checked on its own).
 const POPUP_SCRIPT := {"inspect": "inspect_popup.gd", "help_units_evo": "inspect_popup.gd", "help_units": "help_menu.gd",
+	"briefing_mantle": "operation_briefing_overlay.gd",
 	"help_settings": "help_menu.gd", "briefing": "operation_briefing_overlay.gd"}
 const ELLIPSIS := [TextServer.OVERRUN_TRIM_ELLIPSIS, TextServer.OVERRUN_TRIM_WORD_ELLIPSIS]
 

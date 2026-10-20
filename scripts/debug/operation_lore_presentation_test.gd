@@ -164,8 +164,15 @@ func _test_deployment_grid(operation_id: String, overlay: Control) -> void:
 		else:
 			_expect(absf(key_label.get_global_rect().position.x - key_x) < 1.0, "%s %s label aligns" % [operation_id, key])
 			_expect(absf(value_label.get_global_rect().position.x - value_x) < 1.0, "%s %s value aligns" % [operation_id, key])
-		_expect(value_label.autowrap_mode == TextServer.AUTOWRAP_OFF, "%s %s remains one line" % [operation_id, key])
-		_expect(value_label.get_minimum_size().x <= value_label.size.x + 1.0, "%s %s value fits column" % [operation_id, key])
+		# Kev 2026-10-20: a value wider than its column wraps at words, at
+		# most two lines, and stays inside the grid (the old one-line check
+		# compared the label with itself and missed a value running out).
+		_expect(value_label.autowrap_mode == TextServer.AUTOWRAP_WORD, "%s %s wraps at words" % [operation_id, key])
+		_expect(value_label.get_line_count() <= 2, "%s %s takes at most two lines (%d)" % [operation_id, key, value_label.get_line_count()])
+		_expect(value_label.get_global_rect().end.x <= grid.get_global_rect().end.x + 1.0, "%s %s value stays inside the grid (%.0f > %.0f)" % [operation_id, key, value_label.get_global_rect().end.x, grid.get_global_rect().end.x])
+		var value_font: Font = value_label.get_theme_font("font")
+		for word in value_label.text.split(" ", false):
+			_expect(value_font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, value_label.get_theme_font_size("font_size")).x <= value_label.size.x + 1.0, "%s %s: '%s' fits its column" % [operation_id, key, word])
 		# Crisp text step 3b: the label column fits its longest label (the old
 		# 240 px slot cut SITUATIO / OBJECTIV).
 		var key_w: float = key_label.get_theme_font("font").get_string_size(key_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, key_label.get_theme_font_size("font_size")).x

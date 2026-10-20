@@ -226,13 +226,15 @@ func _add_deployment_grid(copy: Dictionary) -> void:
 	_add_key_value(grid, KEY_LABELS[2], str(copy["directive"]), PixelUI.TEXT_PRIMARY)
 
 
-## The key column's width: the longest label in the compact face (crisp text
-## step 3b; the fixed 240 px cut SITUATION and OBJECTIVE at m5x7 80).
+## The key column's width: the longest label at the size it draws (m5x7, the
+## primary face: Kev 2026-10-20; the old fixed 240 px cut SITUATION and
+## OBJECTIVE).
 static func key_column_width() -> float:
-	var font: Font = PixelUI.get_compact_font()
+	var font: Font = PixelUI.get_pixel_font()
+	var size: int = PixelUI.crisp_px(PixelUI.scale_font_size(SECTION_FONT))
 	var widest := 0.0
 	for key: String in KEY_LABELS:
-		widest = maxf(widest, font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, PixelUI.COMPACT_PX).x)
+		widest = maxf(widest, font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
 	return PixelUI.even_px(ceilf(widest) + 1.0)
 
 
@@ -250,22 +252,23 @@ func _add_key_value(grid: VBoxContainer, key: String, value: String, value_color
 	key_slot.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	key_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(key_slot)
-	# Labels and values are compact secondary text (m3x6 at 80 in the muted
-	# COMPACT_INK, Kev 2026-10-20); the title and ENGAGE stay m5x7.
+	# The labels are the primary face (m5x7, Kev 2026-10-20); the values are
+	# compact secondary text (m3x6 in the muted COMPACT_INK). The title and
+	# ENGAGE stay m5x7.
 	var key_label := _make_label(key, SECTION_FONT, PixelUI.TEXT_MUTED, 1)
-	PixelUI.apply_compact(key_label, PixelUI.COMPACT_INK)
 	key_label.name = "DeploymentKey%s" % key.capitalize()
 	key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	key_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	key_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	key_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	key_slot.add_child(key_label)
 	var value_label := _make_label(value, SECTION_FONT, value_color, 2)
 	PixelUI.apply_compact(value_label, PixelUI.COMPACT_INK)
 	value_label.name = "DeploymentValue%s" % key.capitalize()
-	# The accepted operation values are authored to fit this full-width slate at
-	# 540x1200. Keep each row to one decisive scan line rather than introducing
-	# operation-specific wraps or positioning (operation lore gate: it fits).
-	value_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	# A value wider than its column wraps at words onto a second line (the
+	# m5x7 label column leaves 598 px; "Predators through the perimeter" is
+	# 785 px), the label staying on its first line.
+	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(value_label)

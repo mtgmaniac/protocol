@@ -1140,7 +1140,9 @@ func _build_info_bar() -> PanelContainer:
 	_info_strip.draw.connect(_draw_band_strip)
 	col.add_child(_info_strip)
 
-	_info_hint = _make_type_label(HINT_TEXT, PixelUI.TYPE_SMALL, PixelUI.CHROME_DIM)
+	# The hint is compact secondary text (m3x6 in COMPACT_INK, Kev 2026-10-20);
+	# the squad-full warning keeps its warning colour.
+	_info_hint = _make_type_label(HINT_TEXT, PixelUI.TYPE_COMPACT, PixelUI.COMPACT_INK)
 	col.add_child(_info_hint)
 	return panel
 
@@ -1175,7 +1177,7 @@ func _refresh_info() -> void:
 		_info_blurb.text = unit.blurb if unit.blurb != "" else unit.picker_blurb
 		_info_blurb.add_theme_color_override("font_color", PixelUI.COMPACT_INK)
 	_info_hint.text = SQUAD_FULL_TEXT if _squad_full_hint else HINT_TEXT
-	_info_hint.add_theme_color_override("font_color", PixelUI.WARNING if _squad_full_hint else PixelUI.CHROME_DIM)
+	_info_hint.add_theme_color_override("font_color", PixelUI.WARNING if _squad_full_hint else PixelUI.COMPACT_INK)
 	_info_strip.queue_redraw()
 	_fit_info_blurb()
 

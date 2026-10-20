@@ -401,7 +401,10 @@ func _create_path_header(path: Dictionary, base_unit: UnitData) -> HBoxContainer
 		hp_label_text = "MAX HP %d" % hp_value
 		if base_unit != null:
 			hp_label_text += " (%+d)" % (hp_value - base_unit.max_hp)
-	text_stack.add_child(_make_label(hp_label_text, SMALL_FONT_SIZE, PixelUI.CHROME_DIM, 1))
+	# Compact secondary text (m3x6 in COMPACT_INK, Kev 2026-10-20).
+	var hp_label: Label = _make_label(hp_label_text, SMALL_FONT_SIZE, PixelUI.COMPACT_INK, 1)
+	PixelUI.apply_compact(hp_label, PixelUI.COMPACT_INK)
+	text_stack.add_child(hp_label)
 
 	# No FROM <unit> line (Kev 2026-07-10) — the player just came from that unit.
 	return header

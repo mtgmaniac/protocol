@@ -1,5 +1,37 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Crisp text (Kev 2026-10-19 / 2026-10-20, DECISIONS_RESOLVED G-96; supersedes
+the entries below where they differ, the 48 px floor, G-78 / G-86's pixel-exact
+rows and the Help tab names included):** three text tiers and no other sizes or
+fonts: **m5x7 at 120 and 80** (primary), **m3x6 at 80 with +1 font pixel of
+letter spacing** through a FontVariation (`PixelUI.TYPE_COMPACT` /
+`apply_compact`: compact secondary text), **m5x7 at 40** (tiny metadata: the
+version stamp, Protocol cost badges, the effect-pip duration superscript, the
+font credit). The compact face draws unit descriptions and HOLD ANY UNIT FOR
+FULL INTEL, the mission card's threats line, "Clear X to unlock" and CLEARED,
+the operation briefing's values (SITE / SITUATION / OBJECTIVE stay m5x7 80 in a
+column sized to the longest; a long value wraps), Help PREFS setting
+descriptions, the evolution card's MAX HP line, reward rarity lines,
+unlock-panel item and relic names and battle card trait titles. Plain
+secondary text is the muted gray `PixelUI.COMPACT_INK` (`UI_TEXT_DIM`);
+CLEARED keeps its blue, rarity lines their rarity colour 30% darker, unlock
+names stay bright, trait titles the unit's home colour. Both fonts rasterize at
+`FontFile.oversampling` 2.0 (Godot rounds oversampling down to 1/64ths, so at
+0.4 the raster was 0.390625 and strokes drew 1 and 3 px wide); the m3x6 spacing
+stays a whole number of screen px at 0.4 and of font pixels (5 design px).
+Half spacing is blocked on licence (a modified m3x6 is not clearly allowed;
+revisit only with the designer's permission). The itch embed, fixed at
+640x960 (scale 0.4), is the
+desktop target. The top bar spans the full window on every screen. Wrapping labels use plain word wrap (`AUTOWRAP_WORD`), never smart
+or arbitrary wrap; the `text fit` gate fails clipped text and mid-word breaks at
+640x960 and 1080x2400. Roll ranges read "1-4" in a fixed-width column
+(`PixelUI.roll_range_text` / `set_roll_column`). List separators in m3x6 text
+are " / ", never the middle dot. Traits are secret until the 250 XP pick: not
+on the evolution cards, in VIEW ALL ABILITIES or in Help UNITS' evolution
+long-press. Help's tabs are PREFS, RULES, ICONS, UNITS, LOG; the font credit
+("Fonts: m5x7 and m3x6 by Daniel Linssen") sits under the version stamp in
+PREFS.
+
 **Shared menu background (Kev 2026-10-18, DECISIONS_RESOLVED G-95):** Home / Title
 and Unit Selection / Squad Select use the exact approved pixel image at
 `assets/ui/backgrounds/menu_space_background.png`. A shared nearest-filtered
@@ -91,7 +123,9 @@ one reticle floor. Every operation has an Operation Cleared image
 subject clears the report panel, never past the bleed. Squad select's height is
 shared by five gaps (2 GAP buffers under the header and above DEPLOY, a GAP
 between the mission block, separator, squad block and info bar, the rest evenly
-in whole GAPs); MISSION / SQUAD / n / 3 are m5x7 96 drawn pixel-exact. Its roll
+in whole GAPs; since G-96 the two section gaps stay at one GAP and the rest
+goes to the buffers); MISSION / SQUAD / n / 3 are m5x7 (G-96: plain 80, the
+pixel-exact snap retired). Its roll
 band bar gives each band one effect type, ATTACK / SHIELD / HEAL / UTILITY,
 lit in KW_DAMAGE / the shield status colour / KW_HEAL / UTILITY_SEGMENT, with
 the in-game pip icon under it.
@@ -102,8 +136,8 @@ G-17 Icon Guide included):** squad select's info bar sits one GAP under the
 roster (its share of the height goes to the two section gaps above), the band
 bar's SHIELD segment is the effect-pip shield blue `6ba8e0`, and the info bar
 draws its band icons as a lighter variant in a thin ring so Ghost's cloak reads.
-Help has five tabs, SETTINGS (the default), BASICS, ICONS, UNITS, LOG (was
-BATTLE LOG), every page in the SETTINGS panel-and-row style; ICONS is one flat
+Help has five tabs, PREFS (the default), RULES, ICONS, UNITS, LOG (G-96; were
+SETTINGS, BASICS and BATTLE LOG), every page in the SETTINGS panel-and-row style; ICONS is one flat
 page of CORE / OFFENSE / DEFENSE / CONTROL keyword rows, UNITS shows keyword
 icons and nests a hero's evolutions in its row; the KEYWORDS / ICON GUIDE
 button is gone.
@@ -284,13 +318,13 @@ only minimum load/style checks and the first screenshot, then stop for review.
 - **Shown:**
   - *Battle card:* the chosen trait is the hero's title, on the line above the
     callsign (SEARING PYRO). Before the pick the card shows the callsign only.
-  - *100 XP picker:* each branch's header reads "AT 250 XP: SMOLDERING or
-    SEARING". What each does is in the expanded view (VIEW ALL ABILITIES).
+  - *100 XP picker:* no trait is shown, neither in the branch header nor in
+    VIEW ALL ABILITIES (G-96: traits are secret until the 250 XP pick).
   - *250 XP screen:* one card per trait: the name, its line, "BATTLE CARD:
     SEARING PYRO" and a CHOOSE button. The summary reads "Pyro Specialist
     reached 250 XP. Choose a trait." No picture: a trait has no pip.
-  - *Help:* an evolution's entry leads with "AT 250 XP: SMOLDERING or SEARING",
-    then each trait's line.
+  - *Help:* an evolution's long-press names no trait (G-96); a unit that has
+    one shows it.
 - **Saved runs.** No run save is discarded; `RUN_SAVE_VERSION` is still 4 and
   the shape fingerprint did not move. On load a hero holding a converted
   Directive has the trait it became; a hero holding any other has its branch's
@@ -1538,7 +1572,9 @@ the m5x7 font are unchanged. (1) **Text samples NEAREST, art stays LINEAR:**
 and hooks `SceneTree.node_added`, setting `TEXTURE_FILTER_NEAREST` on every
 text-drawing Control (`PixelUI.is_text_node`) whose filter is PARENT_NODE — every
 factory is covered automatically; an explicit per-node filter is respected.
-(2) **Rendered text floor `PixelUI.TEXT_MIN_PX` = 48**: `scale_font_size` floors
+(2) *(Superseded by G-96: every drawn size is 40, 80 or 120, mapped by
+`PixelUI.crisp_px`; the floor below survives only as the layout-size ladder the
+crisp hook maps from.)* **Rendered text floor `PixelUI.TEXT_MIN_PX` = 48**: `scale_font_size` floors
 there, the ladder is `UI_FONT_STEPS = [48, 64, 80]`, every rung on the m5x7 native-16
 lattice (72 → 80; 56 → 64 at the 2026-09-26 wrap-up — the spotlight coach hint now
 wraps to at most two lines, `wording fit` lays it out at ten test resolutions),
@@ -2583,7 +2619,7 @@ Deep navy bg; pixel art; `m5x7` font; hard edges, no gradients. Meaning-based co
 
 **Capitalization law (Polish Build A, ruled by Kev 2026-07-14):**
 **ALL CAPS** = major alerts, page headings, buttons, small metadata labels
-("ROLL: 1 - 4"), unit callsigns on battle cards, keyword names as
+("ROLL: 1-4"), unit callsigns on battle cards, keyword names as
 chips/headers (the primer "BURN: ..." label form). **Title Case** = ability
 names and other proper nouns wherever they appear. **Sentence case** = ability
 body text, lore, help copy, battle-log narration — and keyword mentions inline

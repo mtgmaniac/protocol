@@ -210,10 +210,11 @@ const TYPE_SMALL := "small"       # rarity labels, version tag, cost labels
 ## (Daniel Linssen, m5x7's designer: the same 16 px grid and vertical metrics,
 ## so a line is as tall as m5x7's at 80; capitals 6 font px, advance 4 against
 ## m5x7's 7 and 6). Only for the secondary lines Kev named: squad select's
-## mission CLEARED / threats / unlock-condition line and unit description, the
-## operation briefing rows, item and relic names in the unlock panel, the
-## reward rarity line, Help PREFS setting descriptions (step 3c) and the battle
-## card trait title. Drawn with one font pixel of letter spacing
+## mission CLEARED / threats / unlock-condition line, unit description and
+## HOLD ANY UNIT hint, the operation briefing values (its labels are m5x7),
+## item and relic names in the unlock panel, the reward rarity line, Help
+## PREFS setting descriptions, the battle card trait title and the evolution
+## card's MAX HP line (step 3c). Drawn with one font pixel of letter spacing
 ## (COMPACT_SPACING) and, as plain secondary text, in COMPACT_INK.
 ## Request it with apply_compact, never a per-node font override.
 const TYPE_COMPACT := "compact"

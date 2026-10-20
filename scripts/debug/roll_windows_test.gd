@@ -156,8 +156,9 @@ func _roll_column(unit: Resource) -> Array:
 func _check_shown(units: Array) -> void:
 	for row in units:
 		var want: Array = []
+		# G-96: "1-4", one number for a one-face band.
 		for pair in _loaded_pairs((row[1] as Resource).dice_ranges):
-			want.append("%d - %d" % [int(pair[0]), int(pair[1])])
+			want.append(str(int(pair[0])) if int(pair[0]) == int(pair[1]) else "%d-%d" % [int(pair[0]), int(pair[1])])
 		var shown: Array = _roll_column(row[1])
 		_expect(shown == want, "%s: the inspect shows %s for ranges %s" % [row[0], str(shown), str(want)])
 	# A window nobody authored: the inspect and the lookup both follow it.
@@ -169,7 +170,7 @@ func _check_shown(units: Array) -> void:
 	for i in 5:
 		bands.append({"min": odd[i][0], "max": odd[i][1], "zone": BANDS[i], "ability_name": "Move %d" % (i + 1), "description": "", "raw": {"dmg": i + 1}})
 	probe.dice_ranges = bands
-	_expect(_roll_column(probe) == ["1 - 1", "2 - 12", "13 - 13", "14 - 17", "18 - 20"], "inspect: an unauthored window is shown as it is (%s)" % str(_roll_column(probe)))
+	_expect(_roll_column(probe) == ["1", "2-12", "13", "14-17", "18-20"], "inspect: an unauthored window is shown as it is (%s)" % str(_roll_column(probe)))
 	_expect(str(_dice.get_ability_for_roll(probe, 12).get("ability_name", "")) == "Move 2" and str(_dice.get_ability_for_roll(probe, 18).get("ability_name", "")) == "Move 5", "lookup: an unauthored window is used as it is")
 
 

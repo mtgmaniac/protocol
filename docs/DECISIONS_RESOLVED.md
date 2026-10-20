@@ -1,5 +1,65 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-96. Crisp text: three tiers, a compact secondary face, traits kept secret (Kev, 2026-10-19 / 2026-10-20)
+
+Branch `ui/text-40-80-120` (crisp text steps 1 to 3c). **Supersedes** G-22 (the
+48 px text floor), G-78's and G-86's pixel-exact m5x7 rows and subheaders (the
+per-label exact-pixel snap, `bind_m5x7_snap`, for PC text), G-89's Help tab
+names, and G-71 / the trait UI ruling's "the player always knows it before
+choosing" and "Help/unit reference: show each unit's trait" for evolution
+branches.
+
+- **Text tiers. No other sizes or fonts.**
+  - m5x7 at 120 and 80: primary text.
+  - m3x6 (Daniel Linssen, m5x7's designer: same 16 px grid and vertical
+    metrics) at 80, with +1 font pixel of letter spacing through a
+    FontVariation (`PixelUI.TYPE_COMPACT`, `apply_compact`): compact secondary
+    text.
+  - m5x7 at 40: tiny metadata only (the version stamp, Protocol cost badges,
+    the effect-pip duration superscript, the font credit).
+- **Where the compact face is used:** unit descriptions and HOLD ANY UNIT FOR
+  FULL INTEL in squad select's unit info; the mission card's threats line,
+  "Clear X to unlock" and CLEARED; the operation briefing's values (its SITE /
+  SITUATION / OBJECTIVE labels are primary, m5x7 80, in a column sized to the
+  longest label; a value too long for its column wraps at words, never clips);
+  Help PREFS setting descriptions; the evolution card's MAX HP line; reward
+  rarity lines; unlock-panel item and relic names; battle card trait titles.
+- **Compact colour:** plain secondary text is the muted gray
+  (`PixelUI.COMPACT_INK`, the Help setting-description gray `UI_TEXT_DIM`).
+  Exceptions keep their own colour: CLEARED (its blue), rarity lines (the
+  rarity colour, 30% darker), unlock item and relic names (bright; they are
+  that screen's content), trait titles (the unit's home colour).
+- **Oversampling 2.0 for both fonts.** Godot rounds font oversampling down to
+  1/64ths, so at the itch scale (0.4) glyphs were rastered at 0.390625 and
+  stretched: strokes came out 1 and 3 px wide. At 2.0 a font pixel is 5 / 10 /
+  15 texels at 40 / 80 / 120, a whole multiple of what one screen px samples.
+  The m3x6 letter spacing must stay a whole number of screen px at 0.4 and of
+  font pixels (5 design px = 2 screen px); the `text legibility` gate checks it.
+- **Half spacing for m3x6 is blocked on licence.** Half a font pixel (1 screen
+  px) needs a derived copy of the font with wider advances; m3x6's terms ("free
+  to use with attribution") do not clearly allow a modified copy. Revisit only
+  with the designer's permission.
+- **The itch embed is fixed at 640x960 (scale 0.4): the desktop target.** Text
+  sizes are chosen so a font pixel is a whole number of screen px there.
+- **The top bar spans the full window width on every screen** (the
+  per-screen full-width flags are gone).
+- **Wrapping labels use plain word wrap** (`AUTOWRAP_WORD`), never smart or
+  arbitrary wrap: nothing breaks inside a word. The `text fit` gate checks it,
+  and that no text is cut off without wrapping or an ellipsis, at 640x960 and
+  1080x2400.
+- **Roll ranges read "1-4"** (one number for a one-face band) in a fixed-width
+  column as wide as the widest range, through one helper
+  (`PixelUI.roll_range_text` / `set_roll_column`).
+- **List separators in m3x6 text are " / ",** not the middle dot (m3x6 draws
+  U+00B7 at cap height, where it reads as a raised tick).
+- **Traits are secret until the 250 XP pick:** not on the evolution cards, not
+  in VIEW ALL ABILITIES, not in Help UNITS' long-press on an evolution. A trait
+  shows once a hero has one (battle card title, long-press) or on the 250 XP
+  pick screen.
+- **Help tabs are PREFS, RULES, ICONS, UNITS, LOG** (were SETTINGS, BASICS).
+- **Font credit:** "Fonts: m5x7 and m3x6 by Daniel Linssen" under the version
+  stamp in Help PREFS (m3x6's terms require it; `assets/fonts/m3x6_LICENSE.txt`).
+
 ## G-95. One approved space image behind Title and Squad Select (Kev, 2026-10-18)
 
 Title and Squad Select share the supplied pixel-art planetary-horizon image,
@@ -213,6 +273,8 @@ for everything else) and its "a neutral dot otherwise".
   UTILITY/roll down, 16-20 ATTACK.
 
 ## G-86. Squad select spacing: buffers, even section gaps, subheaders one step up (Kev, 2026-10-17)
+
+*Superseded by G-96 (2026-10-20): the subheaders are plain m5x7 80 (no pixel-exact snap), and the two section gaps stay at one GAP (the leftover height goes to the two buffers).*
 
 Branch `ui/art-polish`. **Supersedes** G-81's "every block one GAP apart,
 starting one GAP under the header; the leftover height sits between the info bar
@@ -466,6 +528,8 @@ red ~38-45, blue ~46-71, but one art px thin and achromatic). Hard pixel dice
 shadows, physics, bounds and ROLL are unchanged.
 
 ## G-78. The defeat screen shares the victory design; run-end text steps up (Kev, 2026-10-17)
+
+*Superseded in part by G-96 (2026-10-20): the report rows are plain m5x7 80 (the pixel-exact snap is retired) and values wrap at words.*
 
 Branch `art/backdrops-v1`. **Supersedes G-76's line that the defeat screen
 keeps the shared THIS RUN block and SERVICE RECORD** (and with it TRUTH's
@@ -1525,6 +1589,7 @@ separately):
   roll breakdown.
 - Evolution picker: the trait is shown in the minimized view of each choice,
   so the player always knows it before choosing.
+  *(Superseded by G-96, 2026-10-20: traits stay secret until the 250 XP pick.)*
 - Battle card: a small trait marker on units that have one, never in portrait
   corners.
 - When a trait triggers: a brief chip on the unit naming the trait, plus a
@@ -3371,6 +3436,8 @@ Also decided with this ruling: dice keep sliding to their slot after landing.
 Option C — see G-24.)
 
 ## G-22. Version stamp renders at the 48 px text floor (Kev, 2026-09-26)
+
+*Superseded by G-96 (2026-10-20): there is no 48 px floor; the version stamp is m5x7 at 40.*
 
 Kev accepted the text legibility Step 1 web build (branch
 `text-legibility-step1`, 3443759). The version stamp (main-menu corner and Help

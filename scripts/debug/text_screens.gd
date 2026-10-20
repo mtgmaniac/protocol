@@ -7,6 +7,8 @@
 #   help_settings_end (PREFS scrolled to its end: the version stamp and the
 #   font credit), help_units_evo (UNITS with an evolution row's long-press
 #   pop-up: Pulse's Pyro), squad_locked (squad select on a locked mission),
+#   squad_cleared (Facility cleared: CLEARED on the card, unit info open),
+#   briefing_mantle (OPERATION 05's pop-up: its longest value wraps),
 #   battle_trait (Splice evolved to Synth with OVERFLOWING, the longest trait
 #   title),
 #   evolution, evolution_all (VIEW ALL open on both cards), unlock (NEW RELICS /
@@ -15,7 +17,7 @@
 # Autoloads and UI classes resolve at RUNTIME (TRUTH's -s convention).
 extends RefCounted
 
-const SCREENS := ["squad", "squad_info", "squad_locked", "briefing", "inspect", "help_units",
+const SCREENS := ["squad", "squad_info", "squad_locked", "squad_cleared", "briefing", "briefing_mantle", "inspect", "help_units",
 	"help_units_evo", "help_settings", "evolution", "evolution_all", "unlock", "reward", "run_end",
 	"run_end_victory", "battle", "battle_trait"]
 const SQUAD := ["combat", "avalanche", "medic"]
@@ -31,6 +33,11 @@ static func open(tree: SceneTree, screen: String, roll: bool = false) -> Node:
 	var dm: Node = root.get_node("/root/DataManager")
 	gs.call("reset_run")
 	var scene_path := "res://scenes/ui/UnitSelect.tscn"
+	if screen == "squad_cleared":
+		var stats: Dictionary = sm.call("get_stats")
+		var won: Dictionary = stats.get("runs_won_by_op", {})
+		won["facility"] = 1
+		stats["runs_won_by_op"] = won
 	match screen:
 		"battle", "battle_trait":
 			gs.call("start_run", SQUAD, "facility", 424242)
@@ -69,17 +76,17 @@ static func open(tree: SceneTree, screen: String, roll: bool = false) -> Node:
 	await tree.create_timer(1.5).timeout
 	var scene: Node = tree.current_scene
 	match screen:
-		"squad", "squad_info":
+		"squad", "squad_info", "squad_cleared":
 			scene.call("_on_tile_tapped", "combat")
-			if screen == "squad_info":
+			if screen != "squad":
 				scene.call("_toggle_info")
 		"squad_locked":
 			# A fresh profile has only the first mission open: the next is locked.
 			scene.call("_on_nav_pressed", 1)
-		"briefing":
+		"briefing", "briefing_mantle":
 			var overlay: Control = load("res://scripts/ui/operation_briefing_overlay.gd").new()
 			scene.add_child(overlay)
-			overlay.call("present_deployment", "facility")
+			overlay.call("present_deployment", "stellarMenagerie" if screen == "briefing_mantle" else "facility")
 		"inspect":
 			var unit: Resource = dm.call("get_unit", "combat")
 			load("res://scripts/ui/inspect_popup.gd").open(scene, scene.call("unit_inspect_payload", unit))
