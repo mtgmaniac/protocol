@@ -6,18 +6,20 @@ rebuild and G-74 default 2 included):**
 - **Lineups** (slot words roll from the operation's pools as before; a slot
   may also name its unit, `{"name": ...}` in `battle-modes.json`; field cap
   3). Facility: b2 fodder, fodder, fodder · b6 fodder, elite, fodder · b7
-  heavy, fodder, heavy · b8 elite, elite. Hive: b1 Skitterling, Skitterling ·
+  heavy, fodder, elite · b8 elite, elite. Hive: b1 Skitterling, Skitterling ·
   b2 Bloodmite, Bloodmite · b10 Bloodmite, Hive Matriarch. Veil: b1 Shard
   Drone, Prism Charger, Shard Drone · b2 fodder, heavy · b4 elite, fodder,
   fodder · b5 elite, elite · b6 heavy, heavy · b8 heavy, fodder, elite.
-  Signal Purge: b2 support, fodder · b3 fodder, elite, fodder · b4 Oath
+  Signal Purge: b2 support, fodder · b3 elite, fodder (as before) · b4 Oath
   Binder, fodder · b5 elite, elite · b6 support, fodder, fodder · b7 heavy,
   heavy. Mantle Hunt: b1 Obsidian Hound, Slag Hound · b6 heavy, elite · b7
-  heavy, fodder, heavy · b8 elite, heavy, elite · b9 elite, heavy, heavy.
+  heavy, fodder, elite · b8 elite, fodder, elite · b9 elite, heavy, elite (no
+  Mantle Hunt battle fields more than one Basalt Ape or Magma Drake; amended
+  2026-10-21).
   Every other battle is unchanged. One-member pools make some of these the
   same every run: Veil b5 is always Phaseblade x2; Signal Purge b2 is always
   Cipher Scribe + Signal Wisp, b4 Oath Binder + Signal Wisp, b6 Cipher Scribe
-  + Signal Wisp x2; Facility b7 always fields two Heavy Wardens.
+  + Signal Wisp x2; Facility b7 always fields one Heavy Warden.
 - **Summons.** A summon rides the band that carries it (no longer only the
   20). **Hive:** every non-fodder Hive unit (Spine Stalker, Carapace Beetle,
   Broodwarden, Caustic Spewer, Hive Matriarch) summons on its top band every

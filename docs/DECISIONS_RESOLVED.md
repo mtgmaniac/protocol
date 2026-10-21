@@ -32,7 +32,7 @@ after battle 8."
 |---|---|---|---|
 | Facility | 2 | fodder, fodder | fodder, fodder, fodder |
 | Facility | 6 | elite, fodder, fodder | fodder, elite, fodder |
-| Facility | 7 | heavy, fodder | heavy, fodder, heavy |
+| Facility | 7 | heavy, fodder | heavy, fodder, elite |
 | Facility | 8 | heavy, elite | elite, elite |
 | Hive | 1 | Skitterling | Skitterling, Skitterling |
 | Hive | 2 | fodder, fodder | Bloodmite, Bloodmite |
@@ -44,23 +44,32 @@ after battle 8."
 | Veil | 6 | elite, fodder, fodder | heavy, heavy |
 | Veil | 8 | heavy, elite | heavy, fodder, elite |
 | Signal Purge | 2 | fodder, fodder | support, fodder |
-| Signal Purge | 3 | elite, fodder | fodder, elite, fodder |
+| Signal Purge | 3 | elite, fodder | elite, fodder (unchanged) |
 | Signal Purge | 4 | Oath Binder | Oath Binder, fodder |
 | Signal Purge | 5 | heavyOrElites | elite, elite |
 | Signal Purge | 6 | elite, fodder, fodder | support, fodder, fodder |
 | Signal Purge | 7 | heavy, fodder | heavy, heavy |
 | Mantle Hunt | 1 | Pumice Climber | Obsidian Hound, Slag Hound |
 | Mantle Hunt | 6 | elite, fodder, fodder | heavy, elite |
-| Mantle Hunt | 7 | heavy, fodder | heavy, fodder, heavy |
-| Mantle Hunt | 8 | heavy, elite | elite, heavy, elite |
-| Mantle Hunt | 9 | elite, support, fodder | elite, heavy, heavy |
+| Mantle Hunt | 7 | heavy, fodder | heavy, fodder, elite |
+| Mantle Hunt | 8 | heavy, elite | elite, fodder, elite |
+| Mantle Hunt | 9 | elite, support, fodder | elite, heavy, elite |
 
 **Always the same units (a pool with one member).** Veil b5 is always
 Phaseblade x2 (Veil's elite pool is Phaseblade alone). Signal Purge b2 is
 always Cipher Scribe + Signal Wisp, b4 always Oath Binder + Signal Wisp, b6
 always Cipher Scribe + Signal Wisp x2 (its support pool is Cipher Scribe and
 its fodder pool Signal Wisp, alone). Partly fixed: Facility b7 always fields
-two Heavy Wardens (the only Facility heavy) beside a rolled fodder.
+a Heavy Warden (the only Facility heavy) beside a rolled fodder and elite.
+
+**Amended (Kev, 2026-10-21; data only, nothing else moved).** After the first
+sim, five lineups changed to the values in the table above: Facility 7 heavy,
+fodder, elite (was heavy, fodder, heavy); Signal Purge 3 back to elite, fodder
+(was fodder, elite, fodder); Mantle Hunt 7 heavy, fodder, elite (was heavy,
+fodder, heavy); Mantle Hunt 8 elite, fodder, elite (was elite, heavy, elite);
+Mantle Hunt 9 elite, heavy, elite (was elite, heavy, heavy). The rule behind
+it: **no Mantle Hunt battle fields more than one Basalt Ape or Magma Drake**
+(its heavy pool), so no Mantle Hunt lineup has more than one heavy slot.
 
 **Summons.** A summon now rides whichever band carries it; the engine's
 "only on the band showing 20" gate is gone (the Signal Purge summons sit on

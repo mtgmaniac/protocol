@@ -68,7 +68,7 @@
           "slots": [
             "heavy",
             "fodder",
-            "heavy"
+            "elite"
           ]
         },
         {
@@ -306,7 +306,6 @@
         },
         {
           "slots": [
-            "fodder",
             "elite",
             "fodder"
           ]
@@ -418,13 +417,13 @@
           "slots": [
             "heavy",
             "fodder",
-            "heavy"
+            "elite"
           ]
         },
         {
           "slots": [
             "elite",
-            "heavy",
+            "fodder",
             "elite"
           ]
         },
@@ -432,7 +431,7 @@
           "slots": [
             "elite",
             "heavy",
-            "heavy"
+            "elite"
           ]
         },
         {
