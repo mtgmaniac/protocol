@@ -78,7 +78,16 @@
                   "minItems": 1,
                   "maxItems": 3,
                   "items": {
-                    "enum": ["fodder", "elite", "support", "heavy", "heavyOrElites"]
+                    "oneOf": [
+                      { "enum": ["fodder", "elite", "support", "heavy", "heavyOrElites"] },
+                      {
+                        "description": "A fixed unit in a rolled lineup (G-98): this slot always fields the named unit; the other slots still roll.",
+                        "type": "object",
+                        "required": ["name"],
+                        "additionalProperties": false,
+                        "properties": { "name": { "type": "string" } }
+                      }
+                    ]
                   }
                 }
               }

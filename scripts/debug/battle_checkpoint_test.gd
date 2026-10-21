@@ -30,12 +30,13 @@ extends SceneTree
 const BattleCheckpoint := preload("res://scripts/battle/battle_checkpoint.gd")
 const BATTLE_SCENE := "res://scenes/battle/BattleScene.tscn"
 const SQUAD := ["combat", "medic", "breaker"]
-const OP := "facility"
+const OP := "facility"   # default; --op picks another (G-98: the boss config runs Hive)
 const SEED := 77031
 const CHECKPOINT_ROUND := 3   # rounds completed before the checkpoint under test
 
 var _leg: String = ""
 var _battle: int = 5
+var _op: String = OP
 var _out_path: String = ""
 var _shot_path: String = ""   # --shot <png>: capture the resume banner (windowed runs only)
 var _record: Dictionary = {}
@@ -49,6 +50,7 @@ func _initialize() -> void:
 		match args[i]:
 			"--leg": _leg = args[i + 1]
 			"--battle": _battle = int(args[i + 1])
+			"--op": _op = args[i + 1]
 			"--out": _out_path = args[i + 1]
 			"--shot": _shot_path = args[i + 1]
 	call_deferred("_run")
@@ -84,7 +86,7 @@ func _run() -> void:
 func _play_leg() -> void:
 	sm().clear_run_save()
 	gs().reset_run()
-	gs().start_run(SQUAD, OP, SEED)
+	gs().start_run(SQUAD, _op, SEED)
 	gs().advance_to_next_battle()
 	gs().current_battle = _battle
 	gs().consumables.append("defib_spark")

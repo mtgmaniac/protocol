@@ -563,7 +563,7 @@ func _refresh_encounter() -> void:
 	_refresh_deploy()
 
 
-## The operation's THREATS (existing briefing data "SHIELDS · JAM · REBUILD"),
+## The operation's THREATS (existing briefing data "SHIELDS · JAM · REPAIR"),
 ## one entry each. The mission pop-up joins them with THREAT_SEPARATOR.
 static func threat_tags(op_id: String) -> Array[String]:
 	var tags: Array[String] = []

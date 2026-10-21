@@ -1757,51 +1757,46 @@ func _run_new_relic_regressions() -> void:
 
 
 func _run_boss_standing_rule_regressions() -> void:
-	# SCRAPMASTER — Assembly Line: every other round, rebuilds one destroyed
-	# Scrap Drone at 50% HP.
+	# SCRAPMASTER — Assembly Line (G-98): at round start it heals 8 HP per
+	# living Scrap Drone, capped at max HP. Dead drones feed nothing and are
+	# never rebuilt.
 	var line_manager: CombatManager = CombatManager.new()
 	line_manager.setup_battle(
 		[_make_unit("audit_hero", "Audit Hero", "Noop", {})],
-		[_make_enemy("scrapmaster", "Scrapmaster"), _make_enemy("scrap_drone", "Scrap Drone")]
+		[_make_enemy("scrap_drone_a", "Scrap Drone"), _make_enemy("scrapmaster", "Scrapmaster"), _make_enemy("scrap_drone_b", "Scrap Drone")]
 	)
-	var line_drone: Dictionary = line_manager.get_enemy_states()[1]
+	var line_boss: Dictionary = line_manager.get_enemy_states()[1]
+	var line_drone: Dictionary = line_manager.get_enemy_states()[2]
+	var boss_max: int = int(line_boss["max_hp"])
+	line_boss["current_hp"] = boss_max - 40
+	line_manager.resolve_round({}, {}, DiceManager.new())
+	var two_drones: int = int(line_boss["current_hp"]) - (boss_max - 40)
 	line_drone["dead"] = true
 	line_drone["current_hp"] = 0
 	line_manager.resolve_round({}, {}, DiceManager.new())
-	var still_down: bool = bool(line_drone["dead"])
+	var one_drone: int = int(line_boss["current_hp"]) - (boss_max - 24)
+	line_boss["current_hp"] = boss_max - 5
 	line_manager.resolve_round({}, {}, DiceManager.new())
-	var rebuilt: bool = not bool(line_drone["dead"]) and int(line_drone["current_hp"]) == 50
-	# Round 3 (phase 3 from activation): no rebuild; round 4: rebuild again.
-	line_drone["dead"] = true
-	line_drone["current_hp"] = 0
-	line_manager.resolve_round({}, {}, DiceManager.new())
-	var down_phase3: bool = bool(line_drone["dead"])
-	line_manager.resolve_round({}, {}, DiceManager.new())
-	var rebuilt_phase4: bool = not bool(line_drone["dead"])
-	_expect_and_record("Regression / boss Scrapmaster assembly line cadence", "bossStandingRule",
-		"true/true/true/true", "%s/%s/%s/%s" % [str(still_down), str(rebuilt), str(down_phase3), str(rebuilt_phase4)])
+	var capped_hp: int = int(line_boss["current_hp"])
+	var never_rebuilt: bool = bool(line_drone["dead"])
+	_expect_and_record("Regression / boss Scrapmaster assembly line heal", "bossStandingRule",
+		"16/8/%d/true" % boss_max, "%d/%d/%d/%s" % [two_drones, one_drone, capped_hp, str(never_rebuilt)])
 
-	# Cadence counts from FIRST ACTIVATION, not global even rounds (DECISIONS
-	# #5): with activation stamped at round 3, rebuilds land on rounds 4 and 6.
-	var offset_manager: CombatManager = CombatManager.new()
-	offset_manager.setup_battle(
+	# No living drone, no heal.
+	var bare_manager: CombatManager = CombatManager.new()
+	bare_manager.setup_battle(
 		[_make_unit("audit_hero", "Audit Hero", "Noop", {})],
 		[_make_enemy("scrapmaster", "Scrapmaster"), _make_enemy("scrap_drone", "Scrap Drone")]
 	)
-	var offset_boss: Dictionary = offset_manager.get_enemy_states()[0]
-	var offset_drone: Dictionary = offset_manager.get_enemy_states()[1]
-	offset_boss["assembly_line_first_round"] = 3
-	offset_drone["dead"] = true
-	offset_drone["current_hp"] = 0
-	offset_manager.resolve_round({}, {}, DiceManager.new())  # round 1
-	offset_manager.resolve_round({}, {}, DiceManager.new())  # round 2 (even — old model would fire)
-	var offset_down_r2: bool = bool(offset_drone["dead"])
-	offset_manager.resolve_round({}, {}, DiceManager.new())  # round 3 (phase 1)
-	var offset_down_r3: bool = bool(offset_drone["dead"])
-	offset_manager.resolve_round({}, {}, DiceManager.new())  # round 4 (phase 2 — fires)
-	var offset_rebuilt_r4: bool = not bool(offset_drone["dead"])
-	_expect_and_record("Regression / assembly line counts from first activation", "bossStandingRule",
-		"true/true/true", "%s/%s/%s" % [str(offset_down_r2), str(offset_down_r3), str(offset_rebuilt_r4)])
+	var bare_boss: Dictionary = bare_manager.get_enemy_states()[0]
+	var bare_drone: Dictionary = bare_manager.get_enemy_states()[1]
+	bare_drone["dead"] = true
+	bare_drone["current_hp"] = 0
+	bare_boss["current_hp"] = int(bare_boss["max_hp"]) - 30
+	for _bare_round in 3:
+		bare_manager.resolve_round({}, {}, DiceManager.new())
+	_expect_and_record("Regression / assembly line needs a living drone", "bossStandingRule",
+		"%d/true" % (int(bare_boss["max_hp"]) - 30), "%d/%s" % [int(bare_boss["current_hp"]), str(bool(bare_drone["dead"]))])
 
 	# Hive Matriarch — The Brood: a Bloodmite summon event every 3 rounds.
 	var brood_manager: CombatManager = CombatManager.new()
@@ -1877,7 +1872,7 @@ func _run_boss_standing_rule_regressions() -> void:
 # regressions can't).
 const PINNED_BOSS_COMPS := {
 	"facility": ["Scrap Drone", "Scrapmaster", "Scrap Drone"],
-	"hive": ["Spine Stalker", "Hive Matriarch"],
+	"hive": ["Bloodmite", "Hive Matriarch"],
 	"veil": ["Veil Overseer", "Aegis Anchor"],
 	"voidCirclet": ["Signal Hierarch", "Cipher Scribe"],
 	"stellarMenagerie": ["Mantle Tyrant", "Geode Panther"],
@@ -1922,18 +1917,10 @@ func _run_boss_fight_data_regressions() -> void:
 		var hero_b: Dictionary = manager.get_hero_states()[1]
 		match str(op_id):
 			"facility":
-				for state_variant in states:
-					if str((state_variant as Dictionary)["unit"].display_name) == "Scrap Drone":
-						state_variant["dead"] = true
-						state_variant["current_hp"] = 0
-						break
+				# The pinned escorts are two Scrap Drones: 16 HP a round.
+				boss_state["current_hp"] = int(boss_state["max_hp"]) - 50
 				manager.resolve_round({}, {}, DiceManager.new())
-				manager.resolve_round({}, {}, DiceManager.new())
-				var any_rebuilt: bool = false
-				for state_variant in states:
-					if str((state_variant as Dictionary)["unit"].display_name) == "Scrap Drone" and not bool(state_variant["dead"]) and int(state_variant["current_hp"]) < int(state_variant["max_hp"]):
-						any_rebuilt = true
-				_expect_and_record("Boss fight / facility assembly line", "bossFight", "true", str(any_rebuilt))
+				_expect_and_record("Boss fight / facility assembly line", "bossFight", str(int(boss_state["max_hp"]) - 34), str(int(boss_state["current_hp"])))
 			"hive":
 				manager.resolve_round({}, {}, DiceManager.new())
 				manager.resolve_round({}, {}, DiceManager.new())
@@ -2360,7 +2347,7 @@ const SIGNATURE_FIGHTS := {
 	"facility": {"index": 4, "names": ["Shield Enforcer", "Shield Enforcer"]},
 	"hive": {"index": 6, "names": ["Broodwarden"]},
 	"veil": {"index": 6, "names": ["Aegis Anchor", "Aegis Anchor"]},
-	"voidCirclet": {"index": 3, "names": ["Oath Binder"]},
+	"voidCirclet": {"index": 3, "names": ["Oath Binder", "Signal Wisp"]},
 	"stellarMenagerie": {"index": 3, "names": ["Geode Panther"]},
 }
 
@@ -3039,6 +3026,109 @@ func _run_down_cleanup_regression() -> void:
 		_record_failure("Regression / down clears active statuses", "cleanup", "all active statuses cleared", "state=%s" % str(_snapshot_state(hero)))
 
 
+# G-98: every non-fodder Hive unit summons on its top band, every time, a
+# Skitterling or a Bloodmite at full HP; both appear over enough seeds.
+func _run_hive_summon_regression() -> void:
+	var picked: Dictionary = {}
+	var always: bool = true
+	var summoners: Array = []
+	for enemy_variant in DataManager.enemies.values():
+		var unit: EnemyData = enemy_variant as EnemyData
+		if unit.faction == "hive" and unit.ai_type == "smart":
+			summoners.append(unit)
+	for unit_variant in summoners:
+		var unit: EnemyData = unit_variant
+		var top_roll: int = 20
+		for seed_i in 40:
+			var manager: CombatManager = CombatManager.new()
+			manager.roll_provider = SeededRollProvider.new(7100 + seed_i)
+			manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [unit])
+			var unit_id: String = str(manager.get_enemy_states()[0]["id"])
+			var result: Dictionary = manager.resolve_round({}, {unit_id: top_roll}, DiceManager.new(), {unit_id: top_roll})
+			var names: Array = []
+			for event_variant in result.get("events", []):
+				if str((event_variant as Dictionary).get("type", "")) == "summon":
+					names.append(str((event_variant as Dictionary).get("summon_name", "")))
+			if names.is_empty():
+				always = false
+			for summon_name in names:
+				picked[summon_name] = true
+	var picked_names: Array = picked.keys()
+	picked_names.sort()
+	_expect_and_record("Regression / hive summons on its top band, every time", "summon",
+		"5/true/%s" % str(["Bloodmite", "Skitterling"]), "%d/%s/%s" % [summoners.size(), str(always), str(picked_names)])
+	# Full HP on arrival.
+	var mite: EnemyData = DataManager.get_enemy_by_display_name("Bloodmite") as EnemyData
+	var full_manager: CombatManager = CombatManager.new()
+	full_manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [summoners[0]])
+	var arrived: Dictionary = full_manager.inject_enemy(mite.duplicate(true) as EnemyData).get("state", {})
+	_expect_and_record("Regression / summons arrive at full HP", "summon", str(mite.max_hp),
+		str(int(arrived.get("current_hp", -1))) if not arrived.is_empty() else "not injected")
+
+
+# G-98: Signal Purge non-fodder units keep their lowest-band ability and add
+# a 25% Signal Wisp; no other band summons, and no other faction summons
+# outside Hive.
+func _run_signal_low_band_summon_regression() -> void:
+	var wrong: Array = []
+	for enemy_variant in DataManager.enemies.values():
+		var unit: EnemyData = enemy_variant as EnemyData
+		for range_variant in unit.dice_ranges:
+			var entry: Dictionary = range_variant
+			var raw: Dictionary = entry.get("raw", {})
+			var chance: int = int(raw.get("summonChance", 0))
+			if chance <= 0:
+				continue
+			var zone: String = str(entry.get("zone", ""))
+			var ok: bool = false
+			if unit.faction == "hive":
+				ok = zone == "overload" and chance == 100
+			elif unit.faction == "voidCirclet":
+				ok = zone == "recharge" and chance == 25 and str(raw.get("summonName", "")) == "Signal Wisp"
+			if not ok:
+				wrong.append("%s %s %d%%" % [unit.display_name, zone, chance])
+	var signal_summoners: int = 0
+	for enemy_variant in DataManager.enemies.values():
+		var unit: EnemyData = enemy_variant as EnemyData
+		if unit.faction == "voidCirclet" and unit.ai_type == "smart":
+			var low: Dictionary = {}
+			for range_variant in unit.dice_ranges:
+				if str((range_variant as Dictionary).get("zone", "")) == "recharge":
+					low = (range_variant as Dictionary).get("raw", {})
+			if int(low.get("summonChance", 0)) == 25:
+				signal_summoners += 1
+			else:
+				wrong.append("%s lowest band has no 25%% summon" % unit.display_name)
+	_expect_and_record("Regression / summons only where G-98 puts them", "summon", "6/[]", "%d/%s" % [signal_summoners, str(wrong)])
+
+
+# G-98: a summon that would go past the field cap of 3 does not happen, also
+# when two summons are called in the same round (the second is never called).
+func _run_summon_field_cap_regression() -> void:
+	var stalker: EnemyData = DataManager.get_enemy_by_display_name("Spine Stalker") as EnemyData
+	var manager: CombatManager = CombatManager.new()
+	manager.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [stalker, stalker.duplicate(true)])
+	var ids: Array = []
+	for state_variant in manager.get_enemy_states():
+		ids.append(str((state_variant as Dictionary)["id"]))
+	var result: Dictionary = manager.resolve_round({}, {ids[0]: 20, ids[1]: 20}, DiceManager.new(), {ids[0]: 20, ids[1]: 20})
+	var called: int = 0
+	for event_variant in result.get("events", []):
+		if str((event_variant as Dictionary).get("type", "")) == "summon":
+			called += 1
+	var full: CombatManager = CombatManager.new()
+	full.setup_battle([_make_unit("audit_hero", "Audit Hero", "Noop", {})], [stalker, stalker.duplicate(true), stalker.duplicate(true)])
+	var full_ids: Array = []
+	for state_variant in full.get_enemy_states():
+		full_ids.append(str((state_variant as Dictionary)["id"]))
+	var full_result: Dictionary = full.resolve_round({}, {full_ids[0]: 20}, DiceManager.new(), {full_ids[0]: 20})
+	var full_called: int = 0
+	for event_variant in full_result.get("events", []):
+		if str((event_variant as Dictionary).get("type", "")) == "summon":
+			full_called += 1
+	_expect_and_record("Regression / summons stop at the field cap", "summon", "1/0", "%d/%d" % [called, full_called])
+
+
 func _run_summon_slot_regression() -> void:
 	var manager: CombatManager = CombatManager.new()
 	var squad: Array = []
@@ -3075,11 +3165,16 @@ func _run_summon_slot_regression() -> void:
 		_record_failure("Regression / summon blocked at living cap", "summon", "blocked with 3 living", "inject succeeded")
 
 
-# fix-1.1: execute a real-data summon end to end — a smart summoner's overload
-# on a natural 20 must emit a summon event whose name resolves to an existing
-# dumb unit def, and injecting that unit must add it to the field. This is the
-# full battle_scene._process_summon_events contract minus the card rebuild.
+# fix-1.1: execute a real-data summon end to end — a smart summoner's band
+# must emit a summon event whose name resolves to an existing dumb unit def,
+# and injecting that unit must add it to the field. This is the full
+# battle_scene._process_summon_events contract minus the card rebuild.
+# G-98: Hive summons on its top band, every time, a Skitterling or a
+# Bloodmite; Signal Purge summons a Signal Wisp on its lowest band, 25%.
 func _run_summon_end_to_end_regression() -> void:
+	_run_hive_summon_regression()
+	_run_signal_low_band_summon_regression()
+	_run_summon_field_cap_regression()
 	var scribe: EnemyData = DataManager.get_enemy_by_display_name("Cipher Scribe") as EnemyData
 	if scribe == null:
 		_record_failure("Regression / summon end-to-end", "summon", "Cipher Scribe def exists", "missing")
@@ -3095,7 +3190,7 @@ func _run_summon_end_to_end_regression() -> void:
 	seed(20260705)
 	var summon_event: Dictionary = {}
 	for _attempt in range(200):
-		var result: Dictionary = manager.resolve_round({}, {scribe_id: 20}, DiceManager.new(), {scribe_id: 20})
+		var result: Dictionary = manager.resolve_round({}, {scribe_id: 1}, DiceManager.new(), {scribe_id: 1})
 		for event_variant in result.get("events", []):
 			if str((event_variant as Dictionary).get("type", "")) == "summon":
 				summon_event = event_variant
@@ -3108,7 +3203,7 @@ func _run_summon_end_to_end_regression() -> void:
 		scribe_state["dead"] = false
 		scribe_state["current_hp"] = int(scribe_state["max_hp"])
 	if summon_event.is_empty():
-		_record_failure("Regression / summon end-to-end", "summon", "summon event within 200 forced nat-20 overloads", "none emitted")
+		_record_failure("Regression / summon end-to-end", "summon", "summon event within 200 forced lowest-band rolls", "none emitted")
 		return
 	var summon_name: String = str(summon_event.get("summon_name", ""))
 	var base_enemy: EnemyData = DataManager.get_enemy_by_display_name(summon_name) as EnemyData
@@ -3777,7 +3872,8 @@ func _run_reinforcement_reward_regressions() -> void:
 			manager.inject_enemy(_make_enemy("summoned", "Summoned"))
 			enemy = manager.get_enemy_states()[1]
 		elif kind == "rebuilt":
-			# ASSEMBLY LINE retains the slot and marks the reconstructed state.
+			# A reinforcement standing in an original slot (ASSEMBLY LINE's
+			# rebuild did this until G-98); the flag is what pays.
 			enemy["summoned"] = true
 		hero["current_hp"] = 30
 		hero["gear_heal_on_kill"] = 5
@@ -3855,9 +3951,11 @@ func _run_copy_alignment_regressions() -> void:
 	var references_ok: bool = true
 	for enemy_unit in DataManager.enemies.values():
 		for ability in enemy_unit.dice_ranges:
-			var summon: String = str((ability.get("raw", {}) as Dictionary).get("summonName", ""))
-			if summon != "":
-				references_ok = references_ok and DataManager.get_enemy_by_display_name(summon) != null
+			# One name, or a list to pick from (G-98, Hive).
+			var summon_value: Variant = (ability.get("raw", {}) as Dictionary).get("summonName", "")
+			for summon in (summon_value if summon_value is Array else [summon_value]):
+				if str(summon) != "":
+					references_ok = references_ok and DataManager.get_enemy_by_display_name(str(summon)) != null
 	_expect_and_record("Regression / renamed summon references resolve", "G-9", "true", str(references_ok))
 
 

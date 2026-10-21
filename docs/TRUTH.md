@@ -1,5 +1,51 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Encounter rework (Kev 2026-10-20, DECISIONS_RESOLVED G-98; supersedes the
+entries below where they differ, the G-54 summons hold, DECISIONS #5's drone
+rebuild and G-74 default 2 included):**
+- **Lineups** (slot words roll from the operation's pools as before; a slot
+  may also name its unit, `{"name": ...}` in `battle-modes.json`; field cap
+  3). Facility: b2 fodder, fodder, fodder · b6 fodder, elite, fodder · b7
+  heavy, fodder, heavy · b8 elite, elite. Hive: b1 Skitterling, Skitterling ·
+  b2 Bloodmite, Bloodmite · b10 Bloodmite, Hive Matriarch. Veil: b1 Shard
+  Drone, Prism Charger, Shard Drone · b2 fodder, heavy · b4 elite, fodder,
+  fodder · b5 elite, elite · b6 heavy, heavy · b8 heavy, fodder, elite.
+  Signal Purge: b2 support, fodder · b3 fodder, elite, fodder · b4 Oath
+  Binder, fodder · b5 elite, elite · b6 support, fodder, fodder · b7 heavy,
+  heavy. Mantle Hunt: b1 Obsidian Hound, Slag Hound · b6 heavy, elite · b7
+  heavy, fodder, heavy · b8 elite, heavy, elite · b9 elite, heavy, heavy.
+  Every other battle is unchanged. One-member pools make some of these the
+  same every run: Veil b5 is always Phaseblade x2; Signal Purge b2 is always
+  Cipher Scribe + Signal Wisp, b4 Oath Binder + Signal Wisp, b6 Cipher Scribe
+  + Signal Wisp x2; Facility b7 always fields two Heavy Wardens.
+- **Summons.** A summon rides the band that carries it (no longer only the
+  20). **Hive:** every non-fodder Hive unit (Spine Stalker, Carapace Beetle,
+  Broodwarden, Caustic Spewer, Hive Matriarch) summons on its top band every
+  time, a Skitterling or a Bloodmite at random (seeded; `summonName` may be a
+  list). The Matriarch keeps THE BROOD (a Bloodmite every 3 rounds). **Signal
+  Purge:** no summon on a 20 any more; every non-fodder unit (Circuit
+  Acolyte, Cipher Scribe, Oath Binder, False Image, Ash Channeler, Signal
+  Hierarch) keeps its lowest-band ability and adds a 25% Signal Wisp.
+  **Veil and Mantle Hunt summon nothing** (the Veil Overseer and Cinder
+  Raptor included). Summons arrive at full HP. A summon that would put a 4th
+  enemy on the field is never called: living enemies plus summons already
+  called this round stay at 3 (`CombatManager._summon_room`). `summonElite`
+  is on exactly the units that summon (`validate-data` enforces it).
+- **Scrapmaster, ASSEMBLY LINE:** no drone rebuild. At the start of every
+  round, before the heroes act, it heals **8 HP per living Scrap Drone**
+  (`SCRAPMASTER_HEAL_PER_DRONE`), capped at max HP. It has its own beat, a
+  `heal` event (the HP bar steps, the heal number floats), the chip
+  "ASSEMBLY LINE +16" and the log line "ASSEMBLY LINE - 2 Scrap Drones feed
+  the Scrapmaster scrap. It heals 16 HP."; nothing shows at full HP. The HP
+  preview's dry run runs the same rule. Gate `scrap feed` (breaks: no_chip,
+  no_line, preview_blind, uncapped).
+- **Battle 10 takes no lineup modifier:** ELITE PRESENCE, OVERRUN, Prisoner
+  Exchange's "one fewer enemy" or anything else (`GameState
+  .is_final_battle_index`, asked by the shaper, the follow-up promote and
+  `lineup_for_battle`). **Prisoner Exchange is not drawn after battle 8**
+  (its follow-up would land on battle 10); it stays in the deck. Gate `boss
+  lineup` (new breaks: b10_shape, b10_minus, b10_exchange).
+
 **Pre-Reddit polish (Kev 2026-10-20, DECISIONS_RESOLVED G-97; supersedes the
 entries below where they differ):** keyword primers show **at most one per
 turn**; the rest wait for later turns, still one-time, the most relevant first
@@ -1864,7 +1910,7 @@ must satisfy that list.
 
 - **Income:** start each battle at **0**, gain **+1 at the END of every turn**. Cap **10** (`MAX_PROTOCOL`).
 - **Costs:** Nudge **1** (+3 to effective roll) · Reroll **2** · Set-a-die **4** (`SET_DIE_COST`) · Item **1 flat** (all rarities).
-- **+protocol sources:** gear `protocolOnBattleStart`, `protocolOnKill`, `protocolOnNat20` (Overload Capacitor — grants at resolution when a die's FINAL face is 20, amount read from gear data, once per resolving turn, including frozen turns), `protocolOnDieTamper` (Mirror Plate — only an ENEMY tamper pays out; friendly freeze-any on an ally does not, audit A-062); relics `protocolCarryover`, `protocolOnItemUse` (Supply Bypass — items cost 0 AND grant +1, **except protocol-gain items, which get no bonus +1** so they can't print Protocol for free, audit A-063), `protocolOnMarkedKill` (Salvage Directive +2), `protocolOnLowLanding` (Scrap Converter boss relic: +1 per hero die whose physical landing shows 1 or 2); enemy `siphon: N` drains the pool on hit (floor 0). **Summoned/rebuilt enemies grant normal kill rewards** (Protocol, Bounty, Chitin, Salvage Injector, Momentum, Scavenger), subject to the usual killer/type/mark requirements and existing caps (Kev G-8, 2026-09-05, supersedes NK-10).
+- **+protocol sources:** gear `protocolOnBattleStart`, `protocolOnKill`, `protocolOnNat20` (Overload Capacitor — grants at resolution when a die's FINAL face is 20, amount read from gear data, once per resolving turn, including frozen turns), `protocolOnDieTamper` (Mirror Plate — only an ENEMY tamper pays out; friendly freeze-any on an ally does not, audit A-062); relics `protocolCarryover`, `protocolOnItemUse` (Supply Bypass — items cost 0 AND grant +1, **except protocol-gain items, which get no bonus +1** so they can't print Protocol for free, audit A-063), `protocolOnMarkedKill` (Salvage Directive +2), `protocolOnLowLanding` (Scrap Converter boss relic: +1 per hero die whose physical landing shows 1 or 2); enemy `siphon: N` drains the pool on hit (floor 0). **Summoned enemies grant normal kill rewards** (rebuilt drones did too until G-98 removed the rebuild) (Protocol, Bounty, Chitin, Salvage Injector, Momentum, Scavenger), subject to the usual killer/type/mark requirements and existing caps (Kev G-8, 2026-09-05, supersedes NK-10).
 - **Discounts/overflow:** Priming Charge — first Nudge free; Overflow Vent — protocol past the cap deals 2 dmg/point to a random enemy. Firewall Hack (boss relic) lets the Nudge action lower one enemy die a turn at the normal 1 Protocol. (The Root Access boss relic's free first Set was retired, G-41.)
 - Footer shows "PROTOCOL n/m" with amber segment pips.
 
@@ -1961,7 +2007,7 @@ the condition icon participates in first-sight primer teaching like any other ic
 | Operation | Label | Identity | Boss (b10 escort) |
 |---|---|---|---|
 | `facility` | Facility sweep | drones: jam, shields, breach bait | Scrapmaster (+2 Scrap Drones) |
-| `hive` | Hive incursion | swarm: burn, siphon, summons, spike | Hive Matriarch (+Spine Stalker) |
+| `hive` | Hive incursion | swarm: burn, siphon, summons, spike | Hive Matriarch (+Bloodmite) |
 | `veil` | Veil Breach | lattice: ally shields, firewalls, buffs | Veil Overseer (+Aegis Anchor) |
 | `voidCirclet` | Signal Purge | machine cult: rewrite, hijack, siphon, ±roll | Signal Hierarch (+Cipher Scribe) |
 | `stellarMenagerie` | Mantle Hunt | igneous beasts: accrete, petrify, spike, cloak | Mantle Tyrant (+Geode Panther) |
@@ -1970,9 +2016,9 @@ the condition icon participates in first-sight primer teaching like any other ic
 
 Enemy firewall instances: exactly **10** (6 Veil: Lattice Link, Fortress Lash, Conclave Bulwark, Harmonic Mend, Annulment, Synaptic Tune · 4 Synod: Seal Sigil, Init Collar, Mass Snare, Hierarch Mantle). Enemies don't use Protocol.
 
-**Targeting personalities (`scripts/battle/targeting_personality.gd`):** every hostile single-hero pick goes through ONE choke-point `personality_pick_target(enemy_state, hero_states, assignments_so_far)`, shared by UI and headless sim; no `randi()`. **SYSTEMATIC** (left→right by slot) · **WOUNDED** (lowest-HP) · **PACK** (joins an already-assigned hero; none → WOUNDED) · **SPITEFUL** (last hero to damage it, `last_attacker_id`, cleared on that hero's death; none → SYSTEMATIC). Universal: taunt overrides everything; cloaked heroes skipped; dead/illegal preferred target → the STATED fallback only (old "pure debuff → highest HP" special case REMOVED). Resolution: unit `targeting` field → kit table → SYSTEMATIC. Kit defaults: Facility SYSTEMATIC (guard/patrol/volt PACK; warden/boss WOUNDED) · Hive PACK (stalker/hiveBoss WOUNDED) · Veil WOUNDED (veilPrism/veilShard SYSTEMATIC) · Synod SYSTEMATIC (voidBinder/voidChanneler/voidCircletBoss WOUNDED; voidGlimmer SPITEFUL) · Accretion SPITEFUL (beastWolf/beastMonkey PACK; beastLynx WOUNDED). `ai_type` is UNTOUCHED and independent (20-face elite summons + summon-injection guard). Enemy inspect shows "TARGETING: NAME — definition."
+**Targeting personalities (`scripts/battle/targeting_personality.gd`):** every hostile single-hero pick goes through ONE choke-point `personality_pick_target(enemy_state, hero_states, assignments_so_far)`, shared by UI and headless sim; no `randi()`. **SYSTEMATIC** (left→right by slot) · **WOUNDED** (lowest-HP) · **PACK** (joins an already-assigned hero; none → WOUNDED) · **SPITEFUL** (last hero to damage it, `last_attacker_id`, cleared on that hero's death; none → SYSTEMATIC). Universal: taunt overrides everything; cloaked heroes skipped; dead/illegal preferred target → the STATED fallback only (old "pure debuff → highest HP" special case REMOVED). Resolution: unit `targeting` field → kit table → SYSTEMATIC. Kit defaults: Facility SYSTEMATIC (guard/patrol/volt PACK; warden/boss WOUNDED) · Hive PACK (stalker/hiveBoss WOUNDED) · Veil WOUNDED (veilPrism/veilShard SYSTEMATIC) · Synod SYSTEMATIC (voidBinder/voidChanneler/voidCircletBoss WOUNDED; voidGlimmer SPITEFUL) · Accretion SPITEFUL (beastWolf/beastMonkey PACK; beastLynx WOUNDED). `ai_type` is UNTOUCHED and independent (enemy summons + summon-injection guard; since G-98 a summon rides whichever band carries it, not only the 20). Enemy inspect shows "TARGETING: NAME — definition."
 
-**Boss standing rules** (one always-on rule per boss, from turn 1, `BOSS_STANDING_RULES` keyed by display name): Scrapmaster — ASSEMBLY LINE, every 2nd enemy phase from its first activation rebuilds one destroyed Scrap Drone at 50% HP (DECISIONS_RESOLVED #5) · Hive Matriarch — THE BROOD, spawns a Bloodmite every 3 rounds · Veil Overseer — THE COURT, while any ally lives gains a Firewall each round start · Signal Hierarch — ROOT ACCESS, every round Rewrites the squad's highest die to 3 · Mantle Tyrant — ACCRETION, +6 shield at the start of every 2nd round, shields persist and stack (cadence per the Cycle-4 ruling below; this line said "every round start" until 2026-09-03, contradicting the ruling recorded in the same document). Round-start rules fire before the hero phase; turn-cadence rules at the start of the enemy phase.
+**Boss standing rules** (one always-on rule per boss, from turn 1, `BOSS_STANDING_RULES` keyed by display name): Scrapmaster — ASSEMBLY LINE, at every round start heals 8 HP per living Scrap Drone, capped at max HP (G-98; until then it rebuilt a destroyed drone at 50% HP every 2nd enemy phase, DECISIONS_RESOLVED #5) · Hive Matriarch — THE BROOD, spawns a Bloodmite every 3 rounds · Veil Overseer — THE COURT, while any ally lives gains a Firewall each round start · Signal Hierarch — ROOT ACCESS, every round Rewrites the squad's highest die to 3 · Mantle Tyrant — ACCRETION, +6 shield at the start of every 2nd round, shields persist and stack (cadence per the Cycle-4 ruling below; this line said "every round start" until 2026-09-03, contradicting the ruling recorded in the same document). Round-start rules (ASSEMBLY LINE, THE COURT, ACCRETION) fire before the hero phase; turn-cadence rules (THE BROOD, ROOT ACCESS) at the start of the enemy phase.
 
 ---
 
@@ -2390,7 +2436,7 @@ buckets, same bucket membership and order; **thresholds only.**
 
 - **Item & relic caps (Polish Build D, Kev 2026-07-15):** consumables cap at **4** (`GameState.MAX_CONSUMABLES`, single source; `LoadoutMenu` derives its slot count from it). A pickup at cap opens the **discard picker** (`LoadoutMenu.open_discard`) — incoming stats shown, held items inspectable, **ABANDON**/tap-outside keeps all four and drops the incoming; nothing is destroyed by a dismissal, and a non-interactive event grant at cap forfeits explicitly. Relics cap at **2** (`GameState.MAX_RELICS`, one choke `_grant_relic`); they display **only** in the LoadoutMenu (one row per relic, up to two, no placeholder) and never on battle chrome. See INVARIANTS #15/#16.
 
-- **Templated slots:** fixed comps (b1, b10, one signature per op) or slot patterns rolled ONCE at run start (`GameState.resolved_battle_comps`); previews always show exact comps. **No back-to-back repeats (playtest 2026-10-01, Kev):** a slot battle that rolls the same lineup as the battle before it (fixed or rolled, any slot order) re-rolls, up to `GameState.COMP_REROLL_CAP` (12) times. Before this, Veil b1->b2 repeated in ~50% of runs and b4->b5 in ~38% (Veil's elite pool has one member, so "two elites" is always Phaseblade x2). Regression: ability audit "no back-to-back identical slot battles" (5 ops x 200 seeds).
+- **Templated slots:** fixed comps (b1, b10, one signature per op) or slot patterns rolled ONCE at run start (a slot may name a fixed unit, G-98: Signal Purge b4 is Oath Binder + a rolled fodder; Hive b2 is a fixed Bloodmite pair) (`GameState.resolved_battle_comps`); previews always show exact comps. **No back-to-back repeats (playtest 2026-10-01, Kev):** a slot battle that rolls the same lineup as the battle before it (fixed or rolled, any slot order) re-rolls, up to `GameState.COMP_REROLL_CAP` (12) times. Before this, Veil b1->b2 repeated in ~50% of runs and b4->b5 in ~38% (Veil's elite pool has one member, so "two elites" is always Phaseblade x2). Regression: ability audit "no back-to-back identical slot battles" (5 ops x 200 seeds).
 - **Beats:** battle-5 relic draft = INTERCEPT: RELIC CACHE (renders through the reward picker in event chrome). The draft fires on `GameState.drafted_relic_count() == 0` — a pkg5 Starting Directive boss relic never consumes the slot and is excluded from the offer (the 2026-07-06 battle-5 soft-lock fix; regression-pinned). Exactly 3 random beats per run in distinct gaps from {after b2,b3,b4,b6,b7,b8} — the relic battle's gap is structurally excluded; Fork/Intercept 50/50 with ≥1 of each; b6+ = major tier.
 - **Zero-options guard (permanent fixture):** any between-battle choice screen (reward, relic cache, intercept, route fork, evolution/directive) that builds ZERO interactive options asserts loudly in debug and auto-resolves a logged default in release (`scripts/ui/choice_screen_guard.gd`, `[CHOICE_GUARD]` log tag + telemetry stub) so a playtest build can never soft-lock on a dead screen. A guard firing is always a bug in the offer roll — fix the offer, never widen the guard.
 - **Route Fork:** standard vs flagged (same comp + 1 of 10 modifiers from `GameState.BATTLE_MODIFIERS`, no repeats; SUPPLY GRADE +2 = reward ladder two rows deeper, cap row 10). A flagged route into the **battle-5 relic cache** (which has no rarity ladder) does NOT spend the grade — it **carries forward to the next item draft** (per Kev NK-15). **Intercept-armed modifiers consume the fork no-repeats pool** and won't silently overwrite an already-armed modifier; declined fork modifiers may still be re-offered (per Kev NK-16, audit A-077).

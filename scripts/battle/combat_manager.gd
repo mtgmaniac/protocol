@@ -138,18 +138,19 @@ const PERMANENT_BURN_TURNS := 9999
 # .split_runtime_rule splits on the first " - " and renders the left half as
 # "<TITLE> ACTIVE" above the right half as body.
 const BOSS_STANDING_RULES := {
-	BOSS_SCRAPMASTER: "ASSEMBLY LINE - a Scrap Drone you already destroyed stands back up at 50% HP. The Scrapmaster rebuilds one every 2nd enemy phase, counting from its first.",
+	BOSS_SCRAPMASTER: "ASSEMBLY LINE - the Scrapmaster heals 8 HP for each living Scrap Drone. Its drones feed it scrap every round, before your heroes act.",
 	BOSS_MATRIARCH: "THE BROOD - a new Bloodmite joins the fight. The Matriarch births one every 3 rounds.",
 	BOSS_OVERSEER: "THE COURT - an ability you aim at the Overseer is negated outright. It raises that firewall on itself every round, before your heroes act, for as long as any ally lives.",
 	BOSS_HIEROPHANT: "ROOT ACCESS - your squad's highest die is seized and rewritten to 3. The Hierarch does this every round.",
 	BOSS_MANTLE: "ACCRETION - the Tyrant plates itself with 6 more shield and keeps every layer. It accretes every 2nd round, before your heroes act; its shields persist and stack.",
 }
 
-# BALANCE-TODO: rebuild HP 50% and brood cadence 3 are provisional. Mantle
+# BALANCE-TODO: brood cadence 3 is provisional. Scrapmaster 8 HP per living
+# drone is RULED (G-98, Kev 2026-10-20; it replaced the drone rebuild). Mantle
 # shield 6 every 2nd round is RULED (Cycle 4, Kev): cadence softened the wall
 # more efficiently than value, and the off-round burst windows are the skill
 # texture; value 6 keeps the stack identity.
-const SCRAPMASTER_REBUILD_PCT := 50
+const SCRAPMASTER_HEAL_PER_DRONE := 8
 const MANTLE_ROUND_SHIELD := 6
 const MANTLE_SHIELD_CADENCE := 2
 const BROOD_CADENCE := 3
@@ -180,6 +181,24 @@ static func accrete_display_break() -> String:
 				if arg.begins_with(ACCRETE_BREAK_ARG):
 					_accrete_break = arg.trim_prefix(ACCRETE_BREAK_ARG)
 	return _accrete_break
+
+
+## Debug-build seam for the `scrap feed` gate's deliberate breaks (never set by
+## the game): `no_chip` drops the ASSEMBLY LINE chip; `no_line` drops the log
+## line; `preview_blind` leaves the heal out of the HP preview's dry run;
+## `uncapped` heals past max HP.
+const SCRAP_FEED_BREAK_ARG := "--scrap-feed-break="
+static var _scrap_feed_break: String = "?"
+
+
+static func scrap_feed_break() -> String:
+	if _scrap_feed_break == "?":
+		_scrap_feed_break = ""
+		if OS.is_debug_build():
+			for arg in OS.get_cmdline_user_args():
+				if arg.begins_with(SCRAP_FEED_BREAK_ARG):
+					_scrap_feed_break = arg.trim_prefix(SCRAP_FEED_BREAK_ARG)
+	return _scrap_feed_break
 
 
 ## Debug-build seam for the `cloak ambush` gate's deliberate breaks (never set
@@ -431,12 +450,22 @@ static func get_boss_standing_rule(display_name: String) -> String:
 
 
 # Round-start rules (before the hero phase, so they matter this round):
-# Overseer's Firewall and the Mantle Tyrant's accreted plate.
+# the Scrapmaster's drone-fed heal, the Overseer's Firewall and the Mantle
+# Tyrant's accreted plate. The HP preview (forecast_round) runs this same code.
 func _apply_boss_round_start_rules() -> void:
 	for enemy_state in _enemy_states:
 		if bool(enemy_state["dead"]):
 			continue
 		match str(enemy_state["unit"].display_name):
+			BOSS_SCRAPMASTER:
+				# ASSEMBLY LINE (G-98): 8 HP per living Scrap Drone, every round.
+				var living_drones: int = 0
+				for drone_state in _enemy_states:
+					if str(drone_state["unit"].display_name) == SCRAP_DRONE_NAME and not bool(drone_state["dead"]):
+						living_drones += 1
+				if living_drones > 0:
+					_apply_scrap_feed(enemy_state, living_drones,
+						living_drones * _tuned_int("scrapmaster_heal_per_drone", SCRAPMASTER_HEAL_PER_DRONE))
 			BOSS_OVERSEER:
 				var court_stands: bool = false
 				for ally_state in _enemy_states:
@@ -463,29 +492,16 @@ func _apply_boss_round_start_rules() -> void:
 						(_round_events.back() as Dictionary)["standing_rule"] = true
 
 
-# Enemy-phase rules (turn-cadence actions): Assembly Line rebuild, Brood
-# spawn, and the Hierarch's Root Access rewrite of the squad's highest die.
+# Enemy-phase rules (turn-cadence actions): Brood spawn and the Hierarch's
+# Root Access rewrite of the squad's highest die. (The Scrapmaster's drone
+# rebuild was here until G-98; its rule is now a round-start heal.)
 func _apply_boss_enemy_phase_rules(hero_rolls: Dictionary) -> void:
 	for enemy_state in _enemy_states:
 		if bool(enemy_state["dead"]):
 			continue
 		match str(enemy_state["unit"].display_name):
-			BOSS_SCRAPMASTER:
-				# ASSEMBLY LINE fires every 2nd enemy phase COUNTED FROM FIRST
-				# ACTIVATION (per Kev 2026-07-06, DECISIONS_RESOLVED #5 —
-				# supersedes the even-numbered-rounds reading). The boss's first
-				# live enemy phase is phase 1; rebuilds land on phases 2, 4, 6…
-				if not enemy_state.has("assembly_line_first_round"):
-					enemy_state["assembly_line_first_round"] = _battle_round
-				if (_battle_round - int(enemy_state["assembly_line_first_round"])) % 2 == 1:
-					for drone_state in _enemy_states:
-						if str(drone_state["unit"].display_name) == SCRAP_DRONE_NAME and bool(drone_state["dead"]):
-							_log("ASSEMBLY LINE - the Scrapmaster rebuilds a Scrap Drone!")
-							_revive_state(drone_state, _tuned_int("scrapmaster_rebuild_pct", SCRAPMASTER_REBUILD_PCT))
-							drone_state["summoned"] = true  # Rebuilt reinforcement; normal kill rewards apply.
-							break
 			BOSS_MATRIARCH:
-				if _battle_round % maxi(_tuned_int("brood_cadence", BROOD_CADENCE), 1) == 0 and _count_living_enemies() < GameState.SQUAD_UNIT_LIMIT:
+				if _battle_round % maxi(_tuned_int("brood_cadence", BROOD_CADENCE), 1) == 0 and _summon_room():
 					_log("THE BROOD - the Matriarch births a Bloodmite!")
 					_round_events.append({
 						"type": "summon",
@@ -1009,7 +1025,7 @@ func _resolve_enemy_phase(
 			if _apply_accrete(accrete_state, int(accrete_state["accrete"]), not accrete_beat_open) > 0:
 				accrete_beat_open = true
 
-	# Boss turn-cadence standing rules (rebuild / brood / root access).
+	# Boss turn-cadence standing rules (brood / root access).
 	_apply_boss_enemy_phase_rules(hero_rolls)
 
 	# Regenerative route modifier: enemies heal each round.
@@ -1478,6 +1494,35 @@ func _apply_accrete(state: Dictionary, amount: int, open_beat: bool) -> int:
 	_log("%s accretes %d shield." % [state["unit"].display_name, gained])
 	_emit_event(state, "accrete", gained, "enemy")
 	return gained
+
+
+# ASSEMBLY LINE (G-98): the Scrapmaster heals `amount` (8 per living Scrap
+# Drone), capped at max HP. Shown the way Accrete is: its own beat, one log
+# line and one chip with the HP actually healed, on a `heal` event so the HP
+# bar steps and the heal number floats. Nothing shows when it heals nothing
+# (full HP). Returns the HP healed.
+const SCRAP_FEED_CHIP_TEXT := "ASSEMBLY LINE +%d"
+
+func _apply_scrap_feed(state: Dictionary, drones: int, amount: int) -> int:
+	if _forecast_only and scrap_feed_break() == "preview_blind":
+		return 0
+	var room: int = int(state["max_hp"]) - int(state["current_hp"])
+	if scrap_feed_break() == "uncapped":
+		room = amount
+	var healed: int = mini(amount, room)
+	if healed <= 0 or bool(state.get("dead", false)):
+		return 0
+	_emit_action_event(state, "enemy", "Assembly Line", "tick")
+	state["current_hp"] = int(state["current_hp"]) + healed
+	if scrap_feed_break() != "no_line":
+		_log("ASSEMBLY LINE - %s the Scrapmaster scrap. It heals %d HP." % [
+			"1 Scrap Drone feeds" if drones == 1 else "%d Scrap Drones feed" % drones, healed])
+	_emit_event(state, "heal", healed, "enemy")
+	var heal_event: Dictionary = _round_events.back()
+	if scrap_feed_break() != "no_chip":
+		heal_event["rule_chip"] = SCRAP_FEED_CHIP_TEXT % healed
+	heal_event["standing_rule"] = true
+	return healed
 
 
 # What the inspect says about a unit's Accrete: {} when it has none, else
@@ -2558,12 +2603,14 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 		enemy_state["taunting"] = true
 		_log("%s is taunting - all heroes must target it!" % enemy_state["unit"].display_name)
 
-	# Summon: fires when an eligible enemy's overload ability resolves (final die
-	# face 20; no natural-20 check — ruling NK-02). Synod and Accretion summon too.
+	# Summon: fires when the ability that carries it resolves (G-98: Hive on its
+	# top band, always; Signal Purge on its lowest band, 25%). Veil and Mantle
+	# Hunt no longer summon.
 	var summon_chance: int = int(raw.get("summonChance", 0))
-	var summon_name: String = str(raw.get("summonName", ""))
-	if summon_chance > 0 and summon_name != "":
-		_try_emit_enemy_summon(enemy_state, ability_entry, raw_roll, summon_chance, summon_name)
+	var summon_names: Variant = raw.get("summonName", "")
+	if summon_chance > 0 and not (summon_names is String and summon_names == "") \
+			and not (summon_names is Array and (summon_names as Array).is_empty()):
+		_try_emit_enemy_summon(enemy_state, ability_entry, raw_roll, summon_chance, summon_names)
 
 
 # ── Unit traits (G-62, Kev 2026-10-09) ───────────────────────────────────────
@@ -4057,6 +4104,17 @@ func _count_living_enemies() -> int:
 	return count
 
 
+# Room on the field for one more summon: the living enemies plus the summons
+# already called this round (they join after the round) stay under the field
+# cap. A summon that would go past it does not happen (G-98).
+func _summon_room() -> bool:
+	var called: int = 0
+	for event_variant in _round_events:
+		if str((event_variant as Dictionary).get("type", "")) == "summon":
+			called += 1
+	return _count_living_enemies() + called < GameState.SQUAD_UNIT_LIMIT
+
+
 func _first_dead_enemy_index() -> int:
 	for i in range(_enemy_states.size()):
 		if bool(_enemy_states[i].get("dead", false)):
@@ -4064,25 +4122,28 @@ func _first_dead_enemy_index() -> int:
 	return -1
 
 
-func _try_emit_enemy_summon(enemy_state: Dictionary, ability_entry: Dictionary, _raw_roll: int, summon_chance: int, summon_name: String) -> void:
-	if _count_living_enemies() >= GameState.SQUAD_UNIT_LIMIT:
+# `summon_names`: one unit name, or a list to pick one from at random (Hive:
+# Skitterling or Bloodmite). The band that carries the summon is the trigger
+# (G-98; before, only the band showing 20 could summon). The effective face
+# picks the band, so a die buffed or rewritten into it counts the same as a
+# rolled one (NK-02).
+func _try_emit_enemy_summon(enemy_state: Dictionary, _ability_entry: Dictionary, _raw_roll: int, summon_chance: int, summon_names: Variant) -> void:
+	if not _summon_room():
 		return
 	var enemy_unit: EnemyData = enemy_state.get("unit") as EnemyData
 	if enemy_unit == null:
 		return
-	# Summon fires when the die's final face lands in the overload zone (== 20).
-	# No "natural 20" check — a die buffed/rewritten/hijacked to 20 counts the
-	# same as a rolled 20 (ruling NK-02, nat-20 concept removed). The zone gate
-	# below is the effective-face-20 test, since enemy abilities are selected
-	# from the effective roll.
-	if str(ability_entry.get("zone", "")) != "overload":
-		return
 	if enemy_unit.ai_type != "smart" or not enemy_unit.can_summon_elite:
 		return
-	# Frozen overloads roll their summon chance again (G-8).
-	# Seeded so the sim reproduces the summon roll from a seed (NK-01 / INV #1).
-	if _rand_pct() > summon_chance:
+	# Frozen repeats roll their summon chance again (G-8). A 100% summon is
+	# certain and draws nothing. Seeded so the sim reproduces every roll from a
+	# seed (NK-01 / INV #1).
+	if summon_chance < 100 and _rand_pct() > summon_chance:
 		return
+	var pool: Array = summon_names if summon_names is Array else [summon_names]
+	if pool.is_empty():
+		return
+	var summon_name: String = str(pool[_rand_index(pool.size())])
 	_log("%s calls for reinforcements - %s incoming!" % [enemy_state["unit"].display_name, summon_name])
 	_round_events.append({
 		"type": "summon",

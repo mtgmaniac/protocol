@@ -34,7 +34,7 @@ func _run() -> void:
 			if _overlay == "briefing":
 				overlay.call("present_deployment", "facility")
 			else:
-				overlay.call("present_boss_alert", "Scrapmaster", "Rebuilds a fallen drone once per round. It returns at half HP.")
+				overlay.call("present_boss_alert", "Scrapmaster", "Heals 8 HP for each living Scrap Drone every round.")
 		"discard":
 			var data: Node = root.get_node("/root/DataManager")
 			var held: Array = []

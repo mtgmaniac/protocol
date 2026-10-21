@@ -152,8 +152,10 @@ GATES = [
     # Prisoner Exchange taken before battle 9, and one rule for the live
     # battle and the sim. Breaks: ELITE PRESENCE takes the first non-elite
     # slot again (the bug), "one fewer enemy" drops the last unit again.
+    # G-98: no lineup modifier touches battle 10 and Prisoner Exchange is not
+    # drawn after battle 8. Breaks: b10_shape, b10_minus, b10_exchange.
     ("boss lineup", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "BOSS_LINEUP",
-        "--script", "scripts/debug/boss_lineup_test.gd", "--break-arg=--lineup-break=", "--breaks", "elite_boss,minus_boss"],
+        "--script", "scripts/debug/boss_lineup_test.gd", "--break-arg=--lineup-break=", "--breaks", "elite_boss,minus_boss,b10_shape,b10_minus,b10_exchange"],
         "[BOSS_LINEUP_GATE] PASS", False),
     ("freeze regression", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/freeze_engine_regression.tscn"], "[FREEZE] RESULT: freeze = repeat", False),
     # Batch 4 combat-bug regressions (each launches a live battle).
@@ -282,6 +284,12 @@ GATES = [
         "--script", "scripts/debug/accrete_display_test.gd", "--break-arg=--accrete-display-break=",
         "--breaks", "asked,no_chip,stale_chip,no_line"],
         "[ACCRETE_DISPLAY_GATE] PASS", False),
+    # G-98: the Scrapmaster heals 8 HP per living Scrap Drone at round start,
+    # capped at max HP, in the HP preview, with a chip and a log line.
+    ("scrap feed", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "SCRAP_FEED",
+        "--script", "scripts/debug/scrap_feed_test.gd", "--break-arg=--scrap-feed-break=",
+        "--breaks", "no_chip,no_line,preview_blind,uncapped"],
+        "[SCRAP_FEED_GATE] PASS", False),
     # Cloak ambush (G-52, Kev 2026-10-08): the attack that breaks a cloak deals
     # +50% damage, once, on both sides; every target cloaked -> one is hit at
     # random; the cloak chip, inspect, keyword and primer name the bonus.

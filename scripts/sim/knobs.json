@@ -28,17 +28,17 @@
       "notes": "Multiplies enemy ability damage via the existing dmg_scale state field (rounded per hit by the engine)."
     },
     {
-      "id": "scrapmaster_rebuild_pct",
+      "id": "scrapmaster_heal_per_drone",
       "kind": "engine_tuning",
       "scope": "global (only SCRAPMASTER uses it)",
-      "path": "combat_manager _tuned_int('scrapmaster_rebuild_pct', SCRAPMASTER_REBUILD_PCT=50)",
-      "default": 50,
+      "path": "combat_manager _tuned_int('scrapmaster_heal_per_drone', SCRAPMASTER_HEAL_PER_DRONE=8)",
+      "default": 8,
       "range": [
-        25,
-        100
+        4,
+        16
       ],
-      "step": 5,
-      "notes": "ASSEMBLY LINE rebuilt-drone HP percent."
+      "step": 2,
+      "notes": "ASSEMBLY LINE: HP the Scrapmaster heals per living Scrap Drone at round start (G-98; replaced the rebuilt-drone HP percent)."
     },
     {
       "id": "brood_cadence",

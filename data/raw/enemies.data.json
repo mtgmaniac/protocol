@@ -746,13 +746,18 @@
           20
         ],
         "name": "Impaler Gland",
-        "eff": "20 damage, 4 burn 5 turns",
+        "eff": "20 damage, 4 burn 5 turns, summon",
         "dmg": 20,
         "burn": 4,
         "burnT": 5,
         "heal": 0,
         "rfe": 0,
-        "shield": 0
+        "shield": 0,
+        "summonChance": 100,
+        "summonName": [
+          "Skitterling",
+          "Bloodmite"
+        ]
       }
     },
     "carapace": {
@@ -825,14 +830,19 @@
           20
         ],
         "name": "Fortress Charge",
-        "eff": "17 damage, 2 burn 5 turns, 13 shield (ally)",
+        "eff": "17 damage, 2 burn 5 turns, 13 shield (ally), summon",
         "dmg": 17,
         "burn": 2,
         "burnT": 5,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "shieldAlly": 13
+        "shieldAlly": 13,
+        "summonChance": 100,
+        "summonName": [
+          "Skitterling",
+          "Bloodmite"
+        ]
       }
     },
     "brood": {
@@ -899,14 +909,19 @@
           20
         ],
         "name": "Culling Feed",
-        "eff": "29 damage, 35% lifesteal",
+        "eff": "29 damage, 35% lifesteal, summon",
         "dmg": 29,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "lifestealPct": 35
+        "lifestealPct": 35,
+        "summonChance": 100,
+        "summonName": [
+          "Skitterling",
+          "Bloodmite"
+        ]
       }
     },
     "spewer": {
@@ -974,13 +989,18 @@
           20
         ],
         "name": "Corrosive Deluge",
-        "eff": "13 damage, 5 burn 5 turns",
+        "eff": "13 damage, 5 burn 5 turns, summon",
         "dmg": 13,
         "burn": 5,
         "burnT": 5,
         "heal": 0,
         "rfe": 0,
-        "shield": 0
+        "shield": 0,
+        "summonChance": 100,
+        "summonName": [
+          "Skitterling",
+          "Bloodmite"
+        ]
       }
     },
     "hiveBoss": {
@@ -1051,7 +1071,7 @@
           20
         ],
         "name": "Acid Cataclysm",
-        "eff": "remove all hero shields, 30 damage, 40% lifesteal",
+        "eff": "remove all hero shields, 30 damage, 40% lifesteal, summon",
         "dmg": 30,
         "burn": 0,
         "burnT": 0,
@@ -1059,7 +1079,12 @@
         "rfe": 0,
         "shield": 0,
         "wipeShields": true,
-        "lifestealPct": 40
+        "lifestealPct": 40,
+        "summonChance": 100,
+        "summonName": [
+          "Skitterling",
+          "Bloodmite"
+        ]
       }
     },
     "veilShard": {
@@ -1288,7 +1313,7 @@
           20
         ],
         "name": "Shieldline Rally",
-        "eff": "19 damage, 12 shield (ally), +2 roll (all allies) 2 turns, firewall (self), 42% summon",
+        "eff": "19 damage, 12 shield (ally), +2 roll (all allies) 2 turns, firewall (self)",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
@@ -1299,9 +1324,7 @@
         "erb": 2,
         "erbT": 2,
         "erbAll": true,
-        "ward": true,
-        "summonChance": 42,
-        "summonName": "Shard Drone"
+        "ward": true
       }
     },
     "veilResonance": {
@@ -1377,7 +1400,7 @@
           20
         ],
         "name": "Veil Rally",
-        "eff": "27 damage, 6 heal (self), +2 roll (all allies) 2 turns, 40% summon",
+        "eff": "27 damage, 6 heal (self), +2 roll (all allies) 2 turns",
         "dmg": 27,
         "burn": 0,
         "burnT": 0,
@@ -1386,9 +1409,7 @@
         "shield": 0,
         "erb": 2,
         "erbT": 2,
-        "erbAll": true,
-        "summonChance": 40,
-        "summonName": "Prism Charger"
+        "erbAll": true
       }
     },
     "veilNull": {
@@ -1458,15 +1479,13 @@
           20
         ],
         "name": "Phase Reinforcements",
-        "eff": "23 damage, 40% summon",
+        "eff": "23 damage",
         "dmg": 23,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "summonChance": 40,
-        "summonName": "Shard Drone"
+        "shield": 0
       }
     },
     "veilStorm": {
@@ -1541,7 +1560,7 @@
           20
         ],
         "name": "Lattice Storm",
-        "eff": "15 damage, 5 burn 4 turns, +2 roll (all allies) 2 turns, 42% summon",
+        "eff": "15 damage, 5 burn 4 turns, +2 roll (all allies) 2 turns",
         "dmg": 15,
         "burn": 5,
         "burnT": 4,
@@ -1550,9 +1569,7 @@
         "shield": 0,
         "erb": 2,
         "erbT": 2,
-        "erbAll": true,
-        "summonChance": 42,
-        "summonName": "Prism Charger"
+        "erbAll": true
       }
     },
     "veilSynapse": {
@@ -1631,7 +1648,7 @@
           20
         ],
         "name": "Relay Reinforcements",
-        "eff": "17 damage, 8 heal (self), +2 roll (all allies) 2 turns, 40% summon",
+        "eff": "17 damage, 8 heal (self), +2 roll (all allies) 2 turns",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
@@ -1640,9 +1657,7 @@
         "shield": 0,
         "erb": 2,
         "erbT": 2,
-        "erbAll": true,
-        "summonChance": 40,
-        "summonName": "Shard Drone"
+        "erbAll": true
       }
     },
     "veilBoss": {
@@ -1722,7 +1737,7 @@
           20
         ],
         "name": "Veil Cataclysm",
-        "eff": "remove all hero shields, 30 damage, +2 roll (all allies) 2 turns, 30% summon",
+        "eff": "remove all hero shields, 30 damage, +2 roll (all allies) 2 turns",
         "dmg": 30,
         "burn": 0,
         "burnT": 0,
@@ -1732,9 +1747,7 @@
         "wipeShields": true,
         "erb": 2,
         "erbT": 2,
-        "erbAll": true,
-        "summonChance": 30,
-        "summonName": "Prism Charger"
+        "erbAll": true
       }
     },
     "voidWisp": {
@@ -1823,14 +1836,16 @@
           4
         ],
         "name": "Seal Sigil",
-        "eff": "firewall (self)",
+        "eff": "firewall (self), 25% summon",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 0,
-        "ward": true
+        "ward": true,
+        "summonChance": 25,
+        "summonName": "Signal Wisp"
       },
       "strike": {
         "range": [
@@ -1883,15 +1898,13 @@
           20
         ],
         "name": "Ritual Muster",
-        "eff": "17 damage, 40% summon",
+        "eff": "17 damage",
         "dmg": 17,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "summonChance": 40,
-        "summonName": "Signal Wisp"
+        "shield": 0
       }
     },
     "voidScribe": {
@@ -1901,7 +1914,7 @@
           3
         ],
         "name": "Signal Litany",
-        "eff": "+1 roll (all allies) 1 turn",
+        "eff": "+1 roll (all allies) 1 turn, 25% summon",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1910,7 +1923,9 @@
         "shield": 0,
         "erb": 1,
         "erbT": 1,
-        "erbAll": true
+        "erbAll": true,
+        "summonChance": 25,
+        "summonName": "Signal Wisp"
       },
       "strike": {
         "range": [
@@ -1963,7 +1978,7 @@
           20
         ],
         "name": "Summon Verse",
-        "eff": "15 damage, +2 roll (all allies) 2 turns, 45% summon",
+        "eff": "15 damage, +2 roll (all allies) 2 turns",
         "dmg": 15,
         "burn": 0,
         "burnT": 0,
@@ -1972,9 +1987,7 @@
         "shield": 0,
         "erb": 2,
         "erbT": 2,
-        "erbAll": true,
-        "summonChance": 45,
-        "summonName": "Signal Wisp"
+        "erbAll": true
       }
     },
     "voidBinder": {
@@ -1984,7 +1997,7 @@
           4
         ],
         "name": "Silencing Rite",
-        "eff": "-1 roll 2 turns",
+        "eff": "-1 roll 2 turns, 25% summon",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -1992,7 +2005,9 @@
         "rfe": 0,
         "shield": 0,
         "rfm": 1,
-        "rfmT": 2
+        "rfmT": 2,
+        "summonChance": 25,
+        "summonName": "Signal Wisp"
       },
       "strike": {
         "range": [
@@ -2045,7 +2060,7 @@
           20
         ],
         "name": "Binding Decree",
-        "eff": "19 damage, firewall (self), rewrite, 35% summon",
+        "eff": "19 damage, firewall (self), rewrite",
         "dmg": 19,
         "burn": 0,
         "burnT": 0,
@@ -2053,9 +2068,7 @@
         "rfe": 0,
         "shield": 0,
         "rewrite": true,
-        "ward": true,
-        "summonChance": 35,
-        "summonName": "Signal Wisp"
+        "ward": true
       }
     },
     "voidGlimmer": {
@@ -2065,14 +2078,16 @@
           4
         ],
         "name": "False Image",
-        "eff": "6 shield (self), cloak",
+        "eff": "6 shield (self), cloak, 25% summon",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
         "rfe": 0,
         "shield": 6,
-        "cloak": true
+        "cloak": true,
+        "summonChance": 25,
+        "summonName": "Signal Wisp"
       },
       "strike": {
         "range": [
@@ -2141,7 +2156,7 @@
           4
         ],
         "name": "Channel Focus",
-        "eff": "+2 roll (self) 1 turn",
+        "eff": "+2 roll (self) 1 turn, 25% summon",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -2149,7 +2164,9 @@
         "rfe": 0,
         "shield": 0,
         "erb": 2,
-        "erbT": 1
+        "erbT": 1,
+        "summonChance": 25,
+        "summonName": "Signal Wisp"
       },
       "strike": {
         "range": [
@@ -2200,15 +2217,13 @@
           20
         ],
         "name": "Ashen Muster",
-        "eff": "20 damage, 4 burn 4 turns, 42% summon",
+        "eff": "20 damage, 4 burn 4 turns",
         "dmg": 20,
         "burn": 4,
         "burnT": 4,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "summonChance": 42,
-        "summonName": "Signal Wisp"
+        "shield": 0
       }
     },
     "voidCircletBoss": {
@@ -2218,7 +2233,7 @@
           4
         ],
         "name": "Hierarch Mantle",
-        "eff": "20 shield (self), 8 shield (ally), +2 roll (all allies) 1 turn, firewall (self)",
+        "eff": "20 shield (self), 8 shield (ally), +2 roll (all allies) 1 turn, firewall (self), 25% summon",
         "dmg": 0,
         "burn": 0,
         "burnT": 0,
@@ -2229,7 +2244,9 @@
         "erb": 2,
         "erbT": 1,
         "erbAll": true,
-        "ward": true
+        "ward": true,
+        "summonChance": 25,
+        "summonName": "Signal Wisp"
       },
       "strike": {
         "range": [
@@ -2286,7 +2303,7 @@
           20
         ],
         "name": "Machine Crusade",
-        "eff": "remove all hero shields, 29 damage, +2 roll (all allies) 2 turns, 32% summon",
+        "eff": "remove all hero shields, 29 damage, +2 roll (all allies) 2 turns",
         "dmg": 29,
         "burn": 0,
         "burnT": 0,
@@ -2296,9 +2313,7 @@
         "wipeShields": true,
         "erb": 2,
         "erbT": 2,
-        "erbAll": true,
-        "summonChance": 32,
-        "summonName": "Signal Wisp"
+        "erbAll": true
       }
     },
     "beastMonkey": {
@@ -2666,15 +2681,13 @@
           20
         ],
         "name": "Brood Call",
-        "eff": "12 damage, 2 burn 3 turns, 50% summon",
+        "eff": "12 damage, 2 burn 3 turns",
         "dmg": 12,
         "burn": 2,
         "burnT": 3,
         "heal": 0,
         "rfe": 0,
-        "shield": 0,
-        "summonChance": 50,
-        "summonName": "Slag Hound"
+        "shield": 0
       }
     },
     "beastBadger": {
@@ -2980,7 +2993,7 @@
       "type": "boss",
       "ai": "smart",
       "callsign": "MASTER",
-      "role": "Strips your shields and hits the whole squad, and it keeps putting its drones back on the field."
+      "role": "Strips your shields, hits the whole squad, and heals for every Scrap Drone still standing."
     },
     "Skitterling": {
       "hp": 30,
@@ -3006,6 +3019,7 @@
       "dMax": 16,
       "type": "stalker",
       "ai": "smart",
+      "summonElite": true,
       "callsign": "STALKER",
       "role": "Opens behind spike armour, then stacks burns that outlast the fight."
     },
@@ -3015,6 +3029,7 @@
       "dMax": 18,
       "type": "carapace",
       "ai": "smart",
+      "summonElite": true,
       "callsign": "CARAPACE",
       "role": "Hard to remove: it shields itself and its allies while burning you down."
     },
@@ -3024,6 +3039,7 @@
       "dMax": 23,
       "type": "brood",
       "ai": "smart",
+      "summonElite": true,
       "callsign": "BROOD",
       "role": "Feeds on the damage it deals and layers long burn on top."
     },
@@ -3033,6 +3049,7 @@
       "dMax": 21,
       "type": "spewer",
       "ai": "smart",
+      "summonElite": true,
       "callsign": "SPEWER",
       "role": "Copies your highest die, then hoses you down with heavy, long burn."
     },
@@ -3042,6 +3059,7 @@
       "dMax": 21,
       "type": "hiveBoss",
       "ai": "smart",
+      "summonElite": true,
       "callsign": "MATRON",
       "role": "Drags your rolls down, wipes your shields, and heals off the damage it deals."
     },
@@ -3069,7 +3087,6 @@
       "dMax": 16,
       "type": "veilAegis",
       "ai": "smart",
-      "summonElite": true,
       "callsign": "AEGIS",
       "role": "Holds the lattice up: shields its allies, lifts their rolls, and hides behind a firewall."
     },
@@ -3079,9 +3096,8 @@
       "dMax": 23,
       "type": "veilResonance",
       "ai": "smart",
-      "summonElite": true,
       "callsign": "RESONANT",
-      "role": "Heals itself, lifts its allies' rolls, and calls in reinforcements at its peak."
+      "role": "Heals itself, lifts its allies' rolls, and hits hardest at its peak."
     },
     "Phaseblade": {
       "hp": 60,
@@ -3089,7 +3105,6 @@
       "dMax": 17,
       "type": "veilNull",
       "ai": "smart",
-      "summonElite": true,
       "callsign": "PHASE",
       "role": "Straight, heavy damage, with a firewall up when it needs to survive."
     },
@@ -3099,7 +3114,6 @@
       "dMax": 21,
       "type": "veilStorm",
       "ai": "smart",
-      "summonElite": true,
       "callsign": "STORM",
       "role": "Lifts every ally's roll while stacking burn on your squad."
     },
@@ -3109,7 +3123,6 @@
       "dMax": 16,
       "type": "veilSynapse",
       "ai": "smart",
-      "summonElite": true,
       "callsign": "HERALD",
       "role": "Feeds shields and roll bonuses to its allies, and shrugs off one ability with a firewall."
     },
@@ -3119,7 +3132,6 @@
       "dMax": 25,
       "type": "veilBoss",
       "ai": "smart",
-      "summonElite": true,
       "callsign": "OVERSEER",
       "role": "Plates itself and its court, drags your rolls down, and wipes your shields at its peak."
     },
@@ -3168,6 +3180,7 @@
       "dMax": 17,
       "type": "voidGlimmer",
       "ai": "smart",
+      "summonElite": true,
       "callsign": "IMAGE",
       "startsCloaked": true,
       "role": "Cloaks out of reach, wipes your shields, and takes your highest die for itself."
@@ -3244,9 +3257,8 @@
       "dMax": 18,
       "type": "beastHyena",
       "ai": "smart",
-      "summonElite": true,
       "callsign": "RAPTOR",
-      "role": "Heals itself, pulls your attacks onto it with taunt, and calls in more."
+      "role": "Heals itself, pulls your attacks onto it with taunt, and leaves burn behind."
     },
     "Magma Drake": {
       "hp": 98,

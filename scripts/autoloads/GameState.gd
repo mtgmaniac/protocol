@@ -314,6 +314,11 @@ static func same_lineup(a: Array, b: Array) -> bool:
 func _roll_slot_names(faction: String, slots: Array) -> Array:
 	var names: Array = []
 	for slot_variant in slots:
+		# A slot may name its unit (G-98, Signal Purge battle 4: Oath Binder
+		# and a rolled fodder); it always fields that unit.
+		if slot_variant is Dictionary:
+			names.append(str((slot_variant as Dictionary).get("name", "")))
+			continue
 		var slot: String = str(slot_variant)
 		if slot == "heavyOrElites":
 			# 50/50: one heavy or two elites.
@@ -424,7 +429,7 @@ func roll_route_modifier() -> String:
 	while not candidates.is_empty():
 		var pick: String = str(candidates[_reward_rng.randi_range(0, candidates.size() - 1)])
 		if _modifier_precondition_ok(pick, comp_names):
-			pending_flagged_comp = _shape_comp_for_modifier(pick, comp)
+			pending_flagged_comp = _shape_comp_for_modifier(pick, comp, current_battle)
 			pending_flagged_modifier_id = pick
 			return pick
 		candidates.erase(pick)
@@ -468,7 +473,7 @@ func accept_flagged_route(modifier_id: String) -> void:
 		if pending_flagged_modifier_id == modifier_id and not pending_flagged_comp.is_empty():
 			resolved_battle_comps[current_battle] = pending_flagged_comp
 		else:
-			resolved_battle_comps[current_battle] = _shape_comp_for_modifier(modifier_id, resolved_battle_comps[current_battle])
+			resolved_battle_comps[current_battle] = _shape_comp_for_modifier(modifier_id, resolved_battle_comps[current_battle], current_battle)
 	pending_flagged_comp = {}
 	pending_flagged_modifier_id = ""
 
@@ -496,6 +501,23 @@ func _arm_next_battle_modifier(modifier_id: String) -> bool:
 # fewer enemy". Each picks its slot through the helpers below, and
 # `_shape_comp_for_modifier` refuses any result that lost a boss, so a
 # modifier added later cannot do it either.
+
+# ── Battle 10 is never reshaped (Kev 2026-10-20, DECISIONS G-98) ───────────────
+# No lineup modifier applies to an operation's last battle: not ELITE
+# PRESENCE, not OVERRUN, not Prisoner Exchange's "one fewer enemy", nothing a
+# later modifier adds. The shaper, the follow-up promote and the minus-one rule
+# each ask this, and Prisoner Exchange is not drawn when its follow-up would
+# land on battle 10 (after battle 8).
+
+# True for the operation's last battle. `battle_index` is 0-based (the index
+# into resolved_battle_comps).
+func is_final_battle_index(battle_index: int) -> bool:
+	var total: int = resolved_battle_comps.size()
+	if total == 0:
+		var op: OperationData = DataManager.get_operation(selected_operation_id) as OperationData
+		total = op.battles.size() if op != null else 0
+	return total > 0 and battle_index >= total - 1
+
 
 # A boss is a unit with a standing rule: the same test the role pools use.
 static func is_boss_name(display_name: String) -> bool:
@@ -539,9 +561,12 @@ func lineup_minus_one(enemy_names: Array) -> Array:
 
 
 # The names the current battle fields: its resolved comp, less one unit while
-# Prisoner Exchange's `minus_one_enemy` is armed for it.
+# Prisoner Exchange's `minus_one_enemy` is armed for it, never on battle 10
+# (G-98). `current_battle` is 1-based while a battle runs.
 func lineup_for_battle(enemy_names: Array) -> Array:
 	if bool(next_battle_effects.get("minus_one_enemy", false)):
+		if is_final_battle_index(current_battle - 1) and lineup_break() != "b10_minus":
+			return enemy_names
 		return lineup_minus_one(enemy_names)
 	return enemy_names
 
@@ -550,6 +575,9 @@ func lineup_for_battle(enemy_names: Array) -> Array:
 # never set by the game):
 #   elite_boss   ELITE PRESENCE takes the first non-elite slot, boss or not
 #   minus_boss   "one fewer enemy" drops the last unit, boss or not
+#   b10_shape    modifiers reshape battle 10 (shaper and follow-up promote)
+#   b10_minus    "one fewer enemy" applies to battle 10
+#   b10_exchange Prisoner Exchange is drawn after battle 8
 const LINEUP_BREAK_ARG := "--lineup-break="
 static var _lineup_break: String = "?"
 
@@ -566,8 +594,11 @@ static func lineup_break() -> String:
 
 # Pure comp shaper: returns a shaped duplicate, never mutates the input. The
 # roll stage uses it to build the flagged-route preview; acceptance commits
-# that same comp.
-func _shape_comp_for_modifier(modifier_id: String, comp: Dictionary) -> Dictionary:
+# that same comp. `battle_index` (0-based) is the battle the comp is for:
+# battle 10 comes back as it was (G-98).
+func _shape_comp_for_modifier(modifier_id: String, comp: Dictionary, battle_index: int) -> Dictionary:
+	if is_final_battle_index(battle_index) and lineup_break() != "b10_shape":
+		return comp.duplicate(true)
 	var shaped: Dictionary = comp.duplicate(true)
 	var names: Array = shaped.get("names", [])
 	match modifier_id:
@@ -599,6 +630,9 @@ func promote_followup_effects() -> void:
 	followup_battle_effects.clear()
 	if modifier_id == "":
 		return
+	# Battle 10 takes no lineup modifier (G-98).
+	if is_final_battle_index(current_battle) and lineup_break() != "b10_shape":
+		return
 	# Only promote if the modifier will produce an observable delta on the
 	# current comp (audit A-077 — the promote path used to skip this check, so
 	# ELITE PRESENCE could arm on an already-all-elite comp as a no-op).
@@ -609,7 +643,7 @@ func promote_followup_effects() -> void:
 	if not _arm_next_battle_modifier(modifier_id):
 		return
 	if current_battle >= 0 and current_battle < resolved_battle_comps.size():
-		resolved_battle_comps[current_battle] = _shape_comp_for_modifier(modifier_id, resolved_battle_comps[current_battle])
+		resolved_battle_comps[current_battle] = _shape_comp_for_modifier(modifier_id, resolved_battle_comps[current_battle], current_battle)
 
 
 # The exact comp for the current battle (1-based current_battle).
@@ -701,7 +735,7 @@ const INTERCEPT_CARDS := {
 		{"label": "Reforge: consume one equipped gear piece and gain a random piece one rarity higher.", "pick": "gear", "effects": [{"type": "foundryUpgrade"}]},
 		{"label": "Leave.", "effects": []},
 	]},
-	"prisonerExchange": {"tier": "major", "name": "PRISONER EXCHANGE", "desc": "An enemy prisoner offers to divert the next patrol in exchange for release. Command will send an elite to investigate.", "choices": [
+	"prisonerExchange": {"tier": "major", "requires": "followup_before_final", "name": "PRISONER EXCHANGE", "desc": "An enemy prisoner offers to divert the next patrol in exchange for release. Command will send an elite to investigate.", "choices": [
 		{"label": "Release the prisoner: the next battle has one fewer enemy. In the battle after that, one enemy is replaced by an elite.", "effects": [{"type": "nextBattleFlag", "flag": "minus_one_enemy"}, {"type": "followupModifier", "id": "elitePresence"}]},
 		{"label": "Refuse: 1 uncommon consumable.", "effects": [{"type": "consumable", "rarity": "uncommon", "count": 1}]},
 	]},
@@ -756,6 +790,12 @@ func draw_intercept_card(tier: String) -> String:
 		var card_id: String = str(deck.pop_front())
 		var card: Dictionary = INTERCEPT_CARDS.get(card_id, {})
 		if str(card.get("requires", "")) == "recent_death" and _recent_death_hero() == "":
+			skipped.append(card_id)
+			continue
+		# Prisoner Exchange's follow-up lands two battles on; after battle 8
+		# that is battle 10, which takes no lineup modifier (G-98).
+		if str(card.get("requires", "")) == "followup_before_final" \
+				and is_final_battle_index(current_battle + 1) and lineup_break() != "b10_exchange":
 			skipped.append(card_id)
 			continue
 		for skipped_id in skipped:

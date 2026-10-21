@@ -20,7 +20,7 @@ nothing). Freeze=repeat passes the fence: the crust is a visual; the locked valu
 engine state.
 
 ## 2. ai_type is load-bearing; targeting is a separate field
-`ai_type` gates 20-face elite summons (`ai_type=="smart"`) and the summon-injection guard
+`ai_type` gates enemy summons (`ai_type=="smart"`; on the 20 until G-98, now on whichever band carries the summon) and the summon-injection guard
 (rejects non-"dumb"). Targeting personalities live in the independent `targeting` field.
 They were split deliberately (keyword batch Tasks 4+9); merging them breaks summons
 silently because the audit can't see intent. **Violation looks like:** renaming/reusing

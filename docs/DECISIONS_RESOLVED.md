@@ -1,5 +1,148 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-98. Encounter rework: lineups, summons, Scrapmaster, battle 10 (Kev, 2026-10-16 / 2026-10-20)
+
+Branch `claude/encounter-rework`. **Supersedes** the G-54 summons hold,
+DECISIONS #5's drone rebuild (ASSEMBLY LINE's cadence ruling) and G-74
+default 2 (Prisoner Exchange after battle 8: "no change for now"). It
+implements and replaces the block "Decided 2026-10, NOT YET IMPLEMENTED:
+summons and Scrapmaster" (Kev, 2026-10-16), which is removed.
+
+**Ruling (Kev, transcribed from the task).** "Slot words draw from the
+operation's pool as today. Battles not listed stay as they are. Field cap
+stays 3." The lineups below. "Hive: every non-fodder Hive unit summons a
+random Hive fodder unit (Skitterling or Bloodmite) on a 20, always (not a %
+chance), at full HP. The Matriarch keeps her Bloodmite every 3 rounds. Veil:
+remove every summon, the Veil Overseer's included. Mantle Hunt: remove every
+summon. Signal Purge: remove summon-on-20 from every unit, Signal Hierarch
+included. Every non-fodder unit's lowest band keeps its current ability and
+also has a 25% chance to call a Signal Wisp. Remove only the summon and keep
+the rest of the ability. Scrapmaster: remove drone rebuilding. At round start
+he heals 8 HP for each living Scrap Drone, capped at max HP (flavor: the
+drones feed him scrap). It must show in the HP preview, plus a chip and log
+line like Accrete. A summon that would go past the field cap of 3 doesn't
+happen. No lineup modifier (ELITE PRESENCE, OVERRUN, Prisoner Exchange's unit
+removal, anything else) applies to battle 10. Prisoner Exchange is not offered
+after battle 8."
+
+**Lineups** (`battle-modes.json`; a slot may now name its unit,
+`{"name": "Oath Binder"}`, and the other slots still roll):
+
+| Operation | Battle | Was | Now |
+|---|---|---|---|
+| Facility | 2 | fodder, fodder | fodder, fodder, fodder |
+| Facility | 6 | elite, fodder, fodder | fodder, elite, fodder |
+| Facility | 7 | heavy, fodder | heavy, fodder, heavy |
+| Facility | 8 | heavy, elite | elite, elite |
+| Hive | 1 | Skitterling | Skitterling, Skitterling |
+| Hive | 2 | fodder, fodder | Bloodmite, Bloodmite |
+| Hive | 10 | Spine Stalker, Hive Matriarch | Bloodmite, Hive Matriarch |
+| Veil | 1 | Shard Drone, Prism Charger | Shard Drone, Prism Charger, Shard Drone |
+| Veil | 2 | fodder, fodder | fodder, heavy |
+| Veil | 4 | heavyOrElites | elite, fodder, fodder |
+| Veil | 5 | heavyOrElites | elite, elite |
+| Veil | 6 | elite, fodder, fodder | heavy, heavy |
+| Veil | 8 | heavy, elite | heavy, fodder, elite |
+| Signal Purge | 2 | fodder, fodder | support, fodder |
+| Signal Purge | 3 | elite, fodder | fodder, elite, fodder |
+| Signal Purge | 4 | Oath Binder | Oath Binder, fodder |
+| Signal Purge | 5 | heavyOrElites | elite, elite |
+| Signal Purge | 6 | elite, fodder, fodder | support, fodder, fodder |
+| Signal Purge | 7 | heavy, fodder | heavy, heavy |
+| Mantle Hunt | 1 | Pumice Climber | Obsidian Hound, Slag Hound |
+| Mantle Hunt | 6 | elite, fodder, fodder | heavy, elite |
+| Mantle Hunt | 7 | heavy, fodder | heavy, fodder, heavy |
+| Mantle Hunt | 8 | heavy, elite | elite, heavy, elite |
+| Mantle Hunt | 9 | elite, support, fodder | elite, heavy, heavy |
+
+**Always the same units (a pool with one member).** Veil b5 is always
+Phaseblade x2 (Veil's elite pool is Phaseblade alone). Signal Purge b2 is
+always Cipher Scribe + Signal Wisp, b4 always Oath Binder + Signal Wisp, b6
+always Cipher Scribe + Signal Wisp x2 (its support pool is Cipher Scribe and
+its fodder pool Signal Wisp, alone). Partly fixed: Facility b7 always fields
+two Heavy Wardens (the only Facility heavy) beside a rolled fodder.
+
+**Summons.** A summon now rides whichever band carries it; the engine's
+"only on the band showing 20" gate is gone (the Signal Purge summons sit on
+the lowest band). `summonName` may be a list, one picked at random from the
+seeded stream (Hive). A 100% summon draws no roll. Summons arrive at full HP.
+The field cap counts the summons already called this round, so a second
+summon in a round that would make a 4th enemy is never called (before, it
+was called, logged and then refused at injection). `summonElite` is on
+exactly the units that summon; nothing else reads it (G-73's survey still
+holds: `DataManager` copies it to `EnemyData.can_summon_elite`, read only by
+`CombatManager._try_emit_enemy_summon`). False Image carries it again: it
+summons now (its 25% Signal Wisp); `validate-data`'s deliberate break moved
+to Phaseblade.
+
+Every ability changed (eff text before -> after):
+
+- Removed (Veil): Aegis Anchor, Shieldline Rally (20): 42% Shard Drone gone.
+  Resonance Warden, Veil Rally (20): 40% Prism Charger gone. Phaseblade,
+  Phase Reinforcements (20): 40% Shard Drone gone. Stormweaver, Lattice Storm
+  (20): 42% Prism Charger gone. Relay Herald, Relay Reinforcements (20): 40%
+  Shard Drone gone. Veil Overseer, Veil Cataclysm (20): 30% Prism Charger
+  gone.
+- Removed (Signal Purge, the 20): Circuit Acolyte, Ritual Muster (40%); Cipher
+  Scribe, Summon Verse (45%); Oath Binder, Binding Decree (35%); Ash
+  Channeler, Ashen Muster (42%); Signal Hierarch, Machine Crusade (32%). All
+  Signal Wisp.
+- Removed (Mantle Hunt): Cinder Raptor, Brood Call (20): 50% Slag Hound.
+- Added (Hive, top band, always, Skitterling or Bloodmite): Spine Stalker,
+  Impaler Gland (19-20); Carapace Beetle, Fortress Charge; Broodwarden,
+  Culling Feed; Caustic Spewer, Corrosive Deluge; Hive Matriarch, Acid
+  Cataclysm (each 20). Text gains ", summon".
+- Added (Signal Purge, lowest band, 25% Signal Wisp): Circuit Acolyte, Seal
+  Sigil (1-4); Cipher Scribe, Signal Litany (1-3); Oath Binder, Silencing Rite
+  (1-4); False Image, False Image (1-4); Ash Channeler, Channel Focus (1-4);
+  Signal Hierarch, Hierarch Mantle (1-4). Text gains ", 25% summon".
+- Every other part of each ability is unchanged. Names are unchanged too, so
+  six now name a summon they no longer make (Summon Verse, Ritual Muster,
+  Ashen Muster, Phase Reinforcements, Relay Reinforcements, and Brood Call);
+  renaming is left to Kev.
+- `summonElite` on: Spine Stalker, Carapace Beetle, Broodwarden, Caustic
+  Spewer, Hive Matriarch, False Image. Off: Aegis Anchor, Resonance Warden,
+  Phaseblade, Stormweaver, Relay Herald, Veil Overseer, Cinder Raptor.
+
+**My readings (Kev may overrule):**
+1. "On a 20" for Hive is the top band. Every Hive top band is 20 except Spine
+   Stalker's 19-20 (G-53), so Spine Stalker summons on a 19 too. A summon
+   that fired on the 20 alone would need "unless" in its inspect text.
+2. "Every non-fodder Hive unit" includes the Hive Matriarch: she summons on
+   her 20 and keeps THE BROOD.
+
+**Scrapmaster, ASSEMBLY LINE.** The rebuild is gone. At every round start,
+before the heroes act, the Scrapmaster heals 8 HP per living Scrap Drone
+(`SCRAPMASTER_HEAL_PER_DRONE`, knob `scrapmaster_heal_per_drone`), capped at
+max HP. It runs in the same round-start step as THE COURT and ACCRETION, which
+the HP preview's dry run also runs, so the boss card's preview shows it. It
+has its own beat, a `heal` event (the HP bar steps, a heal number floats),
+the chip "ASSEMBLY LINE +16" and the log line "ASSEMBLY LINE - 2 Scrap Drones
+feed the Scrapmaster scrap. It heals 16 HP."; at full HP nothing shows. The
+rule keeps its name. Gate `scrap feed` (breaks: no_chip, no_line,
+preview_blind, uncapped).
+
+**Battle 10 takes no lineup modifier.** One rule,
+`GameState.is_final_battle_index`, asked by the comp shaper (every modifier,
+from a fork or a follow-up), by `promote_followup_effects` (nothing arms for
+battle 10) and by `lineup_for_battle` ("one fewer enemy" does not apply). Fork
+beats already ended after battle 8 (they shape battle 9); the one way in was
+Prisoner Exchange taken after battle 8, whose follow-up landed on battle 10.
+**Prisoner Exchange is not drawn after battle 8**: like Memorial Protocol
+without a recent death, it is passed over and stays in the deck. Gate `boss
+lineup` (new breaks: b10_shape, b10_minus, b10_exchange).
+
+**Copy.** Summon keyword: "Enemy-only: this enemy may call one reinforcement
+into an open slot." Facility blurb, briefing origin, Scrapmaster flavor and
+the threats tag (REBUILD -> REPAIR); unit descriptions for the Scrapmaster,
+Resonance Warden and Cinder Raptor. The Hive boss fight's pinned escort is
+Bloodmite; the battle checkpoint gate's boss config moved to the Hive boss
+fight, where summons now live.
+
+**Not tuned, not re-pinned.** The sim tripwire moves (combat changed); the
+size pins were not written. See the report on the branch for the matched-seed
+comparison.
+
 ## G-97. Pre-Reddit polish: one primer a turn, mission long-press, picking guidance, callout clamp (Kev, 2026-10-20)
 
 Branch `ui/pre-reddit-polish`. **Supersedes** the 2026-07-12 primer FULL
@@ -158,21 +301,6 @@ Cap the squad select content as one centered column at the 1080 design-pixel
 portrait width. Apply the same cap to stretching title, Help, battle, reward
 and victory/defeat content. Below that width nothing changes. Keep existing
 vertical rhythm, components and panel counts; backgrounds remain full-window.
-
-## Decided 2026-10, NOT YET IMPLEMENTED: summons and Scrapmaster (Kev, 2026-10-16)
-
-Recorded only. Nothing below is in code or data yet; until it is implemented,
-the G-54 summons hold and the current Scrapmaster rule (DECISIONS #5) describe
-the live game. Implementing these needs its own task.
-
-- **Scrapmaster heals 8 HP per living Scrap Drone each turn** instead of
-  rebuilding drones (replaces ASSEMBLY LINE's rebuild).
-- **Signal Purge non-fodder units add a 25% Signal Wisp summon to their
-  lowest band** rather than replacing it.
-- **Summoning becomes Hive's identity.** Hive units and the Matriarch summon;
-  other enemies get new top moves; Scrapmaster gets a non-summon mechanic (the
-  heal above); remaining summons are full HP.
-- **Supersedes the G-54 summons hold once implemented.** Until then G-54 stands.
 
 ## G-90. DEMO v0.4: version, balance check, web build (Kev, 2026-10-17)
 
@@ -852,6 +980,8 @@ line on both policies, and the commit carries BASELINE-APPROVED-BY-KEV.
 2. **Prisoner Exchange after battle 8: no change for now.** G-70 stands (a boss
    is never replaced or removed); nothing else about the card moves until the
    encounter rework.
+   *Superseded by G-98 (2026-10-20): not drawn after battle 8; battle 10
+   takes no lineup modifier.*
 3. **Abandoned first runs do not turn enemy traits on.** Confirms G-72 reading
    2: only a victory or a defeat sets `onboarding.first_run_finished`.
 4. **A 250 XP trait with no picture is left for the UI redesign.** No stopgap
@@ -2268,6 +2398,7 @@ fixing." And: "Summons are on hold pending my decision; don't change them."
   either).
 - **Summons are on hold** pending Kev's decision. Do not change summon
   chances, summon content or summon rules until he rules.
+  *Superseded by G-98 (2026-10-20): summons ruled and implemented.*
 
 ## G-53. New roll windows for every unit (Kev, 2026-10-08)
 
@@ -3656,6 +3787,8 @@ descriptions, and pip descriptions. SINGLE NAMED EXCEPTION: shieldsPersist
 5 must name it as the only exception."
 
 ## 5. SCRAPMASTER "every other turn" — IMPLEMENTED 2026-07-07
+*Superseded by G-98 (2026-10-20): the drone rebuild is gone; ASSEMBLY LINE is
+now a round-start heal of 8 HP per living Scrap Drone.*
 **Status:** cadence now counts from FIRST ACTIVATION (per-boss
 `assembly_line_first_round` stamp; phase 1 = first live enemy phase, rebuilds
 on phases 2/4/6). Identical to the old even-round reading when the boss is live

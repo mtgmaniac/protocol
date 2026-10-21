@@ -315,6 +315,10 @@ function validateBattleSpawnNames(bm, unitDefs) {
         const n = e.name;
         if (n && !unitDefs[n]) missing.add(n);
       }
+      // A slot may name a fixed unit (G-98).
+      for (const s of sp.slots || []) {
+        if (s && typeof s === 'object' && !unitDefs[s.name]) missing.add(s.name);
+      }
     }
   }
   if (missing.size) {
@@ -344,11 +348,15 @@ function validateSummonRefs(enemies) {
         errs.push(`enemyAbilities.${type}.${z}: summonName and summonChance must be set together`);
         continue;
       }
-      const def = defs[ab.summonName];
-      if (!def) {
-        errs.push(`enemyAbilities.${type}.${z}: summonName '${ab.summonName}' does not resolve to an enemyUnitDefs entry`);
-      } else if (def.ai !== 'dumb') {
-        errs.push(`enemyAbilities.${type}.${z}: summon target '${ab.summonName}' must be ai:"dumb" (battle blocks non-dumb summons)`);
+      // A list calls one of its units at random (G-98, Hive).
+      const targets = Array.isArray(ab.summonName) ? ab.summonName : [ab.summonName];
+      for (const target of targets) {
+        const def = defs[target];
+        if (!def) {
+          errs.push(`enemyAbilities.${type}.${z}: summonName '${target}' does not resolve to an enemyUnitDefs entry`);
+        } else if (def.ai !== 'dumb') {
+          errs.push(`enemyAbilities.${type}.${z}: summon target '${target}' must be ai:"dumb" (battle blocks non-dumb summons)`);
+        }
       }
     }
   }
@@ -384,12 +392,13 @@ for (const err of validateSummonFlags(enemies)) {
   console.error('enemies.data.json:', err);
 }
 {
-  // The rule proves it can fail: False Image with its old flag back.
+  // The rule proves it can fail: Phaseblade with its old flag back (its
+  // summon was removed in G-98; False Image, the first example, summons now).
   const withFlag = JSON.parse(JSON.stringify(enemies));
-  withFlag.enemyUnitDefs['False Image'].summonElite = true;
-  if (!validateSummonFlags(withFlag).some((err) => err.includes('False Image'))) {
+  withFlag.enemyUnitDefs['Phaseblade'].summonElite = true;
+  if (!validateSummonFlags(withFlag).some((err) => err.includes('Phaseblade'))) {
     ok = false;
-    console.error('enemies.data.json: the summon flag rule let a deliberate break through (False Image with summonElite)');
+    console.error('enemies.data.json: the summon flag rule let a deliberate break through (Phaseblade with summonElite)');
   }
 }
 

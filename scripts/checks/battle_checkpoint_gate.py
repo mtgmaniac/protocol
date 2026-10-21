@@ -47,10 +47,12 @@ LEG_TIMEOUT_S = 150
 
 # battle 5: the fixed double Shield Enforcer fight (ally shields, roll buffs),
 #           won mid-run -> reward flow (rewards/XP exactly once)
-# battle 10: the Scrapmaster (Assembly Line summons/rebuilds), won -> run end
+# battle 10: the Hive Matriarch (The Brood and Hive summons), won -> run end.
+#           It was the Scrapmaster until G-98 took its drone rebuild away; the
+#           Hive boss fight is where summons live now.
 CONFIGS = [
-    {"name": "b5_shields", "battle": 5, "fallbacks": True},
-    {"name": "b10_boss", "battle": 10, "fallbacks": False},
+    {"name": "b5_shields", "battle": 5, "op": "facility", "fallbacks": True},
+    {"name": "b10_boss", "battle": 10, "op": "hive", "fallbacks": False},
 ]
 
 
@@ -59,7 +61,7 @@ def run_leg(config: dict, leg: str) -> dict | None:
     if out.exists():
         out.unlink()
     cmd = [GODOT, "--headless", "--path", str(ROOT), "-s", SCRIPT, "--",
-           "--leg", leg, "--battle", str(config["battle"]), "--out", str(out)]
+           "--leg", leg, "--battle", str(config["battle"]), "--op", config["op"], "--out", str(out)]
     try:
         proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=LEG_TIMEOUT_S)
     except subprocess.TimeoutExpired:
@@ -112,7 +114,7 @@ def main() -> int:
         check(bool(resume["after_checkpoint_empty"]) and bool(full["after_checkpoint_empty"]),
               f"{name}: no battle checkpoint left behind after the battle")
         if config["battle"] == 10:
-            check(int(resume["summoned_in_checkpoint"]) > 0, f"{name}: a summoned/rebuilt unit survived the reload")
+            check(int(resume["summoned_in_checkpoint"]) > 0, f"{name}: a summoned unit survived the reload")
         if config["fallbacks"]:
             for leg in ("resume_old", "resume_bad"):
                 if run_leg(config, "save") is None:

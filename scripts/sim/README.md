@@ -85,7 +85,7 @@ rate inside the 25–40% target band, and a band summary for the swept op),
 Knob kinds: `state_scalar` (`enemy_hp_scalar`, `enemy_dmg_scalar` — applied to
 enemy states at spawn and to summons; qualify per op with `@op`, e.g.
 `enemy_hp_scalar@hive`, or leave global), `engine_tuning` (boss cadence
-`scrapmaster_rebuild_pct` / `brood_cadence` / `mantle_round_shield`, plus
+`scrapmaster_heal_per_drone` / `brood_cadence` / `mantle_round_shield`, plus
 `execute_bonus`, `chain_ratio` — routed to `combat_manager.set_tuning()`,
 whose getters default to the shipped constants), and `ability_field` (a path
 into heroes.data.json — tuning key `ability:heroId/PathName|base/AbilityName/field`

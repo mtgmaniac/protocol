@@ -71,19 +71,19 @@ func _initialize() -> void:
 		for seed_value in SEEDS:
 			gs.call("start_run", ["combat", "engineer", "medic"], op_id, seed_value)
 			var comps: Array = gs.get("resolved_battle_comps")
-			# Battle 10 is included since G-70 (2026-10-10): a boss is never the
-			# slot upgraded, so the count below holds in the boss fight too.
-			# The `boss lineup` gate pins the boss itself.
+			# Battle 10 takes no lineup modifier (G-98): it comes back as it
+			# was. The `boss lineup` gate pins that rule and the boss itself.
 			for comp_index in comps.size():
 				var comp: Dictionary = comps[comp_index] as Dictionary
 				var names: Array = comp.get("names", [])
 				if not bool(gs.call("_modifier_precondition_ok", "elitePresence", names)):
 					continue
-				var shaped: Dictionary = gs.call("_shape_comp_for_modifier", "elitePresence", comp)
+				var shaped: Dictionary = gs.call("_shape_comp_for_modifier", "elitePresence", comp, comp_index)
 				var before: int = _count_in_pool(names, elite_pool)
 				var after: int = _count_in_pool(shaped.get("names", []), elite_pool)
+				var final_battle: bool = comp_index == comps.size() - 1
 				shaped_cases += 1
-				_check(after == before + 1, "ELITE PRESENCE upgrades exactly one slot (op %s seed %d battle %d: %d -> %d | %s => %s)" % [op_id, seed_value, comp_index + 1, before, after, str(names), str(shaped.get("names", []))])
+				_check(after == (before if final_battle else before + 1), "ELITE PRESENCE upgrades exactly one slot, none in battle 10 (op %s seed %d battle %d: %d -> %d | %s => %s)" % [op_id, seed_value, comp_index + 1, before, after, str(names), str(shaped.get("names", []))])
 	_check(shaped_cases > 0, "elite presence probe exercised at least one comp")
 
 	if _errors.is_empty():

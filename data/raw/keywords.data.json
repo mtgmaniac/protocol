@@ -219,8 +219,8 @@
       "id": "summon",
       "term": "Summon",
       "category": "offense",
-      "def": "Enemy-only: on a 20, this enemy may call one reinforcement into an open slot.",
-      "syntax": "summon ~N% on 20"
+      "def": "Enemy-only: this enemy may call one reinforcement into an open slot.",
+      "syntax": "summon (always) or N% summon, on the band that shows it"
     },
     {
       "id": "aoe",

@@ -895,6 +895,10 @@ func _play_keyword_feedback(event_type: String, event: Dictionary, actor_card: C
 				_hex_flash(target_card, Color(PixelUI.FX_SHIELD, 0.95))
 		"accrete":
 			_show_accrete_chip(target_card, int(event.get("amount", 0)))
+		"heal":
+			# A standing rule's heal names itself (G-98: "ASSEMBLY LINE +16").
+			if str(event.get("rule_chip", "")) != "":
+				_show_unit_chip(target_card, str(event["rule_chip"]), "RuleChip")
 		"trait":
 			show_trait_chip(target_card, str(event.get("trait_name", "")))
 		"siphon":

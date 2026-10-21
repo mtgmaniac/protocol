@@ -21,9 +21,9 @@ const OPERATION_COPY := {
 	"facility": {
 		"number": "01",
 		"name": "FACILITY SWEEP",
-		"origin": "The foundry has turned on its workers. Its machines are building an army from the wreckage.",
+		"origin": "The foundry has turned on its workers. Its drones feed scrap to the machine that runs it.",
 		"site": "Colony reclamation works",
-		"threats": "SHIELDS · JAM · REBUILD",
+		"threats": "SHIELDS · JAM · REPAIR",
 		"failure": "Security machines hostile",
 		"directive": "Destroy the Scrapmaster",
 	},
@@ -66,7 +66,7 @@ const OPERATION_COPY := {
 }
 
 const BOSS_FLAVOR := {
-	"Scrapmaster": "An industrial assembler that turns fallen drones into fresh troops.",
+	"Scrapmaster": "An industrial assembler that repairs itself with scrap its drones bring it.",
 	"Hive Matriarch": "A living brood factory that sends its offspring into the fight.",
 	"Veil Overseer": "The Veil commander fights behind a firewall sustained by its surviving troops.",
 	"Signal Hierarch": "A machine priest whose broadcasts override the squad's targeting systems.",

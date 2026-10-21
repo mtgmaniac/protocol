@@ -12,7 +12,7 @@
       "trackHpScale": 1.05,
       "callsign": "FACILITY",
       "label": "Facility Sweep",
-      "blurb": "Rogue war machines defend the foundry and rebuild their dead.",
+      "blurb": "Rogue war machines defend the foundry and feed scrap to their master.",
       "victoryTitle": "VICTORY",
       "victorySub": "Scrapmaster destroyed. Foundry secured.",
       "victoryBackdrop": "res://assets/ui/victory/victory_facility.png",
@@ -31,6 +31,7 @@
         },
         {
           "slots": [
+            "fodder",
             "fodder",
             "fodder"
           ]
@@ -58,20 +59,21 @@
         },
         {
           "slots": [
-            "elite",
             "fodder",
+            "elite",
             "fodder"
           ]
         },
         {
           "slots": [
             "heavy",
-            "fodder"
+            "fodder",
+            "heavy"
           ]
         },
         {
           "slots": [
-            "heavy",
+            "elite",
             "elite"
           ]
         },
@@ -111,13 +113,20 @@
           "enemies": [
             {
               "name": "Skitterling"
+            },
+            {
+              "name": "Skitterling"
             }
           ]
         },
         {
-          "slots": [
-            "fodder",
-            "fodder"
+          "enemies": [
+            {
+              "name": "Bloodmite"
+            },
+            {
+              "name": "Bloodmite"
+            }
           ]
         },
         {
@@ -167,7 +176,7 @@
         {
           "enemies": [
             {
-              "name": "Spine Stalker"
+              "name": "Bloodmite"
             },
             {
               "name": "Hive Matriarch"
@@ -193,29 +202,22 @@
             },
             {
               "name": "Prism Charger"
+            },
+            {
+              "name": "Shard Drone"
             }
           ]
         },
         {
           "slots": [
             "fodder",
-            "fodder"
+            "heavy"
           ]
         },
         {
           "slots": [
             "elite",
             "fodder"
-          ]
-        },
-        {
-          "slots": [
-            "heavyOrElites"
-          ]
-        },
-        {
-          "slots": [
-            "heavyOrElites"
           ]
         },
         {
@@ -223,6 +225,18 @@
             "elite",
             "fodder",
             "fodder"
+          ]
+        },
+        {
+          "slots": [
+            "elite",
+            "elite"
+          ]
+        },
+        {
+          "slots": [
+            "heavy",
+            "heavy"
           ]
         },
         {
@@ -238,6 +252,7 @@
         {
           "slots": [
             "heavy",
+            "fodder",
             "elite"
           ]
         },
@@ -285,31 +300,34 @@
         },
         {
           "slots": [
-            "fodder",
+            "support",
             "fodder"
           ]
         },
         {
           "slots": [
+            "fodder",
             "elite",
             "fodder"
           ]
         },
         {
-          "enemies": [
+          "slots": [
             {
               "name": "Oath Binder"
-            }
-          ]
-        },
-        {
-          "slots": [
-            "heavyOrElites"
+            },
+            "fodder"
           ]
         },
         {
           "slots": [
             "elite",
+            "elite"
+          ]
+        },
+        {
+          "slots": [
+            "support",
             "fodder",
             "fodder"
           ]
@@ -317,7 +335,7 @@
         {
           "slots": [
             "heavy",
-            "fodder"
+            "heavy"
           ]
         },
         {
@@ -358,7 +376,10 @@
         {
           "enemies": [
             {
-              "name": "Pumice Climber"
+              "name": "Obsidian Hound"
+            },
+            {
+              "name": "Slag Hound"
             }
           ]
         },
@@ -389,19 +410,20 @@
         },
         {
           "slots": [
-            "elite",
-            "fodder",
-            "fodder"
+            "heavy",
+            "elite"
           ]
         },
         {
           "slots": [
             "heavy",
-            "fodder"
+            "fodder",
+            "heavy"
           ]
         },
         {
           "slots": [
+            "elite",
             "heavy",
             "elite"
           ]
@@ -409,8 +431,8 @@
         {
           "slots": [
             "elite",
-            "support",
-            "fodder"
+            "heavy",
+            "heavy"
           ]
         },
         {

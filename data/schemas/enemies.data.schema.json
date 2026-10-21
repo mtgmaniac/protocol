@@ -106,7 +106,13 @@
         "wipeShields": { "type": "boolean" },
         "lifestealPct": { "type": "integer", "minimum": 0, "maximum": 100 },
         "summonChance": { "type": "integer", "minimum": 0, "maximum": 100 },
-        "summonName": { "type": "string" },
+        "summonName": {
+          "description": "The unit this ability calls. A list calls one of them at random (seeded), e.g. Hive: Skitterling or Bloodmite (G-98).",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+          ]
+        },
         "erb": { "type": "integer", "minimum": 0 },
         "erbT": { "type": "integer", "minimum": 1 },
         "erbAll": { "type": "boolean" },
