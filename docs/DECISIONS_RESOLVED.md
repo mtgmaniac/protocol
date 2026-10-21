@@ -1,5 +1,50 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-97. Pre-Reddit polish: one primer a turn, mission long-press, picking guidance, callout clamp (Kev, 2026-10-20)
+
+Branch `ui/pre-reddit-polish`. **Supersedes** the 2026-07-12 primer FULL
+DRAIN (PRIMERS.md), G-96's "the mission card's threats line" and the A5
+mission card's threats slot, and the squad-select "PICK n MORE" dim locked
+style.
+
+- **Keyword primers: at most one per turn.** The rest stay queued for later
+  turns, each still one-time (never dropped: the first cap, 2026-07-06,
+  cleared the queue and lost them, which is why the full drain replaced it).
+  When several wait, the one shown is: an icon on an ability the player's own
+  unit is about to use (a hero roll sighting this turn), then one hitting the
+  player (an enemy roll sighting, or an event landing on a hero), then other
+  sightings this turn, then lessons deferred from earlier turns. Ties keep the
+  spatial enqueue order; the JSON `priority` stays inert. A deferred roll
+  lesson whose icon has left its unit's plate rings that unit's card. A
+  lesson with no anchor stays queued and unmarked; the next one takes the
+  turn's slot. Gate: `primer smoke` (5 new keywords in one turn show 1, the
+  other 4 on later turns).
+- **Mission card: no threats line, no reserved slot.** Long-press on the card
+  opens the mission pop-up (the inspect pop-up style): the operation name,
+  OBJECTIVE, SITE, SITUATION and THREATS (SITE and SITUATION are no longer in
+  the briefing, G-96). A locked mission's long-press shows its name and unlock
+  condition only; the card itself shows LOCKED. The pop-up no longer shows
+  the threat level or the operation blurb.
+- **Inspect pop-up stat rows:** the label keeps its width and the value takes
+  the rest, right-aligned, wrapping at words when it is longer.
+- **Squad select picking guidance:** below 3 picks the bottom button reads
+  "PICK N MORE" in the normal button text (`UI_TEXT`), on the primary's
+  notched outline (no solid fill), still inert; the outline pulses slowly
+  and subtly (2.4 s), held still under Reduced motion / No animations. At
+  3 / 3 it is the normal DEPLOY SQUAD primary and the "n / 3" counter turns
+  the friendly blue (`PLAYER_ACCENT_LIGHT`). A full squad on a locked
+  operation keeps the dim OPERATION LOCKED gate.
+- **20 ability name callout:** centred over the acting card, then clamped
+  toward the centre so the whole callout, at its slam peak (1.28x), stays on
+  screen (24 design px inside the safe edge). A name wider than that wraps to
+  two lines at the word boundary that keeps the longer line shortest; never
+  three. Gate: `text fit` spawns the longest ultimate name over the leftmost
+  and rightmost hero and enemy at 640x960 and 1080x2400.
+- **Battle background: trial only.** Variant A (no background, G-76) stays
+  applied. Variants B (the G-95 space image, darkened, not over the tray
+  floor) and C (B with the tray floor darker than its surroundings) were
+  captured for Kev's pick and are not in the game.
+
 ## G-96. Crisp text: three tiers, a compact secondary face, traits kept secret (Kev, 2026-10-19 / 2026-10-20)
 
 Branch `ui/text-40-80-120` (crisp text steps 1 to 3c). **Supersedes** G-22 (the

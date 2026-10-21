@@ -1251,7 +1251,8 @@ func _begin_targeting_phase(skip_dice_visuals: bool = false, placed_rolls: Dicti
 
 	# Keyword primers: a new player turn begins — report the ROLL sightings
 	# (Kev 2026-07-10: a keyword primes the first time it appears on a revealed
-	# roll, BEFORE the player commits) and drain them.
+	# roll, BEFORE the player commits) and flush (one primer a turn, G-97;
+	# the rest wait for later turns).
 	#
 	# BOARD-READABLE GATE (Kev 2026-07-13 — the last of the anchor rounds). The
 	# drain must not begin until the pip plates exist AND have been laid out:

@@ -1,9 +1,10 @@
 # Keyword primer smoke test (headless): exercises at least one primer per
 # trigger type through the real manager pipeline (queue → flush → display →
 # persist), asserting each fires ONCE, persists as seen, and never refires —
-# plus the FULL-DRAIN contract (Kev 2026-07-12: every unseen icon raised in a
-# turn is taught in that turn, modal sequence, enqueue/spatial order, priority
-# inert), glyph identity tagging, failure safety, and the grandfather clause.
+# plus the ONE-PER-TURN contract (Kev 2026-10-20, G-97: at most one primer a
+# turn, the rest deferred to later turns and still one-time, picked by
+# relevance then enqueue/spatial order, JSON priority inert), glyph identity
+# tagging, failure safety, and the grandfather clause.
 # Uses the manager's documented test seams (debug_force_active /
 # debug_auto_dismiss / debug_shown_ids); display runs through the real
 # SpotlightLayer (headless Godot renders Control trees fine).
@@ -43,6 +44,15 @@ func _initialize() -> void:
 func _check(cond: bool, label: String) -> void:
 	if not cond:
 		_errors.append(label)
+
+
+# Play `turns` quiet turns (no new sightings): each opens the one-per-turn slot
+# and flushes at both flush points, the way a real turn does.
+func _quiet_turns(primer: Node, turns: int) -> void:
+	for _i in range(turns):
+		primer.on_turn_started()
+		await primer.flush_player_phase()
+		await primer.flush_at_group_boundary()
 
 
 # Depth-first collection of pip_icon_key metas — mirrors the primer's glyph walk.
@@ -125,16 +135,20 @@ func _run() -> void:
 	for key in ["die", "unit_card", "ability_pip", "footer_button", "popup_line"]:
 		primer._target_resolvers[key] = fixed_rect
 
-	# ── 1) die_status_applied fires + FULL DRAIN: two first-sightings the SAME
-	# turn are BOTH taught that turn, in enqueue order (no cap, no deferral).
+	# ── 1) die_status_applied fires + ONE PER TURN: two first-sightings the SAME
+	# turn: the first shows, the second waits for the next turn (deferred, not
+	# dropped).
 	primer.on_turn_started()
 	primer.notice_event({"type": "jam", "side": "enemy", "target_id": "e1"})
 	primer.notice_event({"type": "freeze", "side": "enemy", "target_id": "e1"})
 	await primer.flush_at_group_boundary()
+	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_jam"), "die_status_applied (jam) fires and persists")
-	_check(sm.call("is_primer_seen", "primer_freeze"), "second sighting same turn ALSO taught (full drain)")
-	_check(primer.debug_show_count == 2, "both primers displayed in the same turn")
-	_check(primer.debug_shown_ids == ["primer_jam", "primer_freeze"], "drain runs in enqueue order")
+	_check(not sm.call("is_primer_seen", "primer_freeze"), "second sighting the same turn waits (one per turn)")
+	_check(primer.debug_shown_ids == ["primer_jam"], "one primer this turn (saw %s)" % str(primer.debug_shown_ids))
+	await _quiet_turns(primer, 1)
+	_check(primer.debug_shown_ids == ["primer_jam", "primer_freeze"],
+		"the deferred sighting shows on the next turn (saw %s)" % str(primer.debug_shown_ids))
 
 	# Never refires: jam again on a fresh turn shows nothing new.
 	primer.on_turn_started()
@@ -154,32 +168,69 @@ func _run() -> void:
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_chain"), "attack_keyword_resolved (chain) fires and persists")
 
-	# ── 4) FULL DRAIN, ORDER (Kev 2026-07-12): three same-moment sightings all
-	# teach in ONE turn, in enqueue order — the old cap dropped the losers.
+	# ── 4) ONE PER TURN, FIVE KEYWORDS (Kev 2026-10-20, G-97): a turn that
+	# introduces five new keywords shows ONE, however many flush points it has;
+	# the other four show one per later turn, each once, in enqueue order.
 	primer.on_turn_started()
 	primer.debug_shown_ids.clear()
-	primer.notice_event({"type": "detonate", "side": "enemy", "target_id": "e1"})
-	primer.notice_event({"type": "execute", "side": "enemy", "target_id": "e1"})
-	primer.notice_event({"type": "pierce", "side": "enemy", "target_id": "e1"})
+	var five: Array = ["detonate", "execute", "pierce", "cloak", "rewrite"]
+	for kw in five:
+		primer.notice_event({"type": kw, "side": "enemy", "target_id": "e1"})
+	await primer.flush_player_phase()
 	await primer.flush_at_group_boundary()
-	for pid in ["primer_detonate", "primer_execute", "primer_pierce"]:
-		_check(sm.call("is_primer_seen", pid), "%s taught in the turn it was raised" % pid)
-	_check(primer.debug_shown_ids == ["primer_detonate", "primer_execute", "primer_pierce"],
-		"three-candidate drain preserves enqueue order")
+	await primer.flush_at_group_boundary()
+	_check(primer.debug_shown_ids == ["primer_detonate"],
+		"5 new keywords in one turn show exactly 1 (saw %s)" % str(primer.debug_shown_ids))
+	for kw in five.slice(1):
+		_check(not sm.call("is_primer_seen", "primer_" + kw), "%s waits, unmarked, for a later turn" % kw)
+	for turn_i in range(4):
+		await _quiet_turns(primer, 1)
+		_check(primer.debug_shown_ids.size() == 2 + turn_i,
+			"later turn %d shows exactly one more (saw %s)" % [turn_i + 1, str(primer.debug_shown_ids)])
+	_check(primer.debug_shown_ids == ["primer_detonate", "primer_execute", "primer_pierce", "primer_cloak", "primer_rewrite"],
+		"the other 4 appear on later turns, in enqueue order (saw %s)" % str(primer.debug_shown_ids))
+	for kw in five:
+		_check(sm.call("is_primer_seen", "primer_" + kw), "%s ends up taught and persisted" % kw)
+	var shown_after_five: int = primer.debug_show_count
+	await _quiet_turns(primer, 2)
+	_check(primer.debug_show_count == shown_after_five, "the queue is empty: nothing repeats")
+	# Priority is DEAD: cloak (json prio 40) and rewrite (json prio 50) above
+	# kept enqueue order (no sort on the JSON field).
 
-	# Priority is DEAD (ruling 2026-07-12): cloak (json prio 40) enqueued before
-	# rewrite (json prio 50) shows FIRST — spatial/enqueue order, no sort.
+	# ── 4b) RELEVANCE (G-97): the player's own unit's ability first, then one
+	# hitting the player, then the rest. Enqueued worst-first on purpose.
 	sm.call("dev_reset_primers")
 	primer._fired_params.clear()
 	primer.on_turn_started()
 	primer.debug_shown_ids.clear()
-	primer.notice_event({"type": "cloak", "side": "enemy", "target_id": "e1"})
-	primer.notice_event({"type": "rewrite", "side": "enemy", "target_id": "e1"})
+	primer.notice_event({"type": "detonate", "side": "enemy", "target_id": "e1"})  # lands on an enemy
+	primer.notice_rolled_ability({"jam": true}, "enemy", "e1")                     # enemy roll: hits the player
+	primer.notice_rolled_ability({"dmg": 5, "mark": true}, "hero", "h1")           # the player's own unit
+	await primer.flush_player_phase()
+	_check(primer.debug_shown_ids == ["primer_mark"],
+		"own unit's ability shows first (saw %s)" % str(primer.debug_shown_ids))
+	await _quiet_turns(primer, 2)
+	_check(primer.debug_shown_ids == ["primer_mark", "primer_jam", "primer_detonate"],
+		"then the one hitting the player, then the rest (saw %s)" % str(primer.debug_shown_ids))
+	# An event landing on a HERO counts as hitting the player.
+	sm.call("dev_reset_primers")
+	primer._fired_params.clear()
+	primer.on_turn_started()
+	primer.debug_shown_ids.clear()
+	primer.notice_event({"type": "chain", "side": "enemy", "target_id": "e1"})
+	primer.notice_event({"type": "burn", "side": "hero", "target_id": "h1"})
 	await primer.flush_at_group_boundary()
-	_check(primer.debug_shown_ids == ["primer_cloak", "primer_rewrite"],
-		"priority field is inert — enqueue order wins over json priority")
-	_check(sm.call("is_primer_seen", "primer_cloak") and sm.call("is_primer_seen", "primer_rewrite"),
-		"both mixed-priority sightings taught in the same turn")
+	_check(primer.debug_shown_ids == ["primer_burn"],
+		"an event hitting a hero beats one on an enemy (saw %s)" % str(primer.debug_shown_ids))
+	# A fresh sighting this turn beats a lesson deferred from an earlier turn.
+	primer.on_turn_started()
+	primer.notice_rolled_ability({"dmg": 5, "ignSh": true}, "hero", "h1")
+	await primer.flush_player_phase()
+	_check(primer.debug_shown_ids == ["primer_burn", "primer_pierce"],
+		"this turn's own-unit sighting beats a deferred lesson (saw %s)" % str(primer.debug_shown_ids))
+	await _quiet_turns(primer, 1)
+	_check(primer.debug_shown_ids == ["primer_burn", "primer_pierce", "primer_chain"],
+		"the deferred lesson still shows afterwards (saw %s)" % str(primer.debug_shown_ids))
 
 	# ── 5) rampage + shield-wipe events route to their keyword primers ──────────
 	# (Personality primers were cut 2026-07-10 — attack styles aren't tutorialized.)
@@ -235,7 +286,9 @@ func _run() -> void:
 	primer.notice_rolled_ability({"erb": 2, "erbT": 2}, "enemy", "e1")
 	await primer.flush_at_group_boundary()
 	_check(sm.call("is_primer_seen", "primer_icon_roll"), "enemy ±roll icon fires the roll primer")
-	_check(sm.call("is_primer_seen", "primer_icon_self"), "the self marker on the same pip drains the same turn")
+	_check(not sm.call("is_primer_seen", "primer_icon_self"), "the self marker on the same pip waits a turn")
+	await _quiet_turns(primer, 1)
+	_check(sm.call("is_primer_seen", "primer_icon_self"), "the self marker shows on the next turn")
 	_check(primer.debug_shown_ids == ["primer_icon_roll", "primer_icon_self"],
 		"within one pip the kind icon teaches before the scope marker")
 	# Seen icons never refire through the roll path either. ENEMY side: the self
@@ -300,8 +353,9 @@ func _run() -> void:
 	primer.debug_shown_ids.clear()
 	primer.notice_rolled_ability({"dmg": 6, "chain": 2, "blastAll": true, "vsFrozenBonus": 5}, "hero", "h1")
 	await primer.flush_at_group_boundary()
+	await _quiet_turns(primer, 2)
 	_check(primer.debug_shown_ids == ["primer_icon_aoe", "primer_freeze", "primer_chain"],
-		"three icons from one roll drain in pip order (saw %s)" % str(primer.debug_shown_ids))
+		"three icons from one roll show one per turn in pip order (saw %s)" % str(primer.debug_shown_ids))
 
 	# Rail order: hero sightings teach before enemy sightings raised the same
 	# turn (battle_scene reports hero states first — the written rule).
@@ -312,6 +366,7 @@ func _run() -> void:
 	primer.notice_rolled_ability({"dmg": 5, "mark": true}, "hero", "h1")
 	primer.notice_rolled_ability({"jam": true}, "enemy", "e1")
 	await primer.flush_at_group_boundary()
+	await _quiet_turns(primer, 1)
 	_check(primer.debug_shown_ids == ["primer_mark", "primer_jam"],
 		"hero rail teaches before enemy rail (saw %s)" % str(primer.debug_shown_ids))
 
@@ -327,8 +382,9 @@ func _run() -> void:
 	primer.notice_rolled_ability({"shield": 4}, "enemy", "e1")   # self marker
 	primer.notice_rolled_ability({"shield": 5}, "enemy", "e2")   # self marker again
 	await primer.flush_at_group_boundary()
+	await _quiet_turns(primer, 1)
 	_check(primer.debug_shown_ids == ["primer_icon_self"],
-		"same icon from two units teaches once per drain (saw %s)" % str(primer.debug_shown_ids))
+		"same icon from two units teaches once (saw %s)" % str(primer.debug_shown_ids))
 
 	# ── 8) Glyph identity tags (Phase 1): every icon TextureRect carries its
 	# pip_icon_key meta, so the primer spotlights ONE glyph, never the row.
@@ -532,10 +588,16 @@ func _run() -> void:
 
 	# ── Failure safety: unresolvable target skips silently, NOT marked seen ─────
 	primer._target_resolvers["unit_card"] = func(_context: Dictionary) -> Rect2: return Rect2()
+	sm.call("dev_reset_primers")
+	primer._fired_params.clear()
 	primer.on_turn_started()
+	primer.debug_shown_ids.clear()
 	primer.notice_event({"type": "taunt", "side": "hero", "target_id": "h1"})
+	primer.notice_event({"type": "freeze", "side": "enemy", "target_id": "e1"})
 	await primer.flush_at_group_boundary()
 	_check(not sm.call("is_primer_seen", "primer_taunt"), "failed target resolution: skipped silently, not marked seen")
+	_check(primer.debug_shown_ids == ["primer_freeze"],
+		"a failed show hands the turn's slot to the next candidate (saw %s)" % str(primer.debug_shown_ids))
 
 	# ── Suppression: headless default (seam off) queues nothing ─────────────────
 	primer.debug_force_active = false

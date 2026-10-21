@@ -63,7 +63,7 @@ Called once per run end via `GameState.finish_run(result)` (`GameState.gd:893-89
 
 - `home_screen.gd`: all five ops stay browsable; locked ops show their own dark boss art, real name, and `LOCKED`, while hiding their blurb and keeping DEPLOY disabled. All eight hero cards stay in the roster; locked cards use each hero's own dark silhouette, real name, and `LOCKED`, and cannot be selected or inspected. NEW badge remains until first squad add.
 - `run_end_screen.gd`: SERVICE RECORD section renders lifetime stats (`_service_record_text`, `:55-67`); UNLOCKED panel from `check_new_unlocks`.
-- `keyword_primer.gd`: `is_primer_seen` gates queuing (`:170`); max one primer/turn; suppressed in tutorial/headless/auto battle; failure paths never mark seen.
+- `keyword_primer.gd`: `is_primer_seen` gates queuing (`:170`); max one primer/turn, the rest deferred to later turns (G-97); suppressed in tutorial/headless/auto battle; failure paths never mark seen.
 
 ## Why it works that way
 

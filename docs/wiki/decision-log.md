@@ -490,7 +490,9 @@ DECISIONS_RESOLVED #1 so no future agent resurrects a dead model.
 - **Date:** `d14da47`.
 - **Decision:** one-shot micro-tutorials on first sighting of a mechanic; data-driven
   registry (`primers.data.json`), observer-only (never mutates combat), one per turn
-  max, one sentence ≤ ~12 words / 90-char schema cap.
+  max, one sentence ≤ ~12 words / 90-char schema cap. (The cap dropped the
+  losers; the 2026-07-12 full drain replaced it; G-97, 2026-10-20, restored one
+  per turn with the losers deferred, not dropped.)
 - **Reason:** teach twelve keywords without a wall of text; determinism fence
   requires observers, not participants.
 

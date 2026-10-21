@@ -144,9 +144,6 @@ var _enc_name_label: Label
 var _enc_level_row: HBoxContainer
 var _enc_level_label: Label
 var _enc_status_label: Label
-var _enc_tags_slot: Control
-var _enc_threats_label: Label
-var _enc_unlock_label: Label
 var _threat_pips: Array[ColorRect] = []
 var _dot_row: HBoxContainer
 var _dot_nodes: Array[ColorRect] = []
@@ -379,8 +376,8 @@ func _build_mission_row() -> Control:
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(_make_nav_button(-1))
 
-	# Long-press anywhere on the card opens the encounter InspectPopup (the
-	# flavor paragraph lives there and in Help, not on the screen).
+	# Long-press anywhere on the card opens the mission pop-up: objective,
+	# site, situation and threats (G-97: none of them are on the card).
 	_enc_card = PanelContainer.new()
 	_enc_card.mouse_filter = Control.MOUSE_FILTER_STOP
 	_enc_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -467,28 +464,9 @@ func _build_mission_row() -> Control:
 	_enc_status_label = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.CHROME_DIM)
 	_enc_status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_enc_level_row.add_child(_enc_status_label)
-
-	# The threats slot: the THREATS, or a locked operation's unlock condition
-	# (both compact secondary text, m3x6 in COMPACT_INK), in one fixed-height
-	# slot. Both wrap at
-	# words; the slot reserves the most lines any operation needs at its real
-	# width (_reserve_tags_slot), so switching missions moves nothing.
-	_enc_tags_slot = Control.new()
-	_enc_tags_slot.custom_minimum_size.y = _small_row_height()
-	_enc_tags_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_enc_tags_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	text_col.add_child(_enc_tags_slot)
-	_enc_threats_label = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.COMPACT_INK)
-	_enc_threats_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_enc_threats_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_enc_threats_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_enc_tags_slot.add_child(_enc_threats_label)
-	_enc_unlock_label = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.COMPACT_INK)
-	_enc_unlock_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_enc_unlock_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_enc_unlock_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_enc_tags_slot.add_child(_enc_unlock_label)
-	_enc_tags_slot.resized.connect(_reserve_tags_slot)
+	# The threats line and its reserved slot are gone (G-97, Kev 2026-10-20):
+	# threats, and a locked operation's unlock condition, are in the
+	# long-press pop-up.
 
 	row.add_child(_make_nav_button(1))
 	return row
@@ -568,7 +546,7 @@ func _refresh_encounter() -> void:
 	PixelUI.set_portrait(_enc_portrait, boss_tex)
 	_enc_portrait_placeholder.visible = boss_tex == null
 	# Locked operations stay browsable: their own boss art is a dark silhouette
-	# and the real operation name remains visible; the threats and DEPLOY wait.
+	# and the real operation name remains visible; DEPLOY waits.
 	_enc_portrait.modulate = PixelUI.SILHOUETTE if _current_op_locked else Color.WHITE
 	_enc_lock_overlay.visible = _current_op_locked
 
@@ -580,19 +558,13 @@ func _refresh_encounter() -> void:
 	_enc_status_label.text = status if status == "CLEARED" or status == "LOCKED" else ""
 	_enc_status_label.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT if status == "CLEARED" else PixelUI.CHROME_DIM)
 
-	_enc_unlock_label.visible = _current_op_locked
-	_enc_threats_label.visible = not _current_op_locked
-	_enc_unlock_label.text = unlock_condition_text(_selected_operation_id) if _current_op_locked else ""
-	_enc_threats_label.text = "" if _current_op_locked else THREAT_SEPARATOR.join(threat_tags(_selected_operation_id))
-
 	for i in _dot_nodes.size():
 		_dot_nodes[i].color = accent if i == _operation_index else PixelUI.DT_PROTO_EMPTY_BORDER
 	_refresh_deploy()
 
 
-## The operation's THREATS (existing briefing data "SHIELDS · JAM · REBUILD", shown
-## "SHIELDS / JAM / REBUILD"),
-## one entry each.
+## The operation's THREATS (existing briefing data "SHIELDS · JAM · REBUILD"),
+## one entry each. The mission pop-up joins them with THREAT_SEPARATOR.
 static func threat_tags(op_id: String) -> Array[String]:
 	var tags: Array[String] = []
 	var threats: String = str(OPERATION_BRIEFING_OVERLAY.operation_copy(op_id).get("threats", ""))
@@ -626,17 +598,26 @@ func _operation_progress_text(op_id: String) -> String:
 	return ""
 
 
-# Long-press on the card -> encounter InspectPopup (name, threat, and the full
-# flavor paragraph). Locked operations reveal nothing.
+# Long-press on the card -> the mission pop-up (G-97): the operation name, its
+# objective, SITE, SITUATION and THREATS. A locked operation shows its name and
+# unlock condition only.
 func _on_banner_long_pressed(_global_position: Vector2) -> void:
-	if _current_op_locked or _operation_ids.is_empty():
+	if _operation_ids.is_empty():
 		return
-	var op: OperationData = DataManager.get_operation(_selected_operation_id) as OperationData
-	if op == null:
+	var payload: Dictionary = mission_payload(_selected_operation_id, _current_op_locked)
+	if payload.is_empty():
 		return
 	AudioManager.play_click()
-	var payload: Dictionary = InspectResolver.resolve_encounter(op, _threat_level(_operation_index), THREAT_PIP_COUNT)
 	InspectPopup.open(self, payload, _enc_card.get_global_rect(), _enc_card.get_instance_id())
+
+
+static func mission_payload(op_id: String, locked: bool) -> Dictionary:
+	var op: OperationData = DataManager.get_operation(op_id) as OperationData
+	if op == null:
+		return {}
+	if locked:
+		return InspectResolver.resolve_locked_mission(op, unlock_condition_text(op_id))
+	return InspectResolver.resolve_mission(op, THREAT_SEPARATOR.join(threat_tags(op_id)))
 
 
 # Threat level (1..THREAT_PIP_COUNT) derived from encounter order.
@@ -1013,21 +994,6 @@ func _build_info_region() -> Control:
 	return region
 
 
-# The tallest the threats slot needs: every operation's threats (m3x6) and
-# unlock condition, wrapped at the slot's width.
-func _reserve_tags_slot() -> void:
-	var width: float = _enc_tags_slot.size.x
-	if width < 1.0:
-		return
-	var height: float = _small_row_height()
-	for op_id: String in _operation_ids:
-		height = maxf(height, PixelUI.wrapped_text_height(_enc_threats_label, THREAT_SEPARATOR.join(threat_tags(op_id)), width))
-		height = maxf(height, PixelUI.wrapped_text_height(_enc_unlock_label, unlock_condition_text(op_id), width))
-	if not is_equal_approx(_enc_tags_slot.custom_minimum_size.y, height):
-		_enc_tags_slot.custom_minimum_size.y = height
-		_distribute_gaps.call_deferred()
-
-
 # The info bar's text width at the region's width.
 func _info_text_width() -> float:
 	return _info_region.size.x - 2.0 * float(PANEL_BORDER + INFO_PAD)
@@ -1394,21 +1360,53 @@ func _refresh_deploy() -> void:
 	var op_unlocked := _selected_operation_id != "" and SaveManager.is_operation_unlocked(_selected_operation_id)
 	var units_ready := _selected_unit_ids.size() == MAX_SELECTED_UNITS
 	var ready := units_ready and op_unlocked
+	_deploy_picking = not units_ready
+	_deploy_pulse_step = -1
+	# 3 / 3: the counter turns the friendly blue (G-97).
+	if _counter_label != null:
+		_counter_label.add_theme_color_override("font_color", PixelUI.PLAYER_ACCENT_LIGHT if units_ready else PixelUI.CHROME)
 	if ready:
 		_deploy_button.text = "DEPLOY SQUAD"
 		PixelUI.style_ui_primary_button(_deploy_button, DEPLOY_FONT)
 		_deploy_button.disabled = false
 		_deploy_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		return
+	_deploy_button.disabled = true
+	_deploy_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _deploy_picking:
+		# Picking (G-97): "PICK N MORE" in the normal button text on the
+		# primary's notched outline, which pulses slowly (_process). Still inert.
+		_deploy_button.text = "PICK %d MORE" % (MAX_SELECTED_UNITS - _selected_unit_ids.size())
+		_apply_deploy_pulse()
 	else:
-		# The disabled button states its own gate: picks still missing, or a
-		# locked operation (which blocks deploy even with a full squad).
-		if units_ready and not op_unlocked:
-			_deploy_button.text = "OPERATION LOCKED"
-		else:
-			_deploy_button.text = "PICK %d MORE" % (MAX_SELECTED_UNITS - _selected_unit_ids.size())
+		# A full squad on a locked operation: the dim gate.
+		_deploy_button.text = "OPERATION LOCKED"
 		PixelUI.style_locked_button(_deploy_button, DEPLOY_GATE_FONT)
-		_deploy_button.disabled = true
-		_deploy_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+## The picking button's outline pulse: one slow, subtle breath every
+## DEPLOY_PULSE_PERIOD seconds. Reduced motion / No animations hold it at the
+## middle of its range, still.
+const DEPLOY_PULSE_PERIOD := 2.4
+var _deploy_picking := false
+var _deploy_pulse_step := -1
+
+
+func _process(_delta: float) -> void:
+	if _deploy_picking:
+		_apply_deploy_pulse()
+
+
+func _apply_deploy_pulse() -> void:
+	var pulse := 0.5
+	if not PixelUI.reduced_motion_enabled():
+		var phase: float = fmod(float(Time.get_ticks_msec()) / 1000.0, DEPLOY_PULSE_PERIOD) / DEPLOY_PULSE_PERIOD
+		pulse = 0.5 - 0.5 * cos(phase * TAU)
+	var step: int = PixelUI.pending_pulse_step(pulse)
+	if step == _deploy_pulse_step:
+		return
+	_deploy_pulse_step = step
+	PixelUI.style_ui_pending_button(_deploy_button, DEPLOY_GATE_FONT, pulse)
 
 
 # Named _on_begin_run_pressed (not _on_deploy_pressed) to keep the screen's

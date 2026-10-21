@@ -13,14 +13,19 @@
 # - Triggers queue candidates; display happens at safe moments only: between
 #   battle-feedback action groups (flush_at_group_boundary, awaited by
 #   BattleFeedback) or during an idle player phase (flush_player_phase).
-# - FULL DRAIN (Kev 2026-07-12): every unseen icon raised in a turn is taught
-#   IN that turn — the queue drains completely, one modal at a time, tapping
-#   through each. No per-turn cap, no deferral. (The old one-per-turn throttle
-#   didn't defer the losers — `_pending.clear()` DROPPED them and hoped the
-#   icons recurred naturally; an icon that never reappeared was never taught.)
-# - Order is spatial, not priority: enqueue order == hero rail left→right,
-#   then enemy rail, pips left→right within a readout. The JSON `priority`
-#   field is inert (retained for schema compatibility only).
+# - ONE PER TURN, DEFERRED (Kev 2026-10-20, G-97; supersedes the 2026-07-12
+#   full drain): at most one primer displays per turn. Every other candidate
+#   STAYS QUEUED for later turns (never dropped: the first cap, 2026-07-06,
+#   cleared the queue and lost them), and each is still one-time.
+# - Pick order when several wait: an icon on an ability the player's own unit
+#   is about to use (a hero roll sighting this turn), then one hitting the
+#   player (an enemy roll sighting, or an event landing on a hero), then other
+#   sightings from this turn, then lessons deferred from earlier turns. Ties
+#   keep enqueue order, which is spatial (hero rail left to right, then enemy
+#   rail, pips left to right). The JSON `priority` field stays inert.
+# - A deferred lesson whose icon is no longer on its unit's plate anchors to
+#   that unit's card (the coachmark still shows the glyph). No anchor at all:
+#   it stays queued, unmarked, and the next candidate takes the turn's slot.
 # - Tutorial suppression: mandatory tutorial encounters never display or mark
 #   primers; all first-sighting lessons remain eligible for normal play.
 # - FAILURE SAFETY: a resolver returning nothing, a missing node, or a dead
@@ -92,7 +97,10 @@ var _debug_glyph_hit: Node = null
 
 var _scene: Node = null
 var _spot = null  # SpotlightLayer
-var _pending: Array = []          # queued candidates: [{primer, context}]
+var _pending: Array = []          # queued candidates: [{primer, context, key, turn, seq}]
+var _turn: int = 0                # bumped by on_turn_started
+var _shown_turn: int = -1         # the turn a primer last displayed (one per turn)
+var _seq: int = 0                 # enqueue counter (stable tie-break)
 var _fired_params: Dictionary = {}  # "type/param" seen this battle (cheap dedupe)
 var _by_trigger: Dictionary = {}  # "type/param" -> primer entry (built once)
 
@@ -152,9 +160,9 @@ func _suppressed() -> bool:
 # ── Trigger intake (queue only — display happens at flush points) ─────────────
 
 func on_turn_started() -> void:
-	# Defensive only: flushes drain the queue completely within the turn, so
-	# this should always find it empty already.
-	_pending.clear()
+	# A new turn reopens the one-per-turn slot. The queue is KEPT: candidates a
+	# previous turn could not show are deferred, not dropped.
+	_turn += 1
 
 
 # Combat feedback events (called by BattleFeedback per effect event).
@@ -249,7 +257,7 @@ const SCOPE_MARKER_ICONS := {"all": "aoe", "self": "self", "lowest": "target_low
 # a primer for every not-yet-seen NON-EXEMPT icon, anchored to the rolling
 # unit's pip readout. Kev 2026-07-10: primes BEFORE the player commits; the
 # event-stream triggers stay as the fallback for effects that never surface on
-# a readout. The one-per-turn rule still applies at flush.
+# a readout. The one-per-turn cap applies at flush.
 func notice_rolled_ability(raw: Dictionary, side: String, unit_id: String) -> void:
 	if raw.is_empty():
 		return
@@ -316,7 +324,14 @@ func _queue(trigger_type: String, param: String, context: Dictionary) -> void:
 		return
 	context = context.duplicate()
 	context["param"] = param
-	_pending.append({"primer": entry, "context": context, "key": key})
+	# One queue entry per lesson: a re-sighting replaces the older entry, so the
+	# freshest anchor and this turn's relevance win (and a lesson raised by two
+	# units in one moment teaches once).
+	for i in range(_pending.size() - 1, -1, -1):
+		if str((_pending[i] as Dictionary).get("key", "")) == key:
+			_pending.remove_at(i)
+	_seq += 1
+	_pending.append({"primer": entry, "context": context, "key": key, "turn": _turn, "seq": _seq})
 
 
 # ── Flush points ──────────────────────────────────────────────────────────────
@@ -339,29 +354,49 @@ func _flush() -> void:
 		# Suppressed contexts (tutorial/headless/auto/opt-out): not marked seen.
 		_pending.clear()
 		return
-	# FULL DRAIN (Kev 2026-07-12): every candidate shows this turn, one modal at
-	# a time, in ENQUEUE order — which is spatial: hero rail left→right, then
-	# enemy rail, pips left→right within a readout. No priority sort (it only
-	# ever existed to pick the single winner under the old cap, and would
-	# scramble the spatial order); no cap; no deferral. A failed show still
-	# skips silently without being marked seen (failure-safety contract).
+	# ONE PER TURN (Kev 2026-10-20): this turn already taught something; the
+	# rest wait for a later turn.
+	if _shown_turn == _turn:
+		return
 	var candidates: Array = _pending.duplicate()
-	_pending.clear()
+	candidates.sort_custom(_more_relevant)
 	for candidate_variant in candidates:
 		var candidate: Dictionary = candidate_variant
-		# Re-check per candidate: the tutorial showcase cap can trip MID-drain
-		# (the one shown primer suppresses the rest of this batch — dropped
-		# unmarked, same semantics as any suppressed context).
-		if _suppressed():
-			return
-		# In-flight dedupe: two units can queue the SAME key in one moment
-		# (e.g. two self-marked pips on one turn) — both enter _pending before
-		# the first shows, and _queue's seen-check ran too early to stop the
-		# second. Without this, one drain teaches the same lesson twice in a
-		# row (found by the 2026-07-12 DoD recapture).
 		if _fired_params.has(str(candidate.get("key", ""))):
+			_pending.erase(candidate)
 			continue
-		await _try_show(candidate)
+		(candidate["context"] as Dictionary)["deferred"] = int(candidate.get("turn", -1)) != _turn
+		# A failed show (no anchor right now) leaves the candidate queued and
+		# unmarked; the next one in relevance order gets the turn's slot.
+		if await _try_show(candidate):
+			_pending.erase(candidate)
+			_shown_turn = _turn
+			return
+
+
+# Relevance tier (lower shows first). See the BEHAVIOR CONTRACT above.
+# 0 = the player's own unit is about to use it, 1 = it hits the player,
+# 2 = other sightings this turn; a lesson deferred from an earlier turn ranks
+# after all of those (3 + its own tier).
+func relevance_tier(candidate: Dictionary) -> int:
+	var context: Dictionary = candidate.get("context", {})
+	var side: String = str(context.get("side", ""))
+	var tier: int = 2
+	if str(context.get("target_override", "")) == "ability_pip":
+		tier = 0 if side == "hero" else 1
+	elif side == "hero":
+		tier = 1
+	if int(candidate.get("turn", -1)) != _turn:
+		tier += 3
+	return tier
+
+
+func _more_relevant(a: Dictionary, b: Dictionary) -> bool:
+	var ta: int = relevance_tier(a)
+	var tb: int = relevance_tier(b)
+	if ta != tb:
+		return ta < tb
+	return int(a.get("seq", 0)) < int(b.get("seq", 0))
 
 
 # The guarded fire path: every failure skips silently (returns false, primer
@@ -508,6 +543,12 @@ func _resolve_ability_pip_rect(context: Dictionary) -> Rect2:
 				var glyph: Rect2 = _find_glyph_rect(plate, icon)
 				if glyph.size != Vector2.ZERO:
 					return _trace(glyph, "plate_glyph", context, heal_ran, plate, _debug_glyph_hit)
+		if bool(context.get("deferred", false)):
+			# Deferred lesson (G-97): the unit rolled something else since,
+			# so its glyph is gone. Ring the card; the coachmark shows the
+			# glyph. Not a fallback bug, so no warning.
+			return _trace(_control_rect(view.get("card", null)), "deferred_card", context, heal_ran, null, null)
+		if plate != null:
 			var plate_rect: Rect2 = _control_rect(plate)
 			if plate_rect.size != Vector2.ZERO:
 				if icon != "":

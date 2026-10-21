@@ -14,7 +14,12 @@
 #   title),
 #   evolution, evolution_all (VIEW ALL open on both cards), unlock (NEW RELICS /
 #   NEW ITEMS: unlock bucket 16, Deathburst Relay's), reward, run_end (defeat),
-#   run_end_victory, battle (rolled when `roll` is true; needs a renderer).
+#   run_end_victory, battle (rolled when `roll` is true; needs a renderer),
+#   mission (the mission card's long-press pop-up, OPERATION 01),
+#   mission_<operation id> (any operation's unlocked pop-up, e.g.
+#   mission_stellarMenagerie), mission_locked (a locked mission's pop-up),
+#   squad_picks_0 / squad_picks_2 / squad_picks_3 (squad select with that many
+#   units picked: the PICK N MORE guidance and the armed DEPLOY).
 # Autoloads and UI classes resolve at RUNTIME (TRUTH's -s convention).
 extends RefCounted
 
@@ -84,6 +89,18 @@ static func open(tree: SceneTree, screen: String, roll: bool = false) -> Node:
 		"squad_locked":
 			# A fresh profile has only the first mission open: the next is locked.
 			scene.call("_on_nav_pressed", 1)
+		"squad_picks_2", "squad_picks_3":
+			for unit_id: String in ["combat", "engineer", "medic"].slice(0, int(screen.right(1))):
+				scene.call("_on_tile_tapped", unit_id)
+		"mission":
+			scene.call("_on_banner_long_pressed", Vector2.ZERO)
+		"mission_locked":
+			scene.call("_on_nav_pressed", 1)
+			scene.call("_on_banner_long_pressed", Vector2.ZERO)
+		_ when screen.begins_with("mission_"):
+			# Any operation's UNLOCKED pop-up, whatever the profile has open.
+			var payload: Dictionary = scene.call("mission_payload", screen.trim_prefix("mission_"), false)
+			load("res://scripts/ui/inspect_popup.gd").open(scene, payload)
 		_ when screen.begins_with("briefing"):
 			var op_id: String = "facility" if screen == "briefing" else ("stellarMenagerie" if screen == "briefing_mantle" else screen.trim_prefix("briefing_"))
 			var overlay: Control = load("res://scripts/ui/operation_briefing_overlay.gd").new()

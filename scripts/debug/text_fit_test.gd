@@ -10,6 +10,10 @@
 #      (AUTOWRAP_WORD), and every word fits the label's width (a longer word
 #      would run out of it). The source is checked too: no AUTOWRAP_WORD_SMART
 #      or AUTOWRAP_ARBITRARY (or their .tscn values 3 / 1) outside scripts/debug.
+# The 20 ability's name callout (G-97): the longest ultimate name in the game
+# (heroes, their evolutions, enemies) is spawned over the leftmost and
+# rightmost hero and enemy card. At its slam peak it stays fully on screen, it
+# draws at most two lines, and it breaks only between words.
 # Squad select's unit info is checked for every unit: the description takes
 # at most two lines. The unlock grid reports any item or relic name that needs
 # more than two lines at its cell's width (a report, not a failure).
@@ -20,12 +24,16 @@ extends SceneTree
 const CANVASES := [Vector2i(640, 960), Vector2i(1080, 2400)]
 const SCREENS := ["squad", "squad_info", "squad_locked", "squad_cleared", "briefing", "briefing_mantle", "inspect", "help_units",
 	"help_units_evo", "help_settings", "evolution", "evolution_all", "unlock", "reward", "run_end",
-	"run_end_victory", "battle", "battle_trait"]
+	"run_end_victory", "battle", "battle_trait", "mission", "mission_locked", "mission_hive", "mission_veil",
+	"mission_voidCirclet", "mission_stellarMenagerie", "squad_picks_0", "squad_picks_3"]
 ## The pop-up screens check only the pop-up's text (the screen under it is
 ## checked on its own).
 const POPUP_SCRIPT := {"inspect": "inspect_popup.gd", "help_units_evo": "inspect_popup.gd", "help_units": "help_menu.gd",
 	"briefing_mantle": "operation_briefing_overlay.gd",
-	"help_settings": "help_menu.gd", "briefing": "operation_briefing_overlay.gd"}
+	"help_settings": "help_menu.gd", "briefing": "operation_briefing_overlay.gd",
+	"mission": "inspect_popup.gd", "mission_locked": "inspect_popup.gd", "mission_hive": "inspect_popup.gd",
+	"mission_veil": "inspect_popup.gd", "mission_voidCirclet": "inspect_popup.gd",
+	"mission_stellarMenagerie": "inspect_popup.gd"}
 const ELLIPSIS := [TextServer.OVERRUN_TRIM_ELLIPSIS, TextServer.OVERRUN_TRIM_WORD_ELLIPSIS]
 
 var failures: Array[String] = []
@@ -64,12 +72,98 @@ func _run() -> void:
 				await _check_unit_info(scene, tag)
 			if screen == "unlock":
 				_report_unlock_names(scene, tag)
+			if screen == "battle":
+				_check_ultimate_callouts(scene, tag)
 	change_scene_to_file("res://scenes/ui/MainMenu.tscn")
 	await process_frame
 	print("[TEXT_FIT] %s: %d checks, %d failures" % ["PASS" if failures.is_empty() else "FAIL", checks, failures.size()])
 	for f in failures:
 		print("   - ", f)
 	quit(0 if failures.is_empty() else 1)
+
+
+# Every 20-band ability name: heroes, their evolutions and enemies.
+func _ultimate_names() -> Array[String]:
+	var dm: Node = root.get_node("/root/DataManager")
+	var names: Array[String] = []
+	var range_sets: Array = []
+	for unit: Resource in (dm.get("units") as Dictionary).values():
+		range_sets.append(unit.get("dice_ranges"))
+		for path: Dictionary in unit.get("evolution_paths"):
+			range_sets.append(path.get("abilities", []))
+	for enemy: Resource in (dm.get("enemies") as Dictionary).values():
+		range_sets.append(enemy.get("dice_ranges"))
+	for ranges: Array in range_sets:
+		for entry: Dictionary in ranges:
+			var ability_name: String = str(entry.get("ability_name", ""))
+			if int(entry.get("max", 0)) >= 20 and ability_name != "" and not names.has(ability_name):
+				names.append(ability_name)
+	return names
+
+
+func _check_ultimate_callouts(scene: Node, tag: String) -> void:
+	var feedback: Node = scene.get("_feedback")
+	check(feedback != null, "%s: battle feedback exists for the callout check" % tag)
+	if feedback == null:
+		return
+	var names: Array[String] = _ultimate_names()
+	check(names.size() > 10, "%s: found the ultimate names (%d)" % [tag, names.size()])
+	# The longest as drawn: measure each with a throwaway callout.
+	var longest := ""
+	var longest_w := -1.0
+	var probe_card: Control = ((scene.get("hero_card_views") as Array)[0] as Dictionary)["card"]
+	for ability_name: String in names:
+		var probe: Label = feedback.call("_slam_ability_name", probe_card, ability_name)
+		var w: float = probe.get_theme_font("font").get_string_size(ability_name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, probe.get_theme_font_size("font_size")).x
+		probe.free()
+		if w > longest_w:
+			longest_w = w
+			longest = ability_name
+	# No shipped name needs the two-line wrap at these canvases; force it with
+	# a narrow max width so the split itself is checked.
+	var probe2: Label = feedback.call("_slam_ability_name", probe_card, longest)
+	var narrow: String = feedback.call("callout_lines", longest.to_upper(), probe2.get_theme_font("font"),
+		probe2.get_theme_font_size("font_size"), longest_w * 0.6)
+	probe2.free()
+	var narrow_lines: PackedStringArray = narrow.split("\n")
+	check(narrow_lines.size() == 2 and " ".join(narrow_lines) == longest.to_upper(),
+		"%s: a too-wide callout wraps to two lines at a word boundary ('%s')" % [tag, narrow.replace("\n", " | ")])
+	var screen: Rect2 = (scene.get_viewport() as Viewport).get_visible_rect()
+	for side: String in ["hero", "enemy"]:
+		var cards: Array[Control] = []
+		for view: Dictionary in scene.get("%s_card_views" % side):
+			var card: Control = view.get("card")
+			if card != null and card.is_visible_in_tree():
+				cards.append(card)
+		check(cards.size() >= 2, "%s: %s rail has cards for the callout check" % [tag, side])
+		if cards.size() < 2:
+			continue
+		cards.sort_custom(func(a: Control, b: Control) -> bool: return a.get_global_rect().position.x < b.get_global_rect().position.x)
+		for edge: String in ["leftmost", "rightmost"]:
+			var card: Control = cards[0] if edge == "leftmost" else cards[cards.size() - 1]
+			var label: Label = feedback.call("_slam_ability_name", card, longest)
+			var where := "%s: '%s' callout over the %s %s" % [tag, longest, edge, side]
+			check(label != null, where + " spawns")
+			if label == null:
+				continue
+			# It spawns at the start of its slam (scale 0.2): measure it at rest
+			# and scale the rest rect by the peak about its centre.
+			label.scale = Vector2.ONE
+			var rect: Rect2 = label.get_global_rect()
+			var peak: float = float(feedback.get("SLAM_PEAK"))
+			var peak_rect := Rect2(rect.get_center() - rect.size * peak * 0.5, rect.size * peak)
+			check(screen.encloses(peak_rect),
+				"%s stays on screen at its slam peak (%s in %s)" % [where, str(peak_rect), str(screen)])
+			var lines: PackedStringArray = label.text.split("\n")
+			check(lines.size() <= 2 and label.get_line_count() <= 2,
+				"%s draws at most two lines (%d)" % [where, label.get_line_count()])
+			check(" ".join(lines) == longest.to_upper(), "%s breaks only between words ('%s')" % [where, label.text.replace("\n", " | ")])
+			var font: Font = label.get_theme_font("font")
+			for line: String in lines:
+				var lw: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size("font_size")).x
+				check(lw <= rect.size.x + 0.5, "%s line '%s' fits its label (%.0f <= %.0f)" % [where, line, lw, rect.size.x])
+			print("[TEXT_FIT] %s: %d line(s) at x %.0f..%.0f (peak %.0f..%.0f) of %.0f" % [where, lines.size(), rect.position.x, rect.end.x, peak_rect.position.x, peak_rect.end.x, screen.size.x])
+			label.free()
 
 
 func _popup(screen: String) -> Node:

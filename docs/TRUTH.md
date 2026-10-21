@@ -1,5 +1,19 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Pre-Reddit polish (Kev 2026-10-20, DECISIONS_RESOLVED G-97; supersedes the
+entries below where they differ):** keyword primers show **at most one per
+turn**; the rest wait for later turns, still one-time, the most relevant first
+(the player's own unit's ability, then one hitting the player, then the rest,
+then lessons deferred from earlier turns). The squad-select mission card has
+**no threats line and no reserved slot**: long-press opens the mission pop-up
+(name, OBJECTIVE, SITE, SITUATION, THREATS; a locked mission shows its name and
+unlock condition only). Below 3 picks the bottom button reads "PICK N MORE" in
+the normal button text on the primary's notched outline, pulsing slowly (still
+under Reduced motion), and cannot be pressed; at 3 / 3 it is DEPLOY SQUAD and
+the counter turns `PLAYER_ACCENT_LIGHT`. The 20 ability name callout is clamped
+on screen at its slam peak and wraps to at most two lines at a word. Battle
+keeps no background image (G-76); the B/C background variants were a trial.
+
 **Crisp text (Kev 2026-10-19 / 2026-10-20, DECISIONS_RESOLVED G-96; supersedes
 the entries below where they differ, the 48 px floor, G-78 / G-86's pixel-exact
 rows and the Help tab names included):** three text tiers and no other sizes or
@@ -8,7 +22,8 @@ letter spacing** through a FontVariation (`PixelUI.TYPE_COMPACT` /
 `apply_compact`: compact secondary text), **m5x7 at 40** (tiny metadata: the
 version stamp, Protocol cost badges, the effect-pip duration superscript, the
 font credit). The compact face draws unit descriptions and HOLD ANY UNIT FOR
-FULL INTEL, the mission card's threats line, "Clear X to unlock" and CLEARED,
+FULL INTEL, CLEARED (the mission card's threats line and "Clear X to unlock"
+left the card in G-97),
 the evolution card's MAX HP line, reward rarity lines, unlock-panel item and
 relic names and battle card trait titles: m3x6 is for tight in-game UI, and
 reading screens (Help, the operation briefing) use m5x7, so Help PREFS
@@ -2577,8 +2592,8 @@ inspection remains available. Footer geometry stays compact and icon-only.
 No evolution values or enemy stats changed. Baseline is not repinned.
 
 **Keyword primers** (`docs/PRIMERS.md`): first sightings pause at safe moments,
-one explanation at a time. Existing full-drain behavior and normal-play advanced
-Protocol primer remain. Tutorial is a separate controller using `SpotlightLayer`.
+one explanation at a time, at most one per turn (G-97: the rest are deferred
+to later turns, not dropped). The normal-play advanced Protocol primer remains. Tutorial is a separate controller using `SpotlightLayer`.
 Tests: `tutorial_smoke_test.gd` / `training_flow_test.gd`; visual harness:
 `training_capture.gd`. Implementation evidence: [tutorial pass](TUTORIAL_IMPLEMENTATION_2026-09-08.md).
 

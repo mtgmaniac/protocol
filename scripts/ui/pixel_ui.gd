@@ -3208,6 +3208,30 @@ static func style_ui_secondary_button(button: Button, font_size: int = 44) -> vo
 	button.add_theme_stylebox_override("disabled", _ui_disabled_style())
 
 
+## A screen's primary action that is not ready yet (squad select's "PICK N
+## MORE", G-97): the primary's notched outline on the normal button fill (never
+## a solid fill), readable UI_TEXT, inert in every state. `pulse` (0..1) moves
+## the edge from dim toward the PLAYER edge; the caller drives the slow pulse
+## and holds it still under Reduced motion. Quantized to UI_PENDING_STEPS so the
+## nine-patch cache stays small.
+const UI_PENDING_STEPS := 8
+const UI_PENDING_EDGE_DARKEN := Vector2(0.62, 0.22)  # edge darkening at pulse 0 and 1
+static func pending_pulse_step(pulse: float) -> int:
+	return int(roundf(clampf(pulse, 0.0, 1.0) * UI_PENDING_STEPS))
+
+
+static func style_ui_pending_button(button: Button, font_size: int, pulse: float) -> void:
+	if button == null:
+		return
+	button.text = button.text.to_upper()
+	_ui_button_fonts(button, font_size, UI_TEXT, UI_TEXT, UI_TEXT, UI_TEXT)
+	var t: float = float(pending_pulse_step(pulse)) / float(UI_PENDING_STEPS)
+	var edge: Color = PLAYER_ACCENT.darkened(lerpf(UI_PENDING_EDGE_DARKEN.x, UI_PENDING_EDGE_DARKEN.y, t))
+	var style: StyleBoxTexture = ui_primary_style(UI_BUTTON, edge)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		button.add_theme_stylebox_override(state, style)
+
+
 ## Keyboard focus: a PLAYER_ACCENT outline just outside the button, drawn over
 ## its normal style. The button's own shape (and a primary's notch) never moves.
 static func _ui_focus_style() -> StyleBoxFlat:

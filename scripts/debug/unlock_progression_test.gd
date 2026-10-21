@@ -239,10 +239,9 @@ func _test_first_profile_progression_and_presentation() -> void:
 		var op: OperationData = _data_manager().call("get_operation", op_id) as OperationData
 		var name_label: Label = home.get("_enc_name_label") as Label
 		var lock_label: Label = home.get("_enc_status_label") as Label
-		var threats_label: Control = home.get("_enc_threats_label") as Control
 		var deploy: Button = home.get("_deploy_button") as Button
 		_check(bool(home.get("_current_op_locked")) and name_label.text == op.display_name.to_upper() and lock_label.text == "LOCKED", "%s remains visibly locked with its real name" % op_id)
-		_check(not threats_label.visible and deploy.disabled, "%s locked card hides its threats and cannot deploy" % op_id)
+		_check(deploy.disabled, "%s locked card cannot deploy" % op_id)
 
 	# UI batch 2026-09-27, B3 (supersedes G-16's transparent locked dossier):
 	# fixed slots. Switching between ANY encounters, locked or not, moves
@@ -411,7 +410,7 @@ func _save_manager() -> Node:
 
 func _encounter_rects(home: Node, tiles: Dictionary) -> Dictionary:
 	var rects: Dictionary = {}
-	for key in ["_enc_card", "_enc_thumb_frame", "_enc_name_label", "_enc_level_row", "_enc_tags_slot", "_dot_row", "_info_bar", "_info_strip", "_deploy_button"]:
+	for key in ["_enc_card", "_enc_thumb_frame", "_enc_name_label", "_enc_level_row", "_dot_row", "_info_bar", "_info_strip", "_deploy_button"]:
 		var node: Control = home.get(key) as Control
 		rects[key] = [node.get_global_rect(), node.is_visible_in_tree()]
 	for hero_id in tiles.keys():
@@ -431,13 +430,16 @@ func _check_encounter_slots(home: Node, op_order: Array, tiles: Dictionary) -> v
 	root.size = Vector2i(1080, 2400)
 	for _frame in 4:
 		await process_frame
-	var tags_slot: Control = home.get("_enc_tags_slot") as Control
-	_check(is_equal_approx(tags_slot.size.x, 514.0),
-		"the mission card lays out at the phone column width (text column %.0f px, want 514)" % tags_slot.size.x)
+	# The name's holder fills the card's text column (SIZE_EXPAND_FILL), as the
+	# threats slot did before G-97.
+	var text_col: Control = (home.get("_enc_name_label") as Control).get_parent() as Control
+	_check(is_equal_approx(text_col.size.x, 514.0),
+		"the mission card lays out at the phone column width (text column %.0f px, want 514)" % text_col.size.x)
+	# G-97: no threats line and no reserved slot on the card.
+	for gone: String in ["_enc_tags_slot", "_enc_threats_label", "_enc_unlock_label"]:
+		_check(home.get(gone) == null, "the mission card has no %s any more (G-97)" % gone)
 	_check(((home.get("_enc_thumb_frame") as Control).size).is_equal_approx(((tiles["combat"] as Dictionary)["frame"] as Control).size),
 		"the boss portrait is the roster tiles' size")
-	var unlock_label: Label = home.get("_enc_unlock_label") as Label
-	var threats_label: Label = home.get("_enc_threats_label") as Label
 	var reference: Dictionary = {}
 	for pass_index in 2:
 		for index in range(op_order.size()):
@@ -464,26 +466,30 @@ func _check_encounter_slots(home: Node, op_order: Array, tiles: Dictionary) -> v
 			var name_label: Label = home.get("_enc_name_label") as Label
 			var name_font: Font = name_label.get_theme_font("font")
 			var name_w: float = name_font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, name_label.get_theme_font_size("font_size")).x
-			_check(name_w <= tags_slot.size.x, "%s name fits the card on one line (%.0f <= %.0f px)" % [op_id, name_w, tags_slot.size.x])
+			_check(name_w <= text_col.size.x, "%s name fits the card on one line (%.0f <= %.0f px)" % [op_id, name_w, text_col.size.x])
+			# The long-press pop-up (G-97): a locked mission shows its name and
+			# unlock condition only; an open one its objective, site, situation
+			# and threats.
+			var payload: Dictionary = home.call("mission_payload", op_id, locked)
+			var op_name: String = (_data_manager().call("get_operation", op_id) as OperationData).display_name.to_upper()
+			_check(str((payload.get("header", {}) as Dictionary).get("title", "")) == op_name, "%s pop-up is titled with the operation name" % op_id)
 			if locked:
 				var prev_id: String = str(root.get_node("/root/SaveManager").call("operation_unlocked_by", op_id))
 				var prev_op: OperationData = _data_manager().call("get_operation", prev_id) as OperationData
 				var want_condition: String = "Clear %s to unlock" % prev_op.display_name
-				_check(unlock_label.visible and unlock_label.text == want_condition, "%s tags slot shows the unlock condition (saw '%s')" % [op_id, unlock_label.text])
+				_check(str(payload.get("description", "")) == want_condition, "%s locked pop-up shows the unlock condition (saw '%s')" % [op_id, str(payload.get("description", ""))])
+				_check(not payload.has("stats"), "%s locked pop-up shows nothing else" % op_id)
 				_check((home.get("_enc_status_label") as Label).text == "LOCKED", "%s shows LOCKED" % op_id)
-				# Crisp text step 3b (Kev 2026-10-20): the unlock condition and the
-				# threats (m3x6) wrap at words; the slot reserves the most lines
-				# any operation needs, so each fits it unclipped.
-				var h: float = PixelUI.wrapped_text_height(unlock_label, unlock_label.text, tags_slot.size.x)
-				_check(h <= tags_slot.size.y + 0.5, "%s unlock condition fits the slot unclipped (%.0f <= %.0f px tall)" % [op_id, h, tags_slot.size.y])
-				# Its threats, once unlocked, fit the same slot.
-				var locked_threats: String = str(home.get("THREAT_SEPARATOR")).join(home.call("threat_tags", op_id))
-				var locked_h: float = PixelUI.wrapped_text_height(threats_label, locked_threats, tags_slot.size.x)
-				_check(locked_h <= tags_slot.size.y + 0.5, "%s threats fit the slot once unlocked (%.0f <= %.0f px tall)" % [op_id, locked_h, tags_slot.size.y])
 			else:
-				_check(threats_label.visible and threats_label.text != "", "%s shows its threats (saw '%s')" % [op_id, threats_label.text])
-				var threats_h: float = PixelUI.wrapped_text_height(threats_label, threats_label.text, tags_slot.size.x)
-				_check(threats_h <= tags_slot.size.y + 0.5, "%s threats fit the slot (%.0f <= %.0f px tall)" % [op_id, threats_h, tags_slot.size.y])
+				var labels: Array = []
+				var threats_value := ""
+				for row: Dictionary in payload.get("stats", []):
+					labels.append(str(row.get("label", "")))
+					if str(row.get("label", "")) == "THREATS":
+						threats_value = str(row.get("value", ""))
+				_check(labels == ["OBJECTIVE", "SITE", "SITUATION", "THREATS"], "%s pop-up rows are objective, site, situation, threats (saw %s)" % [op_id, str(labels)])
+				var want_threats: String = str(home.get("THREAT_SEPARATOR")).join(home.call("threat_tags", op_id))
+				_check(threats_value == want_threats and threats_value != "", "%s pop-up lists its threats (saw '%s')" % [op_id, threats_value])
 	# A tap shows the unit in the info bar and toggles it; nothing moves.
 	home.set("_operation_index", 0)
 	home.set("_selected_operation_id", str(op_order[0]))

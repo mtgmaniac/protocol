@@ -404,14 +404,36 @@ static func resolve_protocol_action(action: String) -> Dictionary:
 # ── 7. Encounter (long-press the squad-select banner) ───────────────────────────
 # The operation blurb lives HERE (squad-select redesign): the banner shows only
 # name + threat; long-press surfaces the full flavor copy, verbatim from data.
-static func resolve_encounter(op: OperationData, threat_level: int, threat_max: int) -> Dictionary:
+# Squad select's mission card long-press (G-97, Kev 2026-10-20): the
+# operation name, then OBJECTIVE, SITE, SITUATION and THREATS. SITE and
+# SITUATION left the deployment briefing (G-96); the threats left the card.
+static func resolve_mission(op: OperationData, threats: String) -> Dictionary:
+	if op == null:
+		return {}
+	var overlay_script: GDScript = load("res://scripts/ui/operation_briefing_overlay.gd")
+	var copy: Dictionary = overlay_script.operation_copy(op.id)
+	var stats: Array = []
+	for row: Array in [["OBJECTIVE", "directive"], ["SITE", "site"], ["SITUATION", "failure"]]:
+		var value: String = str(copy.get(str(row[1]), ""))
+		if value != "":
+			stats.append({"label": str(row[0]), "value": value})
+	if threats != "":
+		stats.append({"label": "THREATS", "value": threats})
+	return {
+		"accent": _operation_accent(op),
+		"header": {"title": op.display_name.to_upper(), "subtitle": "OPERATION"},
+		"stats": stats,
+	}
+
+
+# A locked mission's long-press: its name and how to unlock it, nothing else.
+static func resolve_locked_mission(op: OperationData, unlock_condition: String) -> Dictionary:
 	if op == null:
 		return {}
 	return {
 		"accent": _operation_accent(op),
-		"header": {"title": op.display_name.to_upper(), "subtitle": "ENCOUNTER"},
-		"stats": [{"label": "THREAT", "value": "LV %d / %d" % [threat_level, threat_max]}],
-		"description": op.blurb,
+		"header": {"title": op.display_name.to_upper()},
+		"description": unlock_condition,
 	}
 
 

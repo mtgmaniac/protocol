@@ -121,16 +121,26 @@ signal:
 - **Safe moments only:** primers display between battle-feedback action groups
   (the sequence pauses, resumes on dismiss) or during an idle player phase —
   never mid-swing.
-- **FULL DRAIN, no cap (Kev 2026-07-12):** every unseen icon raised in a turn is
-  taught IN that turn — the queue drains completely as a MODAL SEQUENCE (one
-  popup at a time, tap through each; never simultaneous — that's the tutorial's
-  `separate:true` spotlight mechanism, a different system). The old one-per-turn
-  throttle didn't defer the losers, it DROPPED them (`_pending.clear()`) and
-  hoped the icons recurred; an icon that never reappeared was never taught.
-- **Order is spatial:** enqueue order == hero rail left→right, then enemy rail,
-  pips left→right within a readout. The JSON `priority` field is **inert**
-  (retained for schema compatibility; it only ever picked the single winner
-  under the old cap — do not reintroduce a sort on it).
+- **ONE PER TURN, DEFERRED (Kev 2026-10-20, G-97; supersedes the 2026-07-12
+  full drain):** at most one primer displays per turn, however many flush
+  points the turn has. Every other candidate stays queued for later turns and
+  is still one-time. (The first one-per-turn throttle, 2026-07-06, did not
+  defer the losers: `_pending.clear()` DROPPED them and an icon that never
+  reappeared was never taught. That is why the full drain replaced it; the
+  queue now survives `on_turn_started`.) A re-sighting replaces the queued
+  entry, so the freshest anchor and this turn's relevance win.
+- **Pick order (relevance, then space):** an icon on an ability the player's
+  own unit is about to use (hero roll sighting this turn) → one hitting the
+  player (enemy roll sighting, or an event whose side is hero) → other
+  sightings this turn → lessons deferred from earlier turns (in that same
+  order among themselves). Ties keep enqueue order == hero rail left→right,
+  then enemy rail, pips left→right within a readout. The JSON `priority` field
+  is **inert** (retained for schema compatibility — do not sort on it).
+- **Deferred anchors:** a deferred roll lesson whose icon is no longer on its
+  unit's plate rings the unit's card (no fallback warning; the coachmark still
+  shows the glyph). A lesson with no anchor at all stays queued, unmarked, and
+  the next candidate takes the turn's slot. Lessons still queued when the
+  battle ends are not marked seen, so they fire at their next sighting.
 - **Copy leads with the glyph:** the coachmark renders the ACTUAL icon being
   taught (SpotlightLayer `opts["glyph"]`, keyed from the sighting's icon or the
   trigger param) ahead of the text — "this marker" is meaningless when two

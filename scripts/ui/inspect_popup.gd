@@ -384,10 +384,17 @@ func _build_stats(stats: Array) -> Control:
 		var line := HBoxContainer.new()
 		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		line.add_theme_constant_override("separation", 12)
+		# The label keeps its width; the value takes the rest, right-aligned,
+		# and wraps at words when it is longer than that (the mission pop-up's
+		# SITUATION at 640x960 ran into its label).
 		var label := _make_label(str(stat.get("label", "")), BODY_FONT, PixelUI.INSPECT_TEXT_MUTED)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		line.add_child(label)
-		line.add_child(_make_label(str(stat.get("value", "")), BODY_FONT, PixelUI.INSPECT_TEXT))
+		var value := _make_label(str(stat.get("value", "")), BODY_FONT, PixelUI.INSPECT_TEXT, true)
+		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		line.add_child(value)
 		box.add_child(line)
 	return box
 
@@ -415,10 +422,18 @@ func _relayout(anchor_rect: Rect2) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 
-	var content_height: float = _content.get_combined_minimum_size().y
-	var scroll_height: float = clampf(content_height, 0.0, max_height - CONTENT_PAD * 2.0)
-	_scroll.custom_minimum_size = Vector2(0, scroll_height)
-	await get_tree().process_frame
+	# Measured while the scroll is still 0 tall, its scrollbar is up and the
+	# content is a bar narrower, so a wrapping value that just fits can measure a
+	# line too tall (a blank band under the 1080 mission pop-up). Re-measure
+	# once the scroll has its height and the bar is gone.
+	for _pass in 2:
+		var content_height: float = _content.get_combined_minimum_size().y
+		var scroll_height: float = clampf(content_height, 0.0, max_height - CONTENT_PAD * 2.0)
+		if is_equal_approx(_scroll.custom_minimum_size.y, scroll_height):
+			break
+		_scroll.custom_minimum_size = Vector2(0, scroll_height)
+		await get_tree().process_frame
+		await get_tree().process_frame
 
 	var height: float = PixelUI.even_px(minf(_panel.get_combined_minimum_size().y, max_height))
 	_panel.custom_minimum_size = Vector2(width, height)

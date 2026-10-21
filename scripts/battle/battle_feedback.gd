@@ -1402,12 +1402,23 @@ func _resolve_portrait_sharp(card: Control) -> void:
 
 # pkg8.3: overload name slam — the ability name punches in across the acting
 # card (overshoot scale-in), holds a beat, and snaps out. Flat gold on dark.
-func _slam_ability_name(actor_card: Control, ability_name: String) -> void:
+# Placement (G-97, Kev 2026-10-20): centred over the card, then clamped toward
+# the centre so the whole callout, at its slam peak, stays on screen; a name
+# wider than the max callout width wraps to two lines at a word boundary
+# (never more). Returns the label (the text fit gate measures it).
+const SLAM_PEAK := 1.28
+## Design px kept clear between the callout (outline included) and the
+## screen's safe edge.
+const CALLOUT_EDGE := 24.0
+
+
+func _slam_ability_name(actor_card: Control, ability_name: String) -> Label:
 	if actor_card == null or not is_instance_valid(actor_card) or ability_name == "":
-		return
+		return null
 	if _scene.float_layer == null or not is_instance_valid(_scene.float_layer):
-		return
+		return null
 	var label: Label = Label.new()
+	label.name = "AbilityNameCallout"
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = ability_name.to_upper()
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1418,25 +1429,29 @@ func _slam_ability_name(actor_card: Control, ability_name: String) -> void:
 	label.z_as_relative = false
 	label.z_index = 210
 	_scene.float_layer.add_child(label)
+	var screen: Rect2 = callout_screen_bounds(label)
+	label.text = callout_lines(label.text, label.get_theme_font("font"), label.get_theme_font_size("font_size"),
+		screen.size.x / SLAM_PEAK)
 	label.reset_size()
 	var card_rect: Rect2 = actor_card.get_global_rect()
 	var layer_origin: Vector2 = _scene.float_layer.get_global_position()
+	var global_x: float = callout_left(card_rect.get_center().x, label.size.x, screen)
 	label.position = Vector2(
-		card_rect.position.x - layer_origin.x + (card_rect.size.x - label.size.x) * 0.5,
+		global_x - layer_origin.x,
 		card_rect.position.y - layer_origin.y + card_rect.size.y * 0.36
-	)
+	).round()
 	label.pivot_offset = label.size * 0.5
 	if PixelUI.reduced_motion_enabled():
 		var fade := label.create_tween()
 		fade.tween_interval(0.62)
 		fade.tween_property(label, "modulate:a", 0.0, 0.0 if PixelUI.no_animations_enabled() else 0.12)
 		fade.tween_callback(label.queue_free)
-		return
+		return label
 	label.scale = Vector2(0.2, 0.2)
 	label.modulate.a = 0.0
 	var slam: Tween = create_tween()
 	slam.tween_property(label, "modulate:a", 1.0, 0.06)
-	slam.parallel().tween_property(label, "scale", Vector2(1.28, 1.28), 0.10) \
+	slam.parallel().tween_property(label, "scale", Vector2(SLAM_PEAK, SLAM_PEAK), 0.10) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	slam.tween_property(label, "scale", Vector2.ONE, 0.10) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -1444,6 +1459,45 @@ func _slam_ability_name(actor_card: Control, ability_name: String) -> void:
 	slam.tween_property(label, "modulate:a", 0.0, 0.12)
 	slam.parallel().tween_property(label, "scale", Vector2(0.85, 0.85), 0.12)
 	slam.tween_callback(label.queue_free)
+	return label
+
+
+## The strip the callout must stay inside, in global (canvas) coordinates: the
+## visible rect minus the safe insets and CALLOUT_EDGE on each side.
+static func callout_screen_bounds(node: CanvasItem) -> Rect2:
+	var visible: Rect2 = node.get_viewport().get_visible_rect()
+	var left: float = visible.position.x + PixelUI.safe_left + CALLOUT_EDGE
+	var right: float = visible.end.x - PixelUI.safe_right - CALLOUT_EDGE
+	return Rect2(left, visible.position.y, maxf(0.0, right - left), visible.size.y)
+
+
+## The callout's left edge: centred on `center_x`, moved toward the screen's
+## centre until its slam-peak width (it scales about its own centre) fits.
+static func callout_left(center_x: float, width: float, screen: Rect2) -> float:
+	var half: float = width * 0.5 * SLAM_PEAK
+	var lo: float = screen.position.x + half
+	var hi: float = screen.end.x - half
+	var cx: float = screen.get_center().x if lo > hi else clampf(center_x, lo, hi)
+	return cx - width * 0.5
+
+
+## The name as it draws: one line when it fits `max_w`, else two lines split at
+## the word boundary that keeps the longer line shortest. Never three.
+static func callout_lines(text: String, font: Font, font_size: int, max_w: float) -> String:
+	if font == null or font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x <= max_w:
+		return text
+	var words: PackedStringArray = text.split(" ", false)
+	var best: String = text
+	var best_w: float = INF
+	for i in range(1, words.size()):
+		var a: String = " ".join(words.slice(0, i))
+		var b: String = " ".join(words.slice(i))
+		var w: float = maxf(font.get_string_size(a, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x,
+			font.get_string_size(b, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+		if w < best_w:
+			best_w = w
+			best = a + "\n" + b
+	return best
 
 
 # The acting card's motion, by ability class (ActionMotion): an attack lunges,
