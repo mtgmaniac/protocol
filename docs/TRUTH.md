@@ -9,10 +9,13 @@ letter spacing** through a FontVariation (`PixelUI.TYPE_COMPACT` /
 version stamp, Protocol cost badges, the effect-pip duration superscript, the
 font credit). The compact face draws unit descriptions and HOLD ANY UNIT FOR
 FULL INTEL, the mission card's threats line, "Clear X to unlock" and CLEARED,
-the operation briefing's values (SITE / SITUATION / OBJECTIVE stay m5x7 80 in a
-column sized to the longest; a long value wraps), Help PREFS setting
-descriptions, the evolution card's MAX HP line, reward rarity lines,
-unlock-panel item and relic names and battle card trait titles. Plain
+the evolution card's MAX HP line, reward rarity lines, unlock-panel item and
+relic names and battle card trait titles: m3x6 is for tight in-game UI, and
+reading screens (Help, the operation briefing) use m5x7, so Help PREFS
+descriptions are m5x7 80 in the ICONS gray. The operation briefing shows only
+the objective: OBJECTIVE centred, the objective centred under it (both m5x7
+80, wrapping at words onto at most two lines); SITE and SITUATION stay in the
+operation data but are not shown. Plain
 secondary text is the muted gray `PixelUI.COMPACT_INK` (`UI_TEXT_DIM`);
 CLEARED keeps its blue, rarity lines their rarity colour 30% darker, unlock
 names stay bright, trait titles the unit's home colour. Both fonts rasterize at

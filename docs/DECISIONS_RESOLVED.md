@@ -19,13 +19,18 @@ branches.
     the effect-pip duration superscript, the font credit).
 - **Where the compact face is used:** unit descriptions and HOLD ANY UNIT FOR
   FULL INTEL in squad select's unit info; the mission card's threats line,
-  "Clear X to unlock" and CLEARED; the operation briefing's values (its SITE /
-  SITUATION / OBJECTIVE labels are primary, m5x7 80, in a column sized to the
-  longest label; a value too long for its column wraps at words, never clips);
-  Help PREFS setting descriptions; the evolution card's MAX HP line; reward
+  "Clear X to unlock" and CLEARED; the evolution card's MAX HP line; reward
   rarity lines; unlock-panel item and relic names; battle card trait titles.
+- **m3x6 is for tight in-game UI; reading screens (Help, the operation
+  briefing) use m5x7.** Help PREFS setting descriptions are m5x7 80 in the
+  ICONS descriptions' gray (`UI_TEXT_DIM`); rows grow and Help scrolls.
+- **The operation briefing shows only the objective:** OBJECTIVE centred
+  (m5x7 80, the label colour) and the objective centred under it (m5x7 80,
+  the value colour), wrapping at words onto at most two lines. SITE and
+  SITUATION stay in the operation data (the encounter inspect reads the site)
+  but are not shown in the pop-up. The title and ENGAGE are unchanged.
 - **Compact colour:** plain secondary text is the muted gray
-  (`PixelUI.COMPACT_INK`, the Help setting-description gray `UI_TEXT_DIM`).
+  (`PixelUI.COMPACT_INK`, the Help description gray `UI_TEXT_DIM`).
   Exceptions keep their own colour: CLEARED (its blue), rarity lines (the
   rarity colour, 30% darker), unlock item and relic names (bright; they are
   that screen's content), trait titles (the unit's home colour).

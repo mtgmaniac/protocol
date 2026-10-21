@@ -8,9 +8,8 @@ signal dismissed(mode: String)
 
 const PANEL_MARGIN := 32
 const PANEL_PAD := 24
-## The briefing rows' labels, the key column sized to the longest of them.
-const KEY_LABELS: Array[String] = ["SITE", "SITUATION", "OBJECTIVE"]
-const KEY_VALUE_SEPARATION := 32
+## The objective wraps onto at most this many lines.
+const OBJECTIVE_MAX_LINES := 2
 const DEPLOYMENT_GRID_WIDTH := 900
 const TITLE_FONT := 64
 const SECTION_FONT := 40
@@ -208,71 +207,28 @@ func _add_body(text: String) -> void:
 	_content().add_child(label)
 
 
+# The deployment briefing shows only the objective (Kev 2026-10-20): OBJECTIVE
+# centred, the objective centred on the line under it, both m5x7 at 80. SITE
+# and SITUATION stay in OPERATION_COPY (the encounter inspect reads the site)
+# but are not shown here. The objective wraps at words, at most two lines (the
+# operation lore gate checks every operation).
 func _add_deployment_grid(copy: Dictionary) -> void:
-	var center := CenterContainer.new()
-	center.name = "DeploymentInfoCenter"
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_content().add_child(center)
 	var grid := VBoxContainer.new()
 	grid.name = "DeploymentInfoGrid"
 	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	grid.custom_minimum_size = Vector2(DEPLOYMENT_GRID_WIDTH, 0)
-	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	grid.add_theme_constant_override("separation", 12)
-	center.add_child(grid)
-	_add_key_value(grid, KEY_LABELS[0], str(copy["site"]), copy["accent"] as Color)
-	_add_key_value(grid, KEY_LABELS[1], str(copy["failure"]), PixelUI.ENCOUNTER_ACCENT.lightened(0.2))
-	_add_key_value(grid, KEY_LABELS[2], str(copy["directive"]), PixelUI.TEXT_PRIMARY)
-
-
-## The key column's width: the longest label at the size it draws (m5x7, the
-## primary face: Kev 2026-10-20; the old fixed 240 px cut SITUATION and
-## OBJECTIVE).
-static func key_column_width() -> float:
-	var font: Font = PixelUI.get_pixel_font()
-	var size: int = PixelUI.crisp_px(PixelUI.scale_font_size(SECTION_FONT))
-	var widest := 0.0
-	for key: String in KEY_LABELS:
-		widest = maxf(widest, font.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
-	return PixelUI.even_px(ceilf(widest) + 1.0)
-
-
-func _add_key_value(grid: VBoxContainer, key: String, value: String, value_color: Color) -> void:
-	var row := HBoxContainer.new()
-	row.name = "DeploymentRow%s" % key.capitalize()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", KEY_VALUE_SEPARATION)
-	# A Label in an HBox can expand to its natural text width. Put it in a
-	# fixed-width slot so every value column has exactly the same start.
-	var key_slot := Control.new()
-	key_slot.name = "DeploymentKeySlot%s" % key.capitalize()
-	key_slot.custom_minimum_size = Vector2(key_column_width(), 0)
-	key_slot.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	key_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(key_slot)
-	# The labels are the primary face (m5x7, Kev 2026-10-20); the values are
-	# compact secondary text (m3x6 in the muted COMPACT_INK). The title and
-	# ENGAGE stay m5x7.
-	var key_label := _make_label(key, SECTION_FONT, PixelUI.TEXT_MUTED, 1)
-	key_label.name = "DeploymentKey%s" % key.capitalize()
-	key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	key_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	key_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	key_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	key_slot.add_child(key_label)
-	var value_label := _make_label(value, SECTION_FONT, value_color, 2)
-	PixelUI.apply_compact(value_label, PixelUI.COMPACT_INK)
-	value_label.name = "DeploymentValue%s" % key.capitalize()
-	# A value wider than its column wraps at words onto a second line (the
-	# m5x7 label column leaves 598 px; "Predators through the perimeter" is
-	# 785 px), the label staying on its first line.
-	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(value_label)
-	grid.add_child(row)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("separation", 8)
+	_content().add_child(grid)
+	var label := _make_label("OBJECTIVE", SECTION_FONT, PixelUI.TEXT_MUTED, 1)
+	label.name = "ObjectiveLabel"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	grid.add_child(label)
+	var value := _make_label(str(copy["directive"]), SECTION_FONT, PixelUI.TEXT_PRIMARY, 2)
+	value.name = "ObjectiveValue"
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	value.autowrap_mode = TextServer.AUTOWRAP_WORD
+	value.max_lines_visible = OBJECTIVE_MAX_LINES
+	grid.add_child(value)
 
 
 func _add_action(text: String, accent: Color) -> void:

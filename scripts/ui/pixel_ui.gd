@@ -211,11 +211,11 @@ const TYPE_SMALL := "small"       # rarity labels, version tag, cost labels
 ## so a line is as tall as m5x7's at 80; capitals 6 font px, advance 4 against
 ## m5x7's 7 and 6). Only for the secondary lines Kev named: squad select's
 ## mission CLEARED / threats / unlock-condition line, unit description and
-## HOLD ANY UNIT hint, the operation briefing values (its labels are m5x7),
-## item and relic names in the unlock panel, the reward rarity line, Help
-## PREFS setting descriptions, the battle card trait title and the evolution
-## card's MAX HP line (step 3c). Drawn with one font pixel of letter spacing
-## (COMPACT_SPACING) and, as plain secondary text, in COMPACT_INK.
+## HOLD ANY UNIT hint, item and relic names in the unlock panel, the reward
+## rarity line, the battle card trait title and the evolution card's MAX HP
+## line. m3x6 is for tight in-game UI; reading screens (Help, the operation
+## briefing) use m5x7 (Kev 2026-10-20). Drawn with one font pixel of letter
+## spacing (COMPACT_SPACING) and, as plain secondary text, in COMPACT_INK.
 ## Request it with apply_compact, never a per-node font override.
 const TYPE_COMPACT := "compact"
 const TYPE_NUMERAL := "numeral"   # HP, intent and pip numbers
@@ -1199,8 +1199,8 @@ const COMPACT_PX := 80
 ## the fallback Kev named is used: a whole font pixel.
 const COMPACT_SPACING := 5
 ## The compact face's ink for plain secondary text (unit descriptions,
-## threats, unlock conditions, briefing rows, Help setting descriptions): the
-## muted gray Help already uses for setting descriptions. Status and rarity
+## threats, unlock conditions, the HOLD ANY UNIT hint, the MAX HP line): the
+## muted gray Help uses for its descriptions. Status and rarity
 ## text keeps its own colour.
 const COMPACT_INK := UI_TEXT_DIM
 static var _compact_font: Font = null

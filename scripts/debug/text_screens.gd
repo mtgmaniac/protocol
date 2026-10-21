@@ -8,7 +8,8 @@
 #   font credit), help_units_evo (UNITS with an evolution row's long-press
 #   pop-up: Pulse's Pyro), squad_locked (squad select on a locked mission),
 #   squad_cleared (Facility cleared: CLEARED on the card, unit info open),
-#   briefing_mantle (OPERATION 05's pop-up: its longest value wraps),
+#   briefing_mantle (OPERATION 05's pop-up), briefing_<operation id> (any
+#   operation's pop-up, e.g. briefing_voidCirclet),
 #   battle_trait (Splice evolved to Synth with OVERFLOWING, the longest trait
 #   title),
 #   evolution, evolution_all (VIEW ALL open on both cards), unlock (NEW RELICS /
@@ -83,10 +84,11 @@ static func open(tree: SceneTree, screen: String, roll: bool = false) -> Node:
 		"squad_locked":
 			# A fresh profile has only the first mission open: the next is locked.
 			scene.call("_on_nav_pressed", 1)
-		"briefing", "briefing_mantle":
+		_ when screen.begins_with("briefing"):
+			var op_id: String = "facility" if screen == "briefing" else ("stellarMenagerie" if screen == "briefing_mantle" else screen.trim_prefix("briefing_"))
 			var overlay: Control = load("res://scripts/ui/operation_briefing_overlay.gd").new()
 			scene.add_child(overlay)
-			overlay.call("present_deployment", "stellarMenagerie" if screen == "briefing_mantle" else "facility")
+			overlay.call("present_deployment", op_id)
 		"inspect":
 			var unit: Resource = dm.call("get_unit", "combat")
 			load("res://scripts/ui/inspect_popup.gd").open(scene, scene.call("unit_inspect_payload", unit))

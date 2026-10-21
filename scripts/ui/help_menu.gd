@@ -1000,10 +1000,9 @@ func _add_toggle_row(parent: VBoxContainer, label_text: String, initial: bool, o
 	row.add_child(text)
 	text.add_child(_make_wrap_label(label_text, 40, PixelUI.UI_TEXT, 0))
 	if description != "":
-		# Compact secondary text (m3x6, crisp text step 3c).
-		var description_label: Label = _make_wrap_label(description, BODY_FONT, PixelUI.COMPACT_INK, 0)
-		PixelUI.apply_compact(description_label, PixelUI.COMPACT_INK)
-		text.add_child(description_label)
+		# m5x7, the ICONS descriptions' gray (Kev 2026-10-20: Help is a
+		# reading screen; m3x6 is for tight in-game UI).
+		text.add_child(_make_wrap_label(description, BODY_FONT, PixelUI.UI_TEXT_DIM, 0))
 
 	var btn := Button.new()
 	btn.toggle_mode = true

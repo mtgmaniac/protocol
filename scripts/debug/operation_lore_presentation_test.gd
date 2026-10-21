@@ -143,40 +143,35 @@ func _has_action(overlay: Control, text: String) -> bool:
 	return action != null and action.text == text
 
 
+# The deployment briefing shows only the objective (Kev 2026-10-20): OBJECTIVE
+# centred, then the objective centred under it, both m5x7 at 80; it wraps at
+# words onto at most two lines inside the slate, every word fitting. SITE and
+# SITUATION are not shown.
 func _test_deployment_grid(operation_id: String, overlay: Control) -> void:
-	var grid := overlay.get_node_or_null("BriefingOuter/BriefingCenter/BriefingPanel/BriefingPadding/BriefingContent/DeploymentInfoCenter/DeploymentInfoGrid") as Control
-	_expect(grid != null, "%s deployment builds one centered info grid" % operation_id)
+	var grid := overlay.get_node_or_null("BriefingOuter/BriefingCenter/BriefingPanel/BriefingPadding/BriefingContent/DeploymentInfoGrid") as Control
+	_expect(grid != null, "%s deployment builds one objective block" % operation_id)
 	if grid == null:
 		return
-	var grid_center := grid.get_parent() as Control
-	_expect(grid_center != null and absf(grid.get_global_rect().get_center().x - grid_center.get_global_rect().get_center().x) < 1.0, "%s deployment grid is centered" % operation_id)
-	var key_x := -1.0
-	var value_x := -1.0
-	for key in ["Site", "Situation", "Objective"]:
-		var key_label := grid.get_node_or_null("DeploymentRow%s/DeploymentKeySlot%s/DeploymentKey%s" % [key, key, key]) as Label
-		var value_label := grid.get_node_or_null("DeploymentRow%s/DeploymentValue%s" % [key, key]) as Label
-		_expect(key_label != null and value_label != null, "%s %s row has fixed columns" % [operation_id, key])
-		if key_label == null or value_label == null:
-			continue
-		if key_x < 0.0:
-			key_x = key_label.get_global_rect().position.x
-			value_x = value_label.get_global_rect().position.x
-		else:
-			_expect(absf(key_label.get_global_rect().position.x - key_x) < 1.0, "%s %s label aligns" % [operation_id, key])
-			_expect(absf(value_label.get_global_rect().position.x - value_x) < 1.0, "%s %s value aligns" % [operation_id, key])
-		# Kev 2026-10-20: a value wider than its column wraps at words, at
-		# most two lines, and stays inside the grid (the old one-line check
-		# compared the label with itself and missed a value running out).
-		_expect(value_label.autowrap_mode == TextServer.AUTOWRAP_WORD, "%s %s wraps at words" % [operation_id, key])
-		_expect(value_label.get_line_count() <= 2, "%s %s takes at most two lines (%d)" % [operation_id, key, value_label.get_line_count()])
-		_expect(value_label.get_global_rect().end.x <= grid.get_global_rect().end.x + 1.0, "%s %s value stays inside the grid (%.0f > %.0f)" % [operation_id, key, value_label.get_global_rect().end.x, grid.get_global_rect().end.x])
-		var value_font: Font = value_label.get_theme_font("font")
-		for word in value_label.text.split(" ", false):
-			_expect(value_font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, value_label.get_theme_font_size("font_size")).x <= value_label.size.x + 1.0, "%s %s: '%s' fits its column" % [operation_id, key, word])
-		# Crisp text step 3b: the label column fits its longest label (the old
-		# 240 px slot cut SITUATIO / OBJECTIV).
-		var key_w: float = key_label.get_theme_font("font").get_string_size(key_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, key_label.get_theme_font_size("font_size")).x
-		_expect(key_w <= (key_label.get_parent() as Control).size.x + 0.5, "%s %s label fits its column (%.0f > %.0f)" % [operation_id, key, key_w, (key_label.get_parent() as Control).size.x])
+	var label := grid.get_node_or_null("ObjectiveLabel") as Label
+	var value := grid.get_node_or_null("ObjectiveValue") as Label
+	_expect(label != null and value != null, "%s shows the OBJECTIVE label and the objective" % operation_id)
+	if label == null or value == null:
+		return
+	_expect(grid.get_child_count() == 2, "%s shows only the objective (no SITE / SITUATION rows: %d children)" % [operation_id, grid.get_child_count()])
+	var copy: Dictionary = OPERATION_BRIEFING_OVERLAY.operation_copy(operation_id)
+	_expect(label.text == "OBJECTIVE" and value.text == str(copy.get("directive", "")), "%s objective text is the operation's directive" % operation_id)
+	for l in [label, value]:
+		_expect((l as Label).horizontal_alignment == HORIZONTAL_ALIGNMENT_CENTER, "%s %s is centred" % [operation_id, (l as Label).name])
+		var font: Font = (l as Label).get_theme_font("font")
+		_expect(str(font.resource_path).ends_with("m5x7.ttf") and (l as Label).get_theme_font_size("font_size") == 80, "%s %s is m5x7 at 80" % [operation_id, (l as Label).name])
+	_expect(value.get_global_rect().position.y >= label.get_global_rect().end.y - 1.0, "%s objective sits under its label" % operation_id)
+	_expect(value.autowrap_mode == TextServer.AUTOWRAP_WORD, "%s objective wraps at words" % operation_id)
+	_expect(value.get_line_count() <= 2, "%s objective takes at most two lines (%d)" % [operation_id, value.get_line_count()])
+	var panel := overlay.get_node_or_null("BriefingOuter/BriefingCenter/BriefingPanel") as Control
+	_expect(panel != null and panel.get_global_rect().encloses(value.get_global_rect()), "%s objective stays inside the slate" % operation_id)
+	var value_font: Font = value.get_theme_font("font")
+	for word in value.text.split(" ", false):
+		_expect(value_font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, value.get_theme_font_size("font_size")).x <= value.size.x + 1.0, "%s objective word '%s' fits" % [operation_id, word])
 
 
 func _expect(condition: bool, label: String) -> void:
