@@ -12,7 +12,7 @@ the normal button text on the primary's notched outline, pulsing slowly (still
 under Reduced motion), and cannot be pressed; at 3 / 3 it is DEPLOY SQUAD and
 the counter turns `PLAYER_ACCENT_LIGHT`. The 20 ability name callout is clamped
 on screen at its slam peak and wraps to at most two lines at a word. Battle
-keeps no background image (G-76); the B/C background variants were a trial.
+keeps no background image (G-76; Kev kept it over a darkened space-image trial).
 
 **Crisp text (Kev 2026-10-19 / 2026-10-20, DECISIONS_RESOLVED G-96; supersedes
 the entries below where they differ, the 48 px floor, G-78 / G-86's pixel-exact

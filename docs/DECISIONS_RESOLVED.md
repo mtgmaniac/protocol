@@ -40,10 +40,10 @@ style.
   two lines at the word boundary that keeps the longer line shortest; never
   three. Gate: `text fit` spawns the longest ultimate name over the leftmost
   and rightmost hero and enemy at 640x960 and 1080x2400.
-- **Battle background: trial only.** Variant A (no background, G-76) stays
-  applied. Variants B (the G-95 space image, darkened, not over the tray
-  floor) and C (B with the tray floor darker than its surroundings) were
-  captured for Kev's pick and are not in the game.
+- **Battle background: no image (Kev picked A, 2026-10-20).** G-76 stands:
+  battle shows no background image. The trial variants, B (the G-95 space
+  image, darkened, not over the tray floor) and C (B with the tray floor darker
+  than its surroundings), were captured and rejected; do not re-trial them.
 
 ## G-96. Crisp text: three tiers, a compact secondary face, traits kept secret (Kev, 2026-10-19 / 2026-10-20)
 
