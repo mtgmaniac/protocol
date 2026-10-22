@@ -2408,16 +2408,16 @@ func _apply_enemy_ability(enemy_state: Dictionary, ability_entry: Dictionary, ra
 			_emit_event(enemy_state, "rampage", final_damage, "enemy")
 		if bool(raw.get("packBonus", false)) and final_damage > 0:
 			# Pack Bonus: +PACK_BONUS_PER_MEMBER per OTHER living pack member of the SAME KIND. "Kind"
-			# is the enemy_type (kit) — Obsidian and Slag hounds both count as
-			# beastWolf pack. Compare enemy_type, not the per-instance id: instance
-			# ids are unique (`beastWolf#1` vs `beastWolf#2`) so the old id compare
-			# was never true and the bonus never fired (fix 2026-07-08).
-			var pack_kind: String = str(enemy_state["unit"].enemy_type)
+			# is the unit's pack kind, else its enemy_type (kit): Obsidian and
+			# Slag hounds have their own ability sets since G-99 and share the
+			# pack kind "hound". Never the per-instance id: instance ids are
+			# unique, so that compare was never true (fix 2026-07-08).
+			var pack_kind: String = _pack_kind(enemy_state["unit"])
 			var pack_count: int = 0
 			for es in _enemy_states:
 				if es == enemy_state:
 					continue
-				if not es["dead"] and str(es["unit"].enemy_type) == pack_kind:
+				if not es["dead"] and _pack_kind(es["unit"]) == pack_kind:
 					pack_count += 1
 			if pack_count > 0:
 				var pack_gain: int = pack_count * pack_bonus_per_member()
@@ -2809,6 +2809,14 @@ func _apply_death_traits(dead_state: Dictionary, killer_state: Dictionary) -> vo
 const PACK_BONUS_PER_MEMBER := 3
 
 
+# The kind pack bonus counts (G-99): the unit's pack kind, else its kit.
+static func _pack_kind(unit: Resource) -> String:
+	var kind: String = str(unit.get("pack_kind")) if unit is EnemyData else ""
+	if kind == "" or rampage_break() == "pack_by_kit":
+		return str(unit.get("enemy_type"))
+	return kind
+
+
 func pack_bonus_per_member() -> int:
 	if rampage_break() == "pack_one":
 		return 1
@@ -2857,6 +2865,8 @@ func _expire_rampage(state: Dictionary) -> void:
 #   stack  grants add up and each attack spends one (the old rule)
 #   keep   a turn that does not attack keeps the rampage (the old rule)
 #   pack_one  the pack bonus is +1 per pack member again
+#   pack_by_kit  the pack bonus counts the kit, not the pack kind (G-99: the
+#             two hounds stop counting each other)
 const RAMPAGE_BREAK_ARG := "--rampage-break="
 static var _rampage_break: String = "?"
 

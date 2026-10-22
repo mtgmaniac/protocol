@@ -1,5 +1,96 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-99. Enemies are built from archetypes (Kev, 2026-10-22)
+
+Branch `claude/unit-variety` (off `claude/encounter-rework` 3a9646e, kept apart
+so the rework can merge on its own). Source: `docs/UNIT_VARIETY_CHANGES.json`
+(drafted from `docs/Unit_Variety_Draft.xlsx`).
+
+**Ruling (Kev, transcribed from the task).** Each non-boss enemy gets an
+archetype (glass cannon, artillery, bruiser, tank, disruptor, swarm), a new
+max HP and new damage on each of its 5 bands (bands ordered by roll range).
+Only enemy max HP and each ability's damage change; shields, heals, burn,
+debuffs, ranges, summons and bosses stay as they are. Obsidian Hound (bruiser)
+and Slag Hound (glass cannon) get their own ability sets and still count as one
+pack.
+
+**Archetypes** (max HP multiplier; damage multiplier per band, lowest band
+first; rounded to the nearest whole number):
+
+| Archetype | Max HP | Band damage |
+|---|---|---|
+| Glass cannon | x0.75 | 1 / 1.3 / 1.4 / 1.5 / 1.6 |
+| Artillery | x0.95 | 0.7 / 0.8 / 0.9 / 1.4 / 1.9 |
+| Bruiser | x1.05 | 1.1 / 1.1 / 1.1 / 1.1 / 1.1 |
+| Tank | x1.25 | 0.7 / 0.75 / 0.75 / 0.8 / 0.85 |
+| Disruptor | x0.9 | 0.75 / 0.75 / 0.8 / 0.8 / 0.85 |
+| Swarm | x0.85 | 0.9 / 0.9 / 0.9 / 0.9 / 0.9 |
+
+**Units** (max HP; damage per band, lowest band first, "now -> new" where it
+moved). Every `hp_now` and `dmg_now` in the source matched the live data, and
+every new value is the archetype's multiplier applied to it. Bosses (Scrapmaster,
+Hive Matriarch, Veil Overseer, Signal Hierarch, Mantle Tyrant) are unchanged.
+**Scrap Drone is kept out of the pass (Kev, 2026-10-22):** the tutorial is
+scripted on its real statline (G-14: training uses normal HP and damage), and
+at 26 HP with harder hits the first lesson lost its free third turn. It keeps
+35 HP and 7 / 10 / 15 / 20 damage.
+
+| Operation | Unit | Archetype | Max HP | Band damage |
+|---|---|---|---|---|
+| Facility | Scrap Drone | (kept out: Glass cannon in the draft) | 35, unchanged | 0 / 7 / 10 / 15 / 20, unchanged |
+| Facility | Rust Drone | Tank | 45 -> 56 | 0 / 6->4 / 9->7 / 12->10 / 14->12 |
+| Facility | Static Skimmer | Disruptor | 40 -> 36 | 0 / 5->4 / 8->6 / 11->9 / 13->11 |
+| Facility | Patrol Enforcer | Bruiser | 60 -> 63 | 0 / 15->16 / 18->20 / 21->23 / 23->25 |
+| Facility | Volt Enforcer | Artillery | 65 -> 62 | 0 / 10->8 / 12->11 / 14->20 / 16->30 |
+| Facility | Shield Enforcer | Tank | 70 -> 88 | 0 / 12->9 / 11->8 / 16->13 / 20->17 |
+| Facility | Heavy Warden | Bruiser | 95 -> 100 | 0 / 12->13 / 12->13 / 26->29 / 32->35 |
+| Hive | Skitterling | Glass cannon | 30 -> 22 | 0 / 8->10 / 9->13 / 12->18 / 17->27 |
+| Hive | Bloodmite | Swarm | 26 -> 22 | 0 / 6->5 / 8->7 / 10->9 / 11->10 |
+| Hive | Spine Stalker | Glass cannon | 49 -> 37 | 0 / 15->20 / 16->22 / 18->27 / 20->32 |
+| Hive | Carapace Beetle | Tank | 80 -> 100 | 0 / 13->10 / 11->8 / 14->11 / 17->14 |
+| Hive | Broodwarden | Bruiser | 90 -> 94 | 0 / 12->13 / 10->11 / 19->21 / 29->32 |
+| Hive | Caustic Spewer | Disruptor | 90 -> 81 | 0 / 9->7 / 10->8 / 11->9 / 13->11 |
+| Veil | Shard Drone | Tank | 34 -> 42 | 0 / 7->5 / 9->7 / 12->10 / 15->13 |
+| Veil | Prism Charger | Glass cannon | 32 -> 24 | 0 / 8->10 / 11->15 / 14->21 / 18->29 |
+| Veil | Phaseblade | Glass cannon | 60 -> 45 | 0 / 13->17 / 15->21 / 18->27 / 23->37 |
+| Veil | Aegis Anchor | Tank | 58 -> 72 | 0 / 11->8 / 13->10 / 17->14 / 19->16 |
+| Veil | Relay Herald | Disruptor | 65 -> 58 | 0 / 11->8 / 10->8 / 15->12 / 17->14 |
+| Veil | Resonance Warden | Bruiser | 100 -> 105 | 0 / 11->12 / 11->12 / 21->23 / 27->30 |
+| Veil | Stormweaver | Artillery | 90 -> 86 | 0 / 10->8 / 11->10 / 13->18 / 15->28 |
+| Signal Purge | Signal Wisp | Swarm | 38 -> 32 | 0 / 6->5 / 8->7 / 10->9 / 11->10 |
+| Signal Purge | Circuit Acolyte | Glass cannon | 62 -> 46 | 0 / 11->14 / 13->18 / 16->24 / 17->27 |
+| Signal Purge | False Image | Glass cannon | 68 -> 51 | 0 / 12->16 / 11->15 / 16->24 / 17->27 |
+| Signal Purge | Cipher Scribe | Disruptor | 74 -> 67 | 0 / 10->8 / 9->7 / 14->11 / 15->13 |
+| Signal Purge | Oath Binder | Tank | 112 -> 140 | 0 / 17->13 / 15->11 / 13->10 / 19->16 |
+| Signal Purge | Ash Channeler | Artillery | 94 -> 89 | 0 / 15->12 / 18->16 / 14->20 / 20->38 |
+| Mantle Hunt | Pumice Climber | Glass cannon | 38 -> 28 | 0 / 11->14 / 8->11 / 6->9 / 13->21 |
+| Mantle Hunt | Obsidian Hound | Bruiser | 42 -> 44 | 0 / 12->13 / 9->10 / 7->8 / 14->15 |
+| Mantle Hunt | Slag Hound | Glass cannon | 34 -> 26 | 0 / 12->16 / 9->13 / 7->10 / 14->22 |
+| Mantle Hunt | Geode Panther | Glass cannon | 74 -> 56 | 0 / 10->13 / 12->17 / 15->22 / 17->27 |
+| Mantle Hunt | Cinder Raptor | Bruiser | 86 -> 90 | 0 / 9->10 / 11->12 / 14->15 / 12->13 |
+| Mantle Hunt | Basalt Ape | Tank | 112 -> 140 | 0 / 11->8 / 13->10 / 16->13 / 15->13 |
+| Mantle Hunt | Magma Drake | Artillery | 98 -> 93 | 0 / 10->8 / 12->11 / 16->22 / 20->38 |
+
+**As built.**
+- Ability text carries the new numbers (128 lines); inspect and Help read the
+  data, so they show them too.
+- **Slag Hound has its own ability set** (`beastSlagHound`, the hound kit
+  copied, its targeting default PACK like `beastWolf`). Pack bonus now counts
+  units with the same **pack kind** (`packKind` on the unit, else the kit), and
+  both hounds are `hound`, so they still count each other. Gate `rampage`
+  (new break: pack_by_kit).
+- **Role pools are pinned in data** (`pool` on every non-boss unit, required by
+  `validate-data`). The pools were derived from max HP (heavy = 90 or more), and
+  the new HP would have moved five units: Carapace Beetle support -> heavy,
+  Caustic Spewer heavy -> elite, Stormweaver heavy -> support, Ash Channeler
+  heavy -> elite, Cinder Raptor elite -> heavy. That would have changed which
+  units every slot word fields, so each unit keeps the pool it had; the pools
+  are identical before and after. The HP rule remains only as the fallback for a
+  unit with no `pool` (test fixtures).
+- **Not changed:** the units' `dMin` / `dMax` preview numbers. The game does not
+  show them; the sim's l1 policy reads `dMax` to pick a taunt target, so it
+  still ranks threats by the old damage.
+
 ## G-98. Encounter rework: lineups, summons, Scrapmaster, battle 10 (Kev, 2026-10-16 / 2026-10-20)
 
 Branch `claude/encounter-rework`. **Supersedes** the G-54 summons hold,

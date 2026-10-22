@@ -18,6 +18,13 @@ extends Resource
 @export var damage_preview_min: int = 0
 @export var damage_preview_max: int = 0
 @export var can_summon_elite: bool = false
+## The role pool a slot word draws this unit from (fodder / elite / support /
+## heavy), pinned in data (G-99) so a max-HP change never moves a unit between
+## pools. Empty for a boss.
+@export var role_pool: String = ""
+## Pack bonus counts the living units with the same pack kind (G-99: both
+## hounds are "hound" with two ability sets). Empty means the enemy_type.
+@export var pack_kind: String = ""
 ## Accretion: gain N shield at the start of each of this unit's turns.
 @export var accrete: int = 0
 ## Spawns cloaked (Forked Double); inherits the pkg2 cloak rules.

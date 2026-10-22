@@ -66,6 +66,7 @@
         "voidCircletBoss",
         "beastMonkey",
         "beastWolf",
+        "beastSlagHound",
         "beastLynx",
         "beastBison",
         "beastHyena",
@@ -180,6 +181,15 @@
           "description": "Spawns cloaked (Forked Double); inherits the reworked cloak rules."
         },
         "summonElite": { "type": "boolean" },
+        "pool": {
+          "type": "string",
+          "enum": ["fodder", "elite", "support", "heavy"],
+          "description": "The role pool slot words draw this unit from (G-99). Required on every non-boss unit by validate-data; pinned so a max-HP change never moves a unit between pools."
+        },
+        "packKind": {
+          "type": "string",
+          "description": "Pack bonus counts living units with the same pack kind; empty = the kit (`type`). G-99: Obsidian and Slag hounds are both \"hound\"."
+        },
         "targeting": {
           "type": "string",
           "enum": ["systematic", "wounded", "pack", "spiteful"],

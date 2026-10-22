@@ -1,5 +1,17 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Enemy archetypes (Kev 2026-10-22, DECISIONS_RESOLVED G-99; supersedes the
+max HP and ability damage of every non-boss enemy below):** each non-boss enemy
+is a glass cannon, artillery, bruiser, tank, disruptor or swarm unit, and its
+max HP and per-band damage are the archetype's multipliers applied to the old
+numbers (the full table is in G-99). Shields, heals, burn, debuffs, ranges,
+summons and bosses are unchanged, and so is **Scrap Drone** (35 HP, 7 / 10 /
+15 / 20): the tutorial is scripted on it (G-14). Slag Hound has its own ability set
+(`beastSlagHound`); pack bonus counts the same **pack kind** (`packKind`, else
+the kit), and both hounds are `hound`. **Role pools are pinned per unit**
+(`pool` in `enemyUnitDefs`, required on every non-boss unit), so max HP no
+longer decides a unit's pool; the pools did not change.
+
 **Encounter rework (Kev 2026-10-20, DECISIONS_RESOLVED G-98; supersedes the
 entries below where they differ, the G-54 summons hold, DECISIONS #5's drone
 rebuild and G-74 default 2 included):**
@@ -2004,7 +2016,7 @@ the condition icon participates in first-sight primer teaching like any other ic
 
 ---
 
-## Enemies (enemies.data.json — 5 factions, 38 unit defs / 37 kits)
+## Enemies (enemies.data.json — 5 factions, 38 unit defs / 38 kits)
 
 | Operation | Label | Identity | Boss (b10 escort) |
 |---|---|---|---|

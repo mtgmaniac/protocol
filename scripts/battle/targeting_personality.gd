@@ -52,6 +52,7 @@ const KIT_DEFAULTS := {
 	# Accretion — default SPITEFUL; wolves and monkeys hunt in packs, the
 	# panther stalks the wounded.
 	"beastWolf": Personality.PACK,
+	"beastSlagHound": Personality.PACK,
 	"beastMonkey": Personality.PACK,
 	"beastLynx": Personality.WOUNDED,
 	"beastBadger": Personality.SPITEFUL,

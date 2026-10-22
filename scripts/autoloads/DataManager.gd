@@ -179,6 +179,7 @@ const ENEMY_FACTION_BY_TYPE := {
 	"voidCircletBoss": "voidCirclet",
 	"beastMonkey": "stellarMenagerie",
 	"beastWolf": "stellarMenagerie",
+	"beastSlagHound": "stellarMenagerie",
 	"beastLynx": "stellarMenagerie",
 	"beastBison": "stellarMenagerie",
 	"beastHyena": "stellarMenagerie",
@@ -530,6 +531,8 @@ func _load_enemies() -> void:
 		enemy.damage_preview_min = int(enemy_def.get("dMin", 0))
 		enemy.damage_preview_max = int(enemy_def.get("dMax", 0))
 		enemy.can_summon_elite = bool(enemy_def.get("summonElite", false))
+		enemy.role_pool = str(enemy_def.get("pool", ""))
+		enemy.pack_kind = str(enemy_def.get("packKind", ""))
 		enemy.accrete = int(enemy_def.get("accrete", 0))
 		enemy.starts_cloaked = bool(enemy_def.get("startsCloaked", false))
 		enemy.dice_ranges = _build_enemy_dice_ranges(enemy_abilities.get(enemy_type, {}))
@@ -762,7 +765,9 @@ func _build_operation_battles(battles: Array) -> Array[Dictionary]:
 
 # --- Enemy role pools (pkg7.1 templated battle slots) ---
 # Classification (documented in battle-modes.schema.json): fodder = ai "dumb";
-# boss (standing-rule) units excluded; heavy = smart with hp >= 90; support =
+# boss (standing-rule) units excluded; since G-99 every non-boss unit names its
+# pool in data (`pool`), and the rule below is only the fallback: heavy = smart
+# with hp >= 90; support =
 # remaining smart units with ally-aid fields in >= 2 distinct kit zones;
 # elite = the rest.
 
@@ -787,6 +792,11 @@ func _build_enemy_role_pools() -> void:
 
 
 func _classify_enemy_role(enemy: EnemyData) -> String:
+	# The data names the pool (G-99); the derivation below is the fallback for
+	# a unit without one (test fixtures). validate-data requires it on every
+	# non-boss unit, so a max-HP change cannot move a unit between pools.
+	if enemy.role_pool != "":
+		return enemy.role_pool
 	if enemy.ai_type == "dumb":
 		return "fodder"
 	if enemy.max_hp >= HEAVY_HP_MIN:

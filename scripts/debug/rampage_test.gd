@@ -20,7 +20,7 @@
 #   D. copy      the keyword says it does not stack; the chip leaves on the
 #                beat a rampage ends unused.
 # scripts/checks/break_gate.py reruns it with each CombatManager
-# RAMPAGE_BREAK_ARG mode (stack, keep, pack_one) and requires a FAIL.
+# RAMPAGE_BREAK_ARG mode (stack, keep, pack_one, pack_by_kit) and requires a FAIL.
 extends SceneTree
 
 const COMBAT_SOURCE := "res://scripts/battle/combat_manager.gd"
@@ -230,6 +230,30 @@ func _check_pack() -> void:
 	hp = _hero_hp(cm)
 	_enemy_round(cm, {0: LOW})
 	_expect(_hp_lost(cm, hp) == 6, "another kind is not a packmate: a plain 6 (%d)" % _hp_lost(cm, hp))
+
+	# G-99: the two hounds have their own ability sets and one pack kind, so
+	# each still counts the other. Real data, each hound's pack attack.
+	var dm: Node = root.get_node("/root/DataManager")
+	var obsidian: EnemyData = dm.get_enemy_by_display_name("Obsidian Hound") as EnemyData
+	var slag: EnemyData = dm.get_enemy_by_display_name("Slag Hound") as EnemyData
+	_expect(obsidian.enemy_type != slag.enemy_type, "the hounds have their own ability sets (%s / %s)" % [obsidian.enemy_type, slag.enemy_type])
+	_expect(obsidian.pack_kind == "hound" and slag.pack_kind == "hound", "both hounds are pack kind hound (%s / %s)" % [obsidian.pack_kind, slag.pack_kind])
+	for leader_index in 2:
+		var hounds: Array = [obsidian.duplicate(true), slag.duplicate(true)]
+		var leader: EnemyData = hounds[leader_index]
+		var pack_roll: int = 0
+		var pack_dmg: int = 0
+		for range_variant in leader.dice_ranges:
+			var raw: Dictionary = (range_variant as Dictionary).get("raw", {})
+			if bool(raw.get("packBonus", false)) and int(raw.get("dmg", 0)) > pack_dmg:
+				pack_dmg = int(raw.get("dmg", 0))
+				pack_roll = int((range_variant as Dictionary).get("min", 0))
+		_expect(pack_roll > 0, "%s has a pack attack" % leader.display_name)
+		var hound_cm: Object = _battle(hounds)
+		hp = _hero_hp(hound_cm)
+		var hound_events: Array = _enemy_round(hound_cm, {leader_index: pack_roll})
+		_expect(_count(hound_events, "pack_bonus") == 1, "%s's pack attack counts the other hound (pack_bonus events: %d)" % [leader.display_name, _count(hound_events, "pack_bonus")])
+		_expect(_hp_lost(hound_cm, hp) == pack_dmg + per, "%s hits for %d + %d with the other hound up (%d)" % [leader.display_name, pack_dmg, per, _hp_lost(hound_cm, hp)])
 
 	# Every printed copy of the number.
 	var printed: String = "+%d damage per other pack member" % per

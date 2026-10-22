@@ -402,5 +402,21 @@ for (const err of validateSummonFlags(enemies)) {
   }
 }
 
+// Every non-boss unit names its role pool (G-99); a boss (a unit with a
+// standing rule, the last battle's headliner) names none.
+{
+  const BOSSES = new Set(['Scrapmaster', 'Hive Matriarch', 'Veil Overseer', 'Signal Hierarch', 'Mantle Tyrant']);
+  for (const [name, def] of Object.entries(enemies.enemyUnitDefs || {})) {
+    if (BOSSES.has(name) && def.pool !== undefined) {
+      ok = false;
+      console.error(`enemies.data.json: boss '${name}' must not have a pool`);
+    }
+    if (!BOSSES.has(name) && !def.pool) {
+      ok = false;
+      console.error(`enemies.data.json: '${name}' has no pool (fodder / elite / support / heavy)`);
+    }
+  }
+}
+
 if (!ok) process.exit(1);
 console.log('Game data JSON validates against schemas.');

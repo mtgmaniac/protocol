@@ -313,7 +313,7 @@ GATES = [
     # the old +1.
     ("rampage", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "RAMPAGE",
         "--script", "scripts/debug/rampage_test.gd", "--break-arg=--rampage-break=",
-        "--breaks", "stack,keep,pack_one"],
+        "--breaks", "stack,keep,pack_one,pack_by_kit"],
         "[RAMPAGE_GATE] PASS", False),
     # Geode Panther (G-61): an attack that freezes one die hits the hero it
     # freezes, the lowest die, in combat and in the intent shown while
