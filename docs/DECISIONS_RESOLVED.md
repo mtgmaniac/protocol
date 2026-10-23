@@ -29,7 +29,16 @@ first; rounded to the nearest whole number):
 **Units** (max HP; damage per band, lowest band first, "now -> new" where it
 moved). Every `hp_now` and `dmg_now` in the source matched the live data, and
 every new value is the archetype's multiplier applied to it. Bosses (Scrapmaster,
-Hive Matriarch, Veil Overseer, Signal Hierarch, Mantle Tyrant) are unchanged.
+Hive Matriarch, Veil Overseer, Signal Hierarch, Mantle Tyrant) are unchanged,
+except the Scrapmaster as amended below.
+
+**Amended: Scrapmaster +25% (Kev, 2026-10-23).** With the drone rebuild gone
+(G-98) and l1 killing the drones before the heal matters, the Facility boss
+fell to about 5% losses. Tested on this branch (1,500 runs per policy, seeds
+100000–101499): a heal of 15 per drone did nothing (5.3% / 2.3%); +25% HP and
+damage reached 21.7% / 17.0% (main was 38.3%). So: **Scrapmaster max HP 140 ->
+175; damage 12 / 17 / 21 / 26 -> 15 / 21 / 26 / 33** (rounded to the nearest
+whole number, 32.5 up). ASSEMBLY LINE stays 8 HP per living Scrap Drone.
 **Scrap Drone is kept out of the pass (Kev, 2026-10-22):** the tutorial is
 scripted on its real statline (G-14: training uses normal HP and damage), and
 at 26 HP with harder hits the first lesson lost its free third turn. It keeps

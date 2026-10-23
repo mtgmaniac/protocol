@@ -480,8 +480,8 @@
           9
         ],
         "name": "Clamp Driver",
-        "eff": "12 damage, -2 roll 2 turns",
-        "dmg": 12,
+        "eff": "15 damage, -2 roll 2 turns",
+        "dmg": 15,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -496,8 +496,8 @@
           15
         ],
         "name": "Core Blast",
-        "eff": "17 damage",
-        "dmg": 17,
+        "eff": "21 damage",
+        "dmg": 21,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -510,8 +510,8 @@
           19
         ],
         "name": "System Purge",
-        "eff": "remove all hero shields, 21 damage",
-        "dmg": 21,
+        "eff": "remove all hero shields, 26 damage",
+        "dmg": 26,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -525,8 +525,8 @@
           20
         ],
         "name": "Foundry Barrage",
-        "eff": "26 damage (all heroes)",
-        "dmg": 26,
+        "eff": "33 damage (all heroes)",
+        "dmg": 33,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -3068,7 +3068,7 @@
       "role": "Plates its allies, punishes attackers with spike, and stacks burn on you."
     },
     "Scrapmaster": {
-      "hp": 140,
+      "hp": 175,
       "dMin": 12,
       "dMax": 22,
       "type": "boss",

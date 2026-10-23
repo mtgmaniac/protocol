@@ -6,7 +6,9 @@ is a glass cannon, artillery, bruiser, tank, disruptor or swarm unit, and its
 max HP and per-band damage are the archetype's multipliers applied to the old
 numbers (the full table is in G-99). Shields, heals, burn, debuffs, ranges,
 summons and bosses are unchanged, and so is **Scrap Drone** (35 HP, 7 / 10 /
-15 / 20): the tutorial is scripted on it (G-14). Slag Hound has its own ability set
+15 / 20): the tutorial is scripted on it (G-14). **Exception: the Scrapmaster**
+is +25% (2026-10-23): 175 HP, damage 15 / 21 / 26 / 33; its heal stays 8 per
+living Scrap Drone. Slag Hound has its own ability set
 (`beastSlagHound`); pack bonus counts the same **pack kind** (`packKind`, else
 the kit), and both hounds are `hound`. **Role pools are pinned per unit**
 (`pool` in `enemyUnitDefs`, required on every non-boss unit), so max HP no
