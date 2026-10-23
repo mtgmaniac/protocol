@@ -1,5 +1,20 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-102. Stat tuning 2 (Kev, 2026-10-24)
+
+Branch `claude/unit-variety`. Data only: these values and nothing else. Bands
+are named by roll range. No unit changes pool (checked: the pools the game
+builds are identical before and after).
+
+| Unit | Change |
+|---|---|
+| Resonance Warden | max HP 105 -> 90 |
+| Patrol Enforcer | 10-14 Heavy Burst damage 20 -> 18; 15-19 Disruptor Round 23 -> 20 |
+| Magma Drake | 14-19 Molten Rake damage 22 -> 18 |
+| Hive Matriarch | +25% (rounded to the nearest whole number, halves up, as the Scrapmaster in G-99): max HP 135 -> 169; damage 6-11 Royal Mandibles 22 -> 28, 12-16 Brood Venom 22 -> 28, 17-19 Biomass Purge 27 -> 34, 20 Acid Cataclysm 30 -> 38. Royal Carapace (1-5) does no damage. THE BROOD (a Bloodmite every 3 rounds) is unchanged. |
+
+Ability text carries the new numbers; inspect and Help read the data.
+
 ## G-101. First stat tuning after the archetype pass (Kev, 2026-10-24)
 
 Branch `claude/unit-variety`. Data only: these values and nothing else. Bands

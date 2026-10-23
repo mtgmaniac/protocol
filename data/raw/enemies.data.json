@@ -190,8 +190,8 @@
           14
         ],
         "name": "Heavy Burst",
-        "eff": "20 damage",
-        "dmg": 20,
+        "eff": "18 damage",
+        "dmg": 18,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -204,8 +204,8 @@
           19
         ],
         "name": "Disruptor Round",
-        "eff": "23 damage, -1 roll 2 turns",
-        "dmg": 23,
+        "eff": "20 damage, -1 roll 2 turns",
+        "dmg": 20,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1024,8 +1024,8 @@
           11
         ],
         "name": "Royal Mandibles",
-        "eff": "22 damage, 35% lifesteal, -2 roll 2 turns",
-        "dmg": 22,
+        "eff": "28 damage, 35% lifesteal, -2 roll 2 turns",
+        "dmg": 28,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1041,8 +1041,8 @@
           16
         ],
         "name": "Brood Venom",
-        "eff": "22 damage, 3 burn 5 turns",
-        "dmg": 22,
+        "eff": "28 damage, 3 burn 5 turns",
+        "dmg": 28,
         "burn": 3,
         "burnT": 5,
         "heal": 0,
@@ -1055,8 +1055,8 @@
           19
         ],
         "name": "Biomass Purge",
-        "eff": "27 damage, 2 burn 4 turns, -3 roll 2 turns",
-        "dmg": 27,
+        "eff": "34 damage, 2 burn 4 turns, -3 roll 2 turns",
+        "dmg": 34,
         "burn": 2,
         "burnT": 4,
         "heal": 0,
@@ -1071,8 +1071,8 @@
           20
         ],
         "name": "Acid Cataclysm",
-        "eff": "remove all hero shields, 30 damage, 40% lifesteal, summon",
-        "dmg": 30,
+        "eff": "remove all hero shields, 38 damage, 40% lifesteal, summon",
+        "dmg": 38,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -2739,8 +2739,8 @@
           19
         ],
         "name": "Molten Rake",
-        "eff": "22 damage, 3 burn 3 turns",
-        "dmg": 22,
+        "eff": "18 damage, 3 burn 3 turns",
+        "dmg": 18,
         "burn": 3,
         "burnT": 3,
         "heal": 0,
@@ -3113,7 +3113,7 @@
       "role": "Copies your highest die, then hoses you down with heavy, long burn."
     },
     "Hive Matriarch": {
-      "hp": 135,
+      "hp": 169,
       "type": "hiveBoss",
       "ai": "smart",
       "summonElite": true,
@@ -3145,7 +3145,7 @@
       "role": "Holds the lattice up: shields its allies, lifts their rolls, and hides behind a firewall."
     },
     "Resonance Warden": {
-      "hp": 105,
+      "hp": 90,
       "type": "veilResonance",
       "ai": "smart",
       "pool": "heavy",

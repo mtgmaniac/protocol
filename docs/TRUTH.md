@@ -1,5 +1,10 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Stat tuning 2 (Kev 2026-10-24, DECISIONS_RESOLVED G-102; supersedes the
+numbers it names):** Resonance Warden 90 HP; Patrol Enforcer 10-14 / 15-19
+damage 18 / 20; Magma Drake 14-19 damage 18; Hive Matriarch +25%: 169 HP,
+damage 28 / 28 / 34 / 38 (THE BROOD unchanged). No unit changed pool.
+
 **First stat tuning after the archetype pass (Kev 2026-10-24, DECISIONS_RESOLVED
 G-101; supersedes the G-99 numbers it names):** Phaseblade 15-19 / 20 damage 24
 / 30; Shard Drone 36 HP; Aegis Anchor 60 HP; Volt Enforcer 15-19 / 20 damage 17
