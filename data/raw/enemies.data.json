@@ -176,8 +176,8 @@
           9
         ],
         "name": "Assault",
-        "eff": "16 damage",
-        "dmg": 16,
+        "eff": "14 damage",
+        "dmg": 14,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -436,8 +436,8 @@
           19
         ],
         "name": "Conduction",
-        "eff": "20 damage, 3 burn 2 turns",
-        "dmg": 20,
+        "eff": "17 damage, 3 burn 2 turns",
+        "dmg": 17,
         "burn": 3,
         "burnT": 2,
         "heal": 0,
@@ -450,8 +450,8 @@
           20
         ],
         "name": "Meltdown Arc",
-        "eff": "30 damage, 4 burn 3 turns",
-        "dmg": 30,
+        "eff": "24 damage, 4 burn 3 turns",
+        "dmg": 24,
         "burn": 4,
         "burnT": 3,
         "heal": 0,
@@ -1464,8 +1464,8 @@
           19
         ],
         "name": "Guarded Cut",
-        "eff": "27 damage, firewall (self)",
-        "dmg": 27,
+        "eff": "24 damage, firewall (self)",
+        "dmg": 24,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1479,8 +1479,8 @@
           20
         ],
         "name": "Phase Reinforcements",
-        "eff": "37 damage",
-        "dmg": 37,
+        "eff": "30 damage",
+        "dmg": 30,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1883,8 +1883,8 @@
           19
         ],
         "name": "Warded Lash",
-        "eff": "24 damage, firewall (self)",
-        "dmg": 24,
+        "eff": "20 damage, firewall (self)",
+        "dmg": 20,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -2124,8 +2124,8 @@
           19
         ],
         "name": "Stolen Reflex",
-        "eff": "24 damage, hijack",
-        "dmg": 24,
+        "eff": "20 damage, hijack",
+        "dmg": 20,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -2753,8 +2753,8 @@
           20
         ],
         "name": "Eruption",
-        "eff": "38 damage, 4 burn 3 turns",
-        "dmg": 38,
+        "eff": "30 damage, 4 burn 3 turns",
+        "dmg": 30,
         "burn": 4,
         "burnT": 3,
         "heal": 0,
@@ -3121,7 +3121,7 @@
       "role": "Drags your rolls down, wipes your shields, and heals off the damage it deals."
     },
     "Shard Drone": {
-      "hp": 42,
+      "hp": 36,
       "type": "veilShard",
       "ai": "dumb",
       "pool": "fodder",
@@ -3137,7 +3137,7 @@
       "role": "Pulls your attacks onto itself with taunt, then answers with rising damage."
     },
     "Aegis Anchor": {
-      "hp": 72,
+      "hp": 60,
       "type": "veilAegis",
       "ai": "smart",
       "pool": "support",

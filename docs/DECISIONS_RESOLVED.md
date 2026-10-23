@@ -1,5 +1,25 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-101. First stat tuning after the archetype pass (Kev, 2026-10-24)
+
+Branch `claude/unit-variety`. Data only: these values and nothing else. Bands
+are named by roll range. Role pools are pinned in the data (G-99), so no unit
+changes pool (checked: the pools the game builds are identical before and
+after).
+
+| Unit | Change |
+|---|---|
+| Phaseblade | 15-19 Guarded Cut damage 27 -> 24; 20 Phase Reinforcements 37 -> 30 |
+| Shard Drone | max HP 42 -> 36 |
+| Aegis Anchor | max HP 72 -> 60 |
+| Volt Enforcer | 15-19 Conduction damage 20 -> 17; 20 Meltdown Arc 30 -> 24 |
+| Patrol Enforcer | 4-9 Assault damage 16 -> 14 |
+| False Image | 12-19 Stolen Reflex damage 24 -> 20 |
+| Circuit Acolyte | 12-19 Warded Lash damage 24 -> 20 |
+| Magma Drake | 20 Eruption damage 38 -> 30 |
+
+Ability text carries the new numbers; inspect and Help read the data.
+
 ## G-100. Enemy stats are exactly what the data says (Kev, 2026-10-23)
 
 Branch `claude/unit-variety`. **Ruling (Kev, transcribed):** enemy stats are

@@ -1,5 +1,11 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**First stat tuning after the archetype pass (Kev 2026-10-24, DECISIONS_RESOLVED
+G-101; supersedes the G-99 numbers it names):** Phaseblade 15-19 / 20 damage 24
+/ 30; Shard Drone 36 HP; Aegis Anchor 60 HP; Volt Enforcer 15-19 / 20 damage 17
+/ 24; Patrol Enforcer 4-9 damage 14; False Image and Circuit Acolyte 12-19
+damage 20; Magma Drake 20 damage 30. No unit changed pool.
+
 **Enemy stats are exactly what the data says (Kev 2026-10-23, DECISIONS_RESOLVED
 G-100):** no hidden multipliers in production. `battleEnemyScale`,
 `trackHpScale` and the units' `dMin` / `dMax` are gone; the sim's l1 policy
