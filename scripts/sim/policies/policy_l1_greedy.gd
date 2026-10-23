@@ -288,20 +288,32 @@ func _lowest_die_unfrozen_enemy(bs: BattleState, cm: CombatManager) -> Dictionar
 	return best
 
 
-# The living, uncloaked enemy with the biggest max damage face (unit dMax —
-# what intel shows). Deterministic: strict greater-than keeps slot order on ties.
+# The living, uncloaked enemy whose biggest ability hits hardest: the highest
+# `dmg` across its kit, read from the data (G-100; it read the unit's dMax
+# preview number, which no longer exists and had drifted from the kits).
+# Deterministic: strict greater-than keeps slot order on ties.
 func _highest_threat_enemy(cm: CombatManager) -> Dictionary:
 	var best: Dictionary = {}
-	var best_dmax: int = -1
+	var best_dmg: int = -1
 	for enemy_state_variant in cm.get_enemy_states():
 		var enemy_state: Dictionary = enemy_state_variant
 		if bool(enemy_state.get("dead", false)) or bool(enemy_state.get("cloaked", false)):
 			continue
-		var dmax: int = int((enemy_state.get("unit") as Object).get("damage_preview_max"))
-		if dmax > best_dmax:
-			best_dmax = dmax
+		var top_dmg: int = _max_ability_dmg(enemy_state.get("unit") as Object)
+		if top_dmg > best_dmg:
+			best_dmg = top_dmg
 			best = enemy_state
 	return best
+
+
+static func _max_ability_dmg(unit: Object) -> int:
+	var top: int = 0
+	if unit == null:
+		return top
+	for range_variant in unit.get("dice_ranges"):
+		var raw: Dictionary = (range_variant as Dictionary).get("raw", {})
+		top = maxi(top, int(raw.get("dmg", 0)))
+	return top
 
 
 func _boss_aware_focus(cm: CombatManager) -> Dictionary:

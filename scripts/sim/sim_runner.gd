@@ -289,7 +289,7 @@ func _run(args: Dictionary) -> int:
 	_apply_battle_slots_override(dm, op, str(args.get("battle-slots", "")))
 	# Cycle-1 bake preview (measurement only): `--enemy-hp "Name=hp;Name2=hp"`
 	# overwrites enemy DATA max_hp in memory — a faithful preview of literal
-	# baked values (flows through battleEnemyScale exactly like shipped data).
+	# baked values (enemies field exactly the data's stats, G-100).
 	# Role pools were classified at load, so classification is NOT re-derived —
 	# matching the bake rule that classification must not flip (Stage 2).
 	_apply_enemy_hp_override(dm, str(args.get("enemy-hp", "")))

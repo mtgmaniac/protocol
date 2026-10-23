@@ -111,7 +111,7 @@ Format: `[value type] [modifier] [target] [duration]`. Effects joined by ` + `. 
 
 ## Enemies (from enemies.data.json — COMPLETE, 5 factions)
 
-38 enemy unit defs / 37 ability kits across 5 operations. Structure: `enemyAbilities[type]` (5-zone table) + `enemyUnitDefs[Name]` (hp, dMin/dMax, type, ai, callsign ≤8 chars, optional `accrete`, `startsCloaked`, `targeting`) + `battleEnemyScale` (per-battle hp/dmg multipliers). All 24 core kits were reworked in pkg3.3 around faction identities.
+38 enemy unit defs / 37 ability kits across 5 operations. Structure: `enemyAbilities[type]` (5-zone table) + `enemyUnitDefs[Name]` (hp, type, ai, callsign ≤8 chars, optional `accrete`, `startsCloaked`, `targeting`). All 24 core kits were reworked in pkg3.3 around faction identities.
 
 | Operation key | Label / callsign | Faction identity | Boss (battle-10 escort) |
 |---|---|---|---|

@@ -9,7 +9,6 @@
   ],
   "modes": {
     "facility": {
-      "trackHpScale": 1.05,
       "callsign": "FACILITY",
       "label": "Facility Sweep",
       "blurb": "Rogue war machines defend the foundry and feed scrap to their master.",
@@ -100,7 +99,6 @@
       ]
     },
     "hive": {
-      "trackHpScale": 1,
       "callsign": "HIVE",
       "label": "Hive Incursion",
       "blurb": "Acid-spitting swarms feed on the wounded and breed unchecked.",
@@ -186,7 +184,6 @@
       ]
     },
     "veil": {
-      "trackHpScale": 0.94,
       "callsign": "VEIL",
       "label": "Veil Breach",
       "blurb": "Alien Veil troops defend the relay with linked energy shields.",
@@ -276,7 +273,6 @@
       ]
     },
     "voidCirclet": {
-      "trackHpScale": 0.94,
       "callsign": "SIGNAL",
       "label": "Signal Purge",
       "blurb": "Machine cultists corrupt targeting systems and drain power.",
@@ -363,7 +359,6 @@
       ]
     },
     "stellarMenagerie": {
-      "trackHpScale": 0.94,
       "callsign": "MANTLE",
       "label": "Mantle Hunt",
       "blurb": "Stone-plated predators grow armor as they stalk the squad.",

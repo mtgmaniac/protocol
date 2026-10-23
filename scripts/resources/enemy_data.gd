@@ -15,8 +15,6 @@ extends Resource
 ## `role` on enemyUnitDefs). Behaviour, never ability names, never a band name.
 @export_multiline var role: String = ""
 @export var max_hp: int = 0
-@export var damage_preview_min: int = 0
-@export var damage_preview_max: int = 0
 @export var can_summon_elite: bool = false
 ## The role pool a slot word draws this unit from (fodder / elite / support /
 ## heavy), pinned in data (G-99) so a max-HP change never moves a unit between

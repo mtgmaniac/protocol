@@ -1,5 +1,12 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Enemy stats are exactly what the data says (Kev 2026-10-23, DECISIONS_RESOLVED
+G-100):** no hidden multipliers in production. `battleEnemyScale`,
+`trackHpScale` and the units' `dMin` / `dMax` are gone; the sim's l1 policy
+picks its taunt target by the highest ability `dmg` in the data. The enemy
+state's `dmg_scale` stays at 1.0 in the game; only the sim's
+`enemy_dmg_scalar` knob moves it.
+
 **Enemy archetypes (Kev 2026-10-22, DECISIONS_RESOLVED G-99; supersedes the
 max HP and ability damage of every non-boss enemy below):** each non-boss enemy
 is a glass cannon, artillery, bruiser, tank, disruptor or swarm unit, and its

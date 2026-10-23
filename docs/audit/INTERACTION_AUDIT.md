@@ -369,12 +369,14 @@ See [enemies.md](../wiki/enemies.md), [bosses.md](../wiki/bosses.md), [factions.
 - **Fix:** compare `unit.id` (species) or `enemy_type`, not the runtime state id. → [enemies](../wiki/enemies.md)
 
 ### A-047 — `battleEnemyScale` is schema-required dead data {#a-047}
+- **Resolved (G-100, 2026-10-23):** removed from the data, the schema and AGENTS.md.
 - **Where:** `enemies.data.json:2494-2535` (10 per-battle hp/dmg multipliers); schema requires it (`enemies.data.schema.json:6,18-31`); **zero consumers** in scripts. `AGENTS.md:79` cites a nonexistent sim `--scaled` flag. (enemies-05)
 - **Now:** a stale squad-4-era scaling table required by the schema but read by nothing.
 - **Severity:** dead.
 - **Fix:** delete the table + schema requirement (or wire it); correct `AGENTS.md:79`. → [enemies](../wiki/enemies.md)
 
 ### A-048 — `trackHpScale` loaded but never read {#a-048}
+- **Resolved (G-100, 2026-10-23):** removed from the data, the schema, the loader and `OperationData`.
 - **Where:** `battle-modes.json:12,98,174,256,339` → `DataManager.gd:411` → `operation_data.gd:12`; zero readers. (enemies-06)
 - **Now:** parsed into `OperationData.track_hp_scale` and never used; combat uses flat stats every fight.
 - **Severity:** dead.

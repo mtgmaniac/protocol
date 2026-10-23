@@ -40,12 +40,6 @@
             "type": "string",
             "description": "Short operation callsign shown in UI (e.g. FACILITY)."
           },
-          "trackHpScale": {
-            "type": "number",
-            "minimum": 0.5,
-            "maximum": 1.5,
-            "description": "UNWIRED — parked, not cut (INVARIANTS #6/#8). Authored for per-battle HP scaling; no reader wires it (not even the sim). Godot uses flat enemyUnitDefs stats — do not re-flag as dead data."
-          },
           "battles": {
             "type": "array",
             "items": {

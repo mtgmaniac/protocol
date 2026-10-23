@@ -1,5 +1,26 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-100. Enemy stats are exactly what the data says (Kev, 2026-10-23)
+
+Branch `claude/unit-variety`. **Ruling (Kev, transcribed):** enemy stats are
+exactly what the data says; no hidden multipliers in production.
+
+**As built.**
+- **Removed** `battleEnemyScale` (enemies.data.json: a 10-battle HP / damage
+  table, schema-required, read by nothing) and `trackHpScale` (battle-modes.json:
+  loaded into `OperationData.track_hp_scale`, read by nothing). A full search,
+  tests and tools included, found no live reader; the schemas' "parked, not
+  cut" notes go with them. Audit items A-047 and A-048 are closed.
+- **Removed** the units' `dMin` / `dMax` (76 fields) and
+  `EnemyData.damage_preview_min/max`. The game never showed them. The sim's l1
+  policy read `dMax` to pick its taunt target; it now ranks enemies by the
+  highest `dmg` in their ability set, read from the data. (Hero abilities keep
+  their own `dMin` / `dMax`: a different field.)
+- **Kept: the enemy state's `dmg_scale`.** It is 1.0 in every game. It is not
+  dead: the sim's `enemy_dmg_scalar` workbench knob (`scripts/sim/knobs.json`,
+  measurement only) multiplies enemy damage through it, as `enemy_hp_scalar`
+  does max HP. Neither is reachable from the game.
+
 ## G-99. Enemies are built from archetypes (Kev, 2026-10-22)
 
 Branch `claude/unit-variety` (off `claude/encounter-rework` 3a9646e, kept apart

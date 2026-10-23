@@ -528,8 +528,6 @@ func _load_enemies() -> void:
 		enemy.targeting = str(enemy_def.get("targeting", ""))
 		enemy.role = str(enemy_def.get("role", ""))
 		enemy.max_hp = int(enemy_def.get("hp", 0))
-		enemy.damage_preview_min = int(enemy_def.get("dMin", 0))
-		enemy.damage_preview_max = int(enemy_def.get("dMax", 0))
 		enemy.can_summon_elite = bool(enemy_def.get("summonElite", false))
 		enemy.role_pool = str(enemy_def.get("pool", ""))
 		enemy.pack_kind = str(enemy_def.get("packKind", ""))
@@ -646,7 +644,6 @@ func _load_operation_from_entry(operation_id: String, mode_entry: Dictionary) ->
 	operation.victory_subtitle = str(mode_entry.get("victorySub", ""))
 	operation.victory_backdrop = str(mode_entry.get("victoryBackdrop", ""))
 	operation.victory_backdrop_offset = mode_entry.get("victoryBackdropOffset", {}) as Dictionary
-	operation.track_hp_scale = float(mode_entry.get("trackHpScale", 1.0))
 	operation.battles = _build_operation_battles(mode_entry.get("battles", []))
 	operations[operation.id] = operation
 

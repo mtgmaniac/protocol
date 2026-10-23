@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
   "$id": "overload-protocol:enemies.data",
-  "title": "Enemy abilities, unit roster stats, battle scaling",
+  "title": "Enemy abilities and unit roster stats",
   "type": "object",
-  "required": ["enemyAbilities", "enemyUnitDefs", "battleEnemyScale"],
+  "required": ["enemyAbilities", "enemyUnitDefs"],
   "additionalProperties": true,
   "properties": {
     "$schema": { "type": "string" },
@@ -14,21 +14,6 @@
     "enemyUnitDefs": {
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/enemyUnitDef" }
-    },
-    "battleEnemyScale": {
-      "description": "UNWIRED — flat-stats is current design (INVARIANTS #6/#8); per-battle scaling parked, not cut. No runtime reader — do not re-flag as dead data.",
-      "type": "array",
-      "minItems": 10,
-      "maxItems": 10,
-      "items": {
-        "type": "object",
-        "required": ["hp", "dmg"],
-        "additionalProperties": false,
-        "properties": {
-          "hp": { "type": "number" },
-          "dmg": { "type": "number" }
-        }
-      }
     }
   },
   "$defs": {
@@ -153,12 +138,10 @@
     "aiType": { "type": "string", "enum": ["dumb", "smart"] },
     "enemyUnitDef": {
       "type": "object",
-      "required": ["hp", "dMin", "dMax", "type", "ai", "role"],
+      "required": ["hp", "type", "ai", "role"],
       "additionalProperties": false,
       "properties": {
         "hp": { "type": "integer", "minimum": 1 },
-        "dMin": { "type": "integer", "minimum": 1 },
-        "dMax": { "type": "integer", "minimum": 1 },
         "type": { "$ref": "#/$defs/enemyType" },
         "ai": { "$ref": "#/$defs/aiType" },
         "role": {
