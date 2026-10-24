@@ -12,6 +12,15 @@ ships with it.
 - **Version:** `project.godot` `config/version` 0.4 -> 0.5, the one source; the
   title stamp and the Help footer read DEMO v0.5. The telemetry gate's
   expected `game_version` now reads that setting instead of a copied "0.4".
+- **Web build:** `builds/overload-protocol-demo-v0.5-web.zip` (46.7 MB, v0.4
+  was 45.9 MB; the 9 export files flat, `index.html` at the root; not
+  committed, not uploaded), exported from e5c3f7b with the Web preset
+  unchanged. The pack holds the `Telemetry` autoload, its endpoint is
+  `docs/TELEMETRY.md`'s production URL, and events carry `game_version` 0.5.
+  Checked in headless Chrome at 640x960 (telemetry requests answered locally,
+  none delivered): it loads, the title stamp and Help footer read DEMO v0.5,
+  squad select shows DEPLOY SQUAD at 3 / 3, and a Facility battle starts and
+  rolls.
 - **Sim pins re-pinned** (BASELINE-APPROVED-BY-KEV, 5b8f0ee): the size table is
   at the top of TRUTH.md. First-evolution Signal Purge moved -10.1 against the
   8-point line.
