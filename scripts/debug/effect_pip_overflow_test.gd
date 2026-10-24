@@ -8,7 +8,8 @@
 # badge, the same overflow language the status chip row uses.
 #
 # FAIL-ON-OLD: the pre-fix producer returns three pips with no overflow entry.
-#   • Conclave Bulwark (5 effects) -> 3 pips + "+2", first-three by authoring order.
+#   • Hierarch Mantle (5 effects) -> 3 pips + "+2", first-three by authoring order
+#     (Shieldline Rally was the fixture until G-98 removed its summon).
 #   • the dropped keywords are still spelled out in the authored eff text, which
 #     is what long-press renders under the pips (InspectResolver.resolve_ability).
 #   • a three-or-fewer ability gets NO badge.
@@ -63,13 +64,14 @@ func _initialize() -> void:
 	var InspectResolver: GDScript = load("res://scripts/ui/inspect_resolver.gd")
 	var dm: Node = root.get_node("/root/DataManager")
 
-	# ── Conclave Bulwark: 20 dmg · 12 shield · +2 roll (all) · firewall · summon.
-	var bulwark: Dictionary = _find_enemy_raw(dm, "Shieldline Rally")
-	_check(not bulwark.is_empty(), "Conclave Bulwark is present in the enemy data")
+	# ── Signal Hierarch, Hierarch Mantle: 20 shield (self) · 8 shield (ally) ·
+	# +2 roll (all) · firewall · 25% summon.
+	var bulwark: Dictionary = _find_enemy_raw(dm, "Hierarch Mantle")
+	_check(not bulwark.is_empty(), "Hierarch Mantle is present in the enemy data")
 	var pips: Array = EffectPip.effects_from_ability_raw(bulwark, "enemy")
 	_check(pips.size() == EffectPip.MAX_VISIBLE_EFFECTS + 1,
-		"Conclave Bulwark renders 3 pips + the overflow badge (saw %d)" % pips.size())
-	_check(_kinds(pips).slice(0, 3) == ["dmg", "shield", "rfm"],
+		"Hierarch Mantle renders 3 pips + the overflow badge (saw %d)" % pips.size())
+	_check(_kinds(pips).slice(0, 3) == ["shield", "shield", "rfm"],
 		"the visible three are the first three in AUTHORING order (saw %s)" % str(_kinds(pips)))
 	_check(_overflow_value(pips) == "+2",
 		"the two dropped effects (firewall, summon) render as +2 (saw '%s')" % _overflow_value(pips))

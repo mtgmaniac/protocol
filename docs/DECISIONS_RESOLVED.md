@@ -47,6 +47,11 @@ ships with it.
   Pumice Climber; G-98 made battle 1 Obsidian Hound + Slag Hound). Four fail on
   `main` 39d923d too, before the balance work: `player telemetry`, `reward
   model`, `no animations` and `text fit` (a 90 s timeout). Not investigated.
+  **Amended after the tag:** the three stale fixtures now match the data
+  (Rust Drone Voltage Drop 10 and Signal Crush 12 damage; the pip-overflow
+  fixture is Signal Hierarch's Hierarch Mantle, the same firewall + summon
+  overflow Shieldline Rally had; Mantle Hunt opens on an Obsidian Hound) and
+  the three gates pass. The four older failures remain.
 
 ## G-103. Stat tuning 3 (Kev, 2026-10-24)
 

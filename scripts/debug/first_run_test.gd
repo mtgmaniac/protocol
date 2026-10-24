@@ -284,7 +284,7 @@ func _check_live(after: bool) -> void:
 		_errors.append("live (%s): battle scene did not load" % _when(after))
 		return
 	var beast: Dictionary = scene.combat_manager.get_enemy_states()[0]
-	_expect(str(beast["unit"].display_name) == "Pumice Climber", "live (%s): fixture, Mantle Hunt opens on a Pumice Climber (%s)" % [_when(after), str(beast["unit"].display_name)])
+	_expect(str(beast["unit"].display_name) == "Obsidian Hound", "live (%s): fixture, Mantle Hunt opens on an Obsidian Hound (%s)" % [_when(after), str(beast["unit"].display_name)])
 	_expect(str(beast.get("trait", "")) == ("packRage" if after else ""), "live (%s): the beast's state carries %s (%s)" % [_when(after), "Feral" if after else "no trait", str(beast.get("trait", ""))])
 	var card: Control = scene._feedback._find_card_by_state_id("enemy", str(beast["id"]))
 	var marker: Label = card.find_child("TraitMarker", true, false) as Label if card != null else null
