@@ -1,5 +1,44 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-104. DEMO v0.5: encounters, enemy archetypes and tuning, pre-Reddit polish (Kev, 2026-10-24)
+
+**Ruling (Kev, transcribed from the task).** DEMO v0.5 is the encounter rework
+(G-98) plus the enemy archetypes and stat tuning (G-99 to G-103) plus the
+pre-Reddit polish (G-97). The UI work merged after the v0.4 tag (G-93 to G-96)
+ships with it.
+
+- **Merge:** `claude/unit-variety` 46e2b49 (which contains
+  `claude/encounter-rework`) fast-forwarded into `main` (39d923d -> 46e2b49).
+- **Version:** `project.godot` `config/version` 0.4 -> 0.5, the one source; the
+  title stamp and the Help footer read DEMO v0.5. The telemetry gate's
+  expected `game_version` now reads that setting instead of a copied "0.4".
+- **Sim pins re-pinned** (BASELINE-APPROVED-BY-KEV, 5b8f0ee): the size table is
+  at the top of TRUTH.md. First-evolution Signal Purge moved -10.1 against the
+  8-point line.
+- **Final clear rates, policy `l1`** (first evolutions), from the last sim of
+  46e2b49 (`docs/BATTLE_LOSS_RATES_TUNING_3.md`, 3,000 runs per operation,
+  random 3-of-8 squads, seeds 100000-102999):
+
+  | Operation | l1 clear | l1_evo2 clear |
+  |---|---|---|
+  | Facility Sweep | 30.2% | 34.7% |
+  | Hive Incursion | 23.9% | 28.1% |
+  | Veil Breach | 13.5% | 15.4% |
+  | Signal Purge | 13.3% | 11.9% |
+  | Mantle Hunt | 10.0% | 13.0% |
+  | Overall | 18.2% | 20.6% |
+
+- **G-90's gate debt is cleared:** `sim size break`, `title and unlock UI`,
+  `framing editor` and `framing sheet` all pass.
+- **Gate failures at release (reported to Kev, not fixed in the release task):** seven hard gates
+  fail, each twice in a row. Three are test fixtures pinned to data the balance
+  work changed: `unlock progression` (expects Rust Drone's Signal Crush at 14
+  damage; G-99 made it 12), `effect pip overflow` (uses Shieldline Rally's
+  summon, removed by G-98) and `first run` (expects Mantle Hunt to open on a
+  Pumice Climber; G-98 made battle 1 Obsidian Hound + Slag Hound). Four fail on
+  `main` 39d923d too, before the balance work: `player telemetry`, `reward
+  model`, `no animations` and `text fit` (a 90 s timeout). Not investigated.
+
 ## G-103. Stat tuning 3 (Kev, 2026-10-24)
 
 Branch `claude/unit-variety`. Data only: these values and nothing else. No

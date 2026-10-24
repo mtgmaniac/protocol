@@ -36,7 +36,8 @@ func run() -> void:
 	check(first.event_name == "run_start" and first.operation == "facility", "run start captures operation")
 	check(first.payload.squad == ["combat", "engineer", "medic"], "run start captures squad")
 	check(first.payload.install_id == c._install_id and first.payload.timestamp.ends_with("Z"), "install ID and UTC timestamp")
-	check(first.game_version == "0.4", "demo version included")
+	var project_version := str(ProjectSettings.get_setting("application/config/version", ""))
+	check(project_version != "" and first.game_version == project_version, "demo version included")
 	gs.battle_entry_counted = true
 	sm.checkpoint_run("battle")
 	check(sm.resume_run() == "battle", "real saved run resumes")
