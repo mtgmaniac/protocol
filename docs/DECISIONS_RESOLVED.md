@@ -1,5 +1,23 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-103. Stat tuning 3 (Kev, 2026-10-24)
+
+Branch `claude/unit-variety`. Data only: these values and nothing else. No
+unit changes pool (checked: the pools the game builds are identical before
+and after).
+
+| Unit | Change |
+|---|---|
+| Phaseblade | 4-8 Phase Slash damage 17 -> 15; 9-14 Vector Cut 21 -> 19 |
+| Geode Panther | 12-19 Stonefang Pounce damage 22 -> 19 |
+
+**Geode Panther's band.** The task named it "15-19". Geode Panther has no
+15-19 band: its bands are 1-6, 7-9, 10-11, 12-19 and 20 (G-53). The change was
+applied to 12-19, the one band with 22 damage and the band every 15-19 roll
+lands in; splitting the band would have changed its ranges. Kev may overrule.
+
+Ability text carries the new numbers; inspect and Help read the data.
+
 ## G-102. Stat tuning 2 (Kev, 2026-10-24)
 
 Branch `claude/unit-variety`. Data only: these values and nothing else. Bands

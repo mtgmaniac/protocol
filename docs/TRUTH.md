@@ -1,5 +1,8 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Stat tuning 3 (Kev 2026-10-24, DECISIONS_RESOLVED G-103):** Phaseblade 4-8 /
+9-14 damage 15 / 19; Geode Panther 12-19 damage 19. No unit changed pool.
+
 **Stat tuning 2 (Kev 2026-10-24, DECISIONS_RESOLVED G-102; supersedes the
 numbers it names):** Resonance Warden 90 HP; Patrol Enforcer 10-14 / 15-19
 damage 18 / 20; Magma Drake 14-19 damage 18; Hive Matriarch +10% (amended from

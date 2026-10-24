@@ -1436,8 +1436,8 @@
           8
         ],
         "name": "Phase Slash",
-        "eff": "17 damage",
-        "dmg": 17,
+        "eff": "15 damage",
+        "dmg": 15,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1450,8 +1450,8 @@
           14
         ],
         "name": "Vector Cut",
-        "eff": "21 damage",
-        "dmg": 21,
+        "eff": "19 damage",
+        "dmg": 19,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -2515,8 +2515,8 @@
           19
         ],
         "name": "Stonefang Pounce",
-        "eff": "22 damage, freeze 1 turn (lowest hero die)",
-        "dmg": 22,
+        "eff": "19 damage, freeze 1 turn (lowest hero die)",
+        "dmg": 19,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
