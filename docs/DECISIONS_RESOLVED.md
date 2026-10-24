@@ -1,5 +1,64 @@
 # DECISIONS RESOLVED (human-adjudicated)
 
+## G-107. DEMO v0.51: manual targeting, mission card, dev buttons in release (Kev, 2026-10-24)
+
+**Ruling (Kev, transcribed from the task).** DEMO v0.51 is three changes on
+`release/v0.51`, each its own commit:
+
+1. **Manual targeting** (G-105, 6ce395a).
+2. **Mission card** (88ef326): on squad select the boss portrait and its text
+   column are one group centred in the card, text left-aligned; the column
+   has one width over all five operations so the portrait never moves; "LV
+   5" reads "LVL 5"; the level pips sit one spacing step further from LVL
+   (12 -> 16, the existing GAP). Supersedes G-81's "LV n". **Note for Kev:**
+   the widest content is the level row with LVL 5 and CLEARED (519 design
+   px), not the widest name (420), and a phone-width card leaves the column
+   514; the column takes 514 and CLEARED reaches 5 px into the card's pad.
+   Sizing to the name alone would have pushed the row past the card.
+3. **Header debug buttons in release builds** (G-106, 615bf7c).
+
+- **Version:** `project.godot` `config/version` 0.5 -> 0.51; the title stamp
+  and the Help footer read DEMO v0.51.
+- **Sim:** unchanged. The 300-run tripwire against the demo-v0.5 pins
+  reproduces exactly (l1, l1_evo2: no move); `sim size break --real` passes.
+
+## G-106. Header debug buttons exist in release builds (Kev, 2026-10-24)
+
+**Ruling (Kev).** The header debug buttons (^ auto turn, ^^ auto battle) exist
+in release builds too, behind the same two locks as debug builds: the
+seven-tap unlock on the operation title (or the title screen's version stamp),
+then Help > PREFS > DEV > "Developer mode (header debug buttons)", default
+OFF, session only. **Supersedes the 2026-10-16 ruling (G-75) that release
+builds free both buttons.** The Debug (Build #3) section stays absent in
+release builds; only the two header buttons and their toggle come back.
+
+- The seven-tap unlock no longer turns Developer mode on by itself (it did in
+  debug builds); "default OFF" now holds in every build.
+- **Analytics:** once Developer mode is turned on in a session, Telemetry
+  sends nothing for the rest of that session and drops anything this session
+  still has queued (`Telemetry.silence_for_dev_session`; docs/TELEMETRY.md).
+- Gate `developer unlock` (breaks: `stripped`, `shown_on_unlock`,
+  `telemetry_on`).
+
+## G-105. A single legal target is never picked for the player unless the setting is on (Kev, 2026-10-24)
+
+**Ruling (Kev).** A single legal target is never picked for the player unless
+"Auto-select sole valid target" is on. This now covers hero abilities too, not
+just Reroll, Nudge, Set and items. Default stays OFF. **Supersedes the G-49
+note that hero abilities with one legal target are always auto-assigned.**
+
+- With the setting off, a hero ability with one legal target goes into the
+  normal pending targeting flow: the lone target is highlighted as legal, the
+  player taps it, and the turn reaches READY only after every pending hero is
+  assigned. With it on, the target is assigned with the "Only target:
+  <name>." note. Never in the tutorial.
+- Abilities that never needed a manual target (self, all enemies, all allies,
+  random, Mass Revival and the like) are unchanged. The sim and every harness
+  are unaffected (the sim builds its own battles; its tripwire did not move).
+- Help PREFS description: "When an attack, ability or item has only one valid
+  target, it is picked for you." (label unchanged).
+- Gate `auto-select target` (new break `hero_always`).
+
 ## G-104. DEMO v0.5: encounters, enemy archetypes and tuning, pre-Reddit polish (Kev, 2026-10-24)
 
 **Ruling (Kev, transcribed from the task).** DEMO v0.5 is the encounter rework

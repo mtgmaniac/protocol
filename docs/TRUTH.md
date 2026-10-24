@@ -1,5 +1,10 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**DEMO v0.51 (Kev 2026-10-24, DECISIONS_RESOLVED G-107):** `config/version`
+0.51 (title stamp and Help footer read DEMO v0.51): manual targeting for hero
+abilities (G-105), the centred mission card with LVL, and the header debug
+buttons in release builds (G-106), all below. The sim did not move.
+
 **Header debug buttons in release builds (Kev 2026-10-24, DECISIONS_RESOLVED
 G-106, DEMO v0.51; supersedes G-75's 2026-10-16 "release builds free both
 buttons"):** the header ^ (auto turn) and ^^ (auto battle) exist in every
