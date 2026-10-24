@@ -1024,8 +1024,8 @@
           11
         ],
         "name": "Royal Mandibles",
-        "eff": "28 damage, 35% lifesteal, -2 roll 2 turns",
-        "dmg": 28,
+        "eff": "24 damage, 35% lifesteal, -2 roll 2 turns",
+        "dmg": 24,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -1041,8 +1041,8 @@
           16
         ],
         "name": "Brood Venom",
-        "eff": "28 damage, 3 burn 5 turns",
-        "dmg": 28,
+        "eff": "24 damage, 3 burn 5 turns",
+        "dmg": 24,
         "burn": 3,
         "burnT": 5,
         "heal": 0,
@@ -1055,8 +1055,8 @@
           19
         ],
         "name": "Biomass Purge",
-        "eff": "34 damage, 2 burn 4 turns, -3 roll 2 turns",
-        "dmg": 34,
+        "eff": "30 damage, 2 burn 4 turns, -3 roll 2 turns",
+        "dmg": 30,
         "burn": 2,
         "burnT": 4,
         "heal": 0,
@@ -1071,8 +1071,8 @@
           20
         ],
         "name": "Acid Cataclysm",
-        "eff": "remove all hero shields, 38 damage, 40% lifesteal, summon",
-        "dmg": 38,
+        "eff": "remove all hero shields, 33 damage, 40% lifesteal, summon",
+        "dmg": 33,
         "burn": 0,
         "burnT": 0,
         "heal": 0,
@@ -3113,7 +3113,7 @@
       "role": "Copies your highest die, then hoses you down with heavy, long burn."
     },
     "Hive Matriarch": {
-      "hp": 169,
+      "hp": 149,
       "type": "hiveBoss",
       "ai": "smart",
       "summonElite": true,

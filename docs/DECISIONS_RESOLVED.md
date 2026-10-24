@@ -11,9 +11,25 @@ builds are identical before and after).
 | Resonance Warden | max HP 105 -> 90 |
 | Patrol Enforcer | 10-14 Heavy Burst damage 20 -> 18; 15-19 Disruptor Round 23 -> 20 |
 | Magma Drake | 14-19 Molten Rake damage 22 -> 18 |
-| Hive Matriarch | +25% (rounded to the nearest whole number, halves up, as the Scrapmaster in G-99): max HP 135 -> 169; damage 6-11 Royal Mandibles 22 -> 28, 12-16 Brood Venom 22 -> 28, 17-19 Biomass Purge 27 -> 34, 20 Acid Cataclysm 30 -> 38. Royal Carapace (1-5) does no damage. THE BROOD (a Bloodmite every 3 rounds) is unchanged. |
+| Hive Matriarch | **+10%, as amended below** (it was +25%): max HP 135 -> 149; damage 6-11 Royal Mandibles 22 -> 24, 12-16 Brood Venom 22 -> 24, 17-19 Biomass Purge 27 -> 30, 20 Acid Cataclysm 30 -> 33 (rounded to the nearest whole number, halves up). Royal Carapace (1-5) does no damage. THE BROOD (a Bloodmite every 3 rounds) is unchanged. |
 
 Ability text carries the new numbers; inspect and Help read the data.
+
+**Amended: the Matriarch is +10%, not +25% (Kev, 2026-10-24).** At +25% (169 HP;
+28 / 28 / 34 / 38) her fight went from 32.2% to 76.7% losses (l1, 3,000 runs).
+Two smaller versions, both from her pre-G-102 values, were tested on Hive only
+(1,500 runs per policy, seeds 100000–101499, the same seeds and squads):
+
+| Version | Battle 10 loss l1 / l1_evo2 | Hive clear l1 / l1_evo2 |
+|---|---|---|
+| pre-G-102 (135 HP; 22 / 22 / 27 / 30) | 32.9% / 28.2% | 32.4% / 36.5% |
+| +25% HP and damage (169; 28 / 28 / 34 / 38) | 77.9% / 71.3% | 10.7% / 14.6% |
+| **A: +10% HP and damage (149; 24 / 24 / 30 / 33)** | **52.1% / 45.7%** | 23.1% / 27.6% |
+| B: +25% HP, old damage (169; 22 / 22 / 27 / 30) | 52.3% / 46.3% | 23.0% / 27.3% |
+
+The rule: keep the version whose l1 battle-10 loss rate is closest to 50%, if
+it is between 40% and 60%. Both were; **A is kept** (2.1 points from 50 against
+B's 2.3). The two are within noise of each other (about 724 boss fights each).
 
 ## G-101. First stat tuning after the archetype pass (Kev, 2026-10-24)
 
