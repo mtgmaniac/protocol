@@ -111,8 +111,15 @@ func _ready() -> void:
 	_help_button.pressed.connect(_on_help_pressed)
 	_debug_button.pressed.connect(func() -> void: _dispatch(_debug_action, false))
 	_debug2_button.pressed.connect(func() -> void: _dispatch(_debug2_action, false))
-	if not OS.is_debug_build():
-		strip_debug_buttons()
+	# Release builds keep both buttons too (Kev, DEMO v0.51; supersedes the
+	# 2026-10-16 strip): hidden until the seven-tap unlock AND Help > PREFS > DEV
+	# > Developer mode, which is off by default and session only.
+	if dev_unlock_break() == "stripped":
+		for b: Button in [_debug_button, _debug2_button]:
+			b.get_parent().remove_child(b)
+			b.free()
+		_debug_button = null
+		_debug2_button = null
 	_back_button.pressed.connect(func() -> void: _dispatch(_back_action, true))
 	set_run_active(false)
 	set_dev_mode(false)
@@ -398,30 +405,38 @@ func set_debug2_enabled(enabled: bool) -> void:
 		_debug2_button.disabled = not enabled
 
 
-## Release builds (Kev, 2026-10-16): the ^ auto-turn and ^^ auto-battle buttons
-## do not exist. _ready frees both nodes, so no unlock, setting or binding can
-## show them; the seven-tap unlock (G-10) still opens the SETTINGS dev tools.
-## Public so the dev unlock gate can prove the release path in a debug run.
-func strip_debug_buttons() -> void:
-	for b: Button in [_debug_button, _debug2_button]:
-		if is_instance_valid(b):
-			b.get_parent().remove_child(b)
-			b.free()
-	_debug_button = null
-	_debug2_button = null
+## Debug-build seam for the `developer unlock` gate's deliberate breaks (the
+## game never sets it):
+##   stripped         the header frees both buttons (the old release rule)
+##   shown_on_unlock  the seven-tap unlock turns Developer mode on by itself
+##   telemetry_on     Developer mode leaves analytics running
+const DEV_UNLOCK_BREAK_ARG := "--dev-unlock-break="
+
+
+static func dev_unlock_break() -> String:
+	if not OS.is_debug_build():
+		return ""
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with(DEV_UNLOCK_BREAK_ARG):
+			return arg.trim_prefix(DEV_UNLOCK_BREAK_ARG)
+	return ""
 
 
 func has_debug_buttons() -> bool:
 	return is_instance_valid(_debug_button) and is_instance_valid(_debug2_button)
 
 
-## Developer mode (SETTINGS > DEV toggle): the debug buttons are entirely absent
-## from the header unless it is on. Orthogonal to set_debug_enabled — visibility
-## gates whether the buttons exist to the player; disabled gates whether the
-## current screen bound them.
+## Developer mode (PREFS > DEV toggle, every build): the debug buttons are
+## hidden unless it is on. Orthogonal to set_debug_enabled — visibility gates
+## whether the player sees the buttons; disabled gates whether the current
+## screen bound them. Turning it on stops analytics for the rest of the
+## session (Telemetry.silence_for_dev_session, Kev DEMO v0.51).
 func set_dev_mode(enabled: bool) -> void:
 	dev_mode_enabled = enabled and dev_tools_unlocked
 	enabled = dev_mode_enabled
+	var telemetry: Node = get_node_or_null("/root/Telemetry")
+	if enabled and telemetry != null and dev_unlock_break() != "telemetry_on":
+		telemetry.call("silence_for_dev_session")
 	if is_instance_valid(_debug_button):
 		_debug_button.visible = enabled
 	if is_instance_valid(_debug2_button):
@@ -528,7 +543,10 @@ func _register_dev_tap(now_ms: int = -1, from_run_title: bool = true) -> void:
 	if _dev_tap_count < 7:
 		return
 	dev_tools_unlocked = true
-	set_dev_mode(true)
+	# The unlock opens PREFS > DEV; Developer mode itself stays off until the
+	# player turns it on there (default OFF, Kev DEMO v0.51).
+	if dev_unlock_break() == "shown_on_unlock":
+		set_dev_mode(true)
 	dev_tools_unlocked_now.emit()
 	var notice := Label.new()
 	notice.text = "DEV TOOLS UNLOCKED"

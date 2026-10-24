@@ -26,6 +26,10 @@ var _retry_at := 0.0
 var _persist_queued := false
 var _endpoint := ENDPOINT
 var _focused := true
+## Developer mode was turned on this session: nothing is sent until relaunch.
+var _dev_silenced := false
+## The events this session enqueued (the same Dictionaries the queue holds).
+var _session_events: Array = []
 
 
 func _ready() -> void:
@@ -127,7 +131,7 @@ func _start_transport() -> void:
 func _on_setting_changed(key: String, value: Variant) -> void:
 	if key != SETTING:
 		return
-	_enabled = bool(value) and _allowed
+	_enabled = bool(value) and _allowed and not _dev_silenced
 	if not _enabled:
 		_clear()
 	else:
@@ -137,6 +141,33 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 		if not get_node("/root/GameState").selected_units.is_empty():
 			_snapshot()
 			_run_open = true
+
+
+## Developer mode turned on (PersistentHeader.set_dev_mode, Kev DEMO v0.51):
+## analytics stop for the rest of this session. An in-flight request is
+## cancelled, every event this session queued is dropped, and nothing more is
+## queued or sent until relaunch. Events left over from earlier sessions stay
+## saved for a later session; the opt-out setting is not touched.
+func silence_for_dev_session() -> void:
+	if _dev_silenced:
+		return
+	_dev_silenced = true
+	var was_enabled := _enabled
+	_enabled = false
+	if _request != null:
+		_request.cancel_request()
+	_busy = false
+	_remaining = 0
+	_queue = _queue.filter(func(event: Variant) -> bool:
+		return not _session_events.any(func(own: Variant) -> bool: return is_same(own, event)))
+	_session_events.clear()
+	if was_enabled:
+		get_node("/root/SaveManager").set_setting(STATE_SETTING, {"queue": _queue.duplicate(true),
+			"context": _context.duplicate(true), "run_open": _run_open, "ended_battle": _ended_battle})
+
+
+func is_dev_silenced() -> bool:
+	return _dev_silenced
 
 
 func _clear() -> void:
@@ -256,6 +287,11 @@ func _enqueue(event_name: String, payload: Dictionary) -> void:
 	if _queue.size() >= MAX_PENDING:
 		_queue.remove_at(1 if _busy else 0) # Never evict the in-flight head.
 	_queue.append(event)
+	_session_events.append(event)
+	if _session_events.size() > MAX_PENDING:
+		# Forget the ones already sent or evicted: only queued events matter.
+		_session_events = _session_events.filter(func(own: Variant) -> bool:
+			return _queue.any(func(queued: Variant) -> bool: return is_same(queued, own)))
 	_defer_persist()
 
 

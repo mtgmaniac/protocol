@@ -47,6 +47,16 @@ request and clears both queues/context. No new request/event is made while
 OFF. The UUID remains so re-enabling does not create a second install identity.
 An already accepted request cannot be recalled.
 
+**Developer mode silences the session (Kev, DEMO v0.51, G-106).** Once Help >
+PREFS > DEV > Developer mode is turned on (possible in release builds after
+the seven-tap unlock), `Telemetry.silence_for_dev_session()` stops analytics
+until the app is relaunched: an in-flight request is cancelled, every event
+queued in this session is dropped (from memory and from the saved
+`telemetry_state`), nothing new is queued or sent, and turning **Share
+anonymous gameplay data** back on does not restart it. Events left over from
+earlier sessions stay saved and may be sent by a later session. Turning
+Developer mode off again does not resume sending. Gate: `developer unlock`.
+
 Editor/debug builds never initialize transport without `--telemetry-debug`.
 All automated gates stay loopback-only. DevContext keeps their profiles isolated.
 The project-wide `overload/telemetry/enabled=false` switch also disables sending.

@@ -732,12 +732,13 @@ func _build_settings(host: VBoxContainer) -> void:
 		# --- Dev tools ---
 		var dev: VBoxContainer = PixelUI.make_ui_section(host, "DEV")
 		# Developer mode: shows the header debug buttons (hidden by default for
-		# non-dev hands — UI review DB-1). Available for this session after seven taps on the operation title.
+		# non-dev hands — UI review DB-1). Available for this session after seven
+		# taps on the operation title, in every build (Kev, DEMO v0.51: release
+		# builds keep the buttons). Off by default; turning it on stops analytics
+		# for the session.
 		var sm: Variant = _save_manager()
 		var dev_mode_on: bool = header.dev_mode_enabled
-		# Release builds have no header debug buttons (Kev, 2026-10-16), so no toggle.
-		if header.has_debug_buttons():
-			_add_toggle_row(dev, "Developer mode (header debug buttons)", dev_mode_on, _on_toggle_dev_mode)
+		_add_toggle_row(dev, "Developer mode (header debug buttons)", dev_mode_on, _on_toggle_dev_mode).name = "DevModeToggleRow"
 		var unlock_btn := _make_dev_button("UNLOCK ALL (DEV)", false)
 		unlock_btn.pressed.connect(_with_click(_on_dev_unlock_all))
 		dev.add_child(unlock_btn)

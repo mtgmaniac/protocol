@@ -1,5 +1,22 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Header debug buttons in release builds (Kev 2026-10-24, DECISIONS_RESOLVED
+G-106, DEMO v0.51; supersedes G-75's 2026-10-16 "release builds free both
+buttons"):** the header ^ (auto turn) and ^^ (auto battle) exist in every
+build behind the same two locks: the seven-tap unlock (operation title or
+title-screen version stamp), then Help > PREFS > DEV > "Developer mode
+(header debug buttons)", which is **off by default** and session only. The
+unlock no longer turns Developer mode on by itself, in any build. The PREFS
+row shows whenever dev tools are unlocked; Help's DEBUG section stays absent
+in release builds. `strip_debug_buttons()` is gone. **Analytics:** once
+Developer mode is turned on in a session, Telemetry sends nothing for the
+rest of that session: the in-flight request is cancelled, every event this
+session queued is dropped, nothing more is queued, and turning the analytics
+setting back on does not restart it (`Telemetry.silence_for_dev_session`;
+events left from earlier sessions stay saved). Gate `developer unlock` runs
+through `break_gate.py` (breaks: `stripped`, `shown_on_unlock`,
+`telemetry_on`).
+
 **Mission card centred (Kev 2026-10-24, DEMO v0.51):** on squad select the
 boss portrait and its text column are one group centred in the mission card;
 the operation name and level row stay left-aligned in the column. The column
@@ -2880,8 +2897,8 @@ sizes — deliberately, to avoid name-under-description rank inversions.
 header buttons are NOT speed controls — Debug (single chevron) = auto-complete
 the current turn, Debug2 (double chevron) = auto-complete the battle
 (`battle_scene._on_auto_turn_button_pressed` / `_on_auto_battle_button_pressed`;
-hidden unless SETTINGS > DEV developer mode; debug builds only since
-2026-10-16, G-75: release builds free both). Label proposal pending Kev's
+hidden unless SETTINGS > DEV developer mode; in every build again since
+DEMO v0.51, G-106, which supersedes G-75's "release builds free both"). Label proposal pending Kev's
 ruling: "AUTO TURN" / "AUTO BATTLE" (not "1X"/"2X" — they are not speeds).
 
 ## Run report + feedback channel (2026-07-30, stranger-readiness)

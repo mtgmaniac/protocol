@@ -103,7 +103,11 @@ GATES = [
     ("operation lore", [GODOT, "--headless", "--path", str(ROOT), "scenes/debug/OperationLorePresentationRunner.tscn"], "[OPERATION_LORE] PASS", False),
     ("visual choices and motion", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/visual_choice_motion_test.gd"], "[VISUAL_CHOICE_MOTION] PASS", False),
     ("float bounds", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/float_bounds_test.gd"], "[FLOAT_BOUNDS] PASS", False),
-    ("developer unlock", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/dev_unlock_test.gd"], "[DEV_UNLOCK] PASS", False),
+    # DEMO v0.51 (Kev): the header ^ / ^^ exist in every build behind the unlock
+    # and Developer mode, which stops analytics; each break must fail.
+    ("developer unlock", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "DEV_UNLOCK",
+        "--script", "scripts/debug/dev_unlock_test.gd", "--break-arg=--dev-unlock-break=", "--breaks", "stripped,shown_on_unlock,telemetry_on"],
+        "[DEV_UNLOCK_GATE] PASS", False),
     ("flow smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/flow_smoke_test.gd"], "[FLOW_SMOKE] PASS", False),
     ("tutorial smoke", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_smoke_test.gd"], "[TUTORIAL_SMOKE] PASS", False),
     ("tutorial recorded throws", [GODOT, "--headless", "--path", str(ROOT), "-s", "scripts/debug/tutorial_throw_gate.gd", "--", "--size=1080x2400"], "[TUTORIAL_THROWS] PASS", False),
