@@ -21,6 +21,27 @@
   and the Help footer read DEMO v0.51.
 - **Sim:** unchanged. The 300-run tripwire against the demo-v0.5 pins
   reproduces exactly (l1, l1_evo2: no move); `sim size break --real` passes.
+- **Web build:** `builds/overload-protocol-demo-v0.51-web.zip` (49,009,203
+  bytes, 46.7 MB; v0.5 was 49,004,352; the 9 export files flat, `index.html`
+  at the root; not committed, not uploaded), exported from ea067ec with the
+  Web preset unchanged, from a scratch worktree (the editor was open on the
+  checkout). Checked in headless Chrome at 640x960 with every request leaving
+  localhost answered locally (none delivered): it loads; the title stamp and
+  the Help footer read DEMO v0.51; squad select shows the centred mission card
+  with LVL 1; a Facility battle starts; with one enemy left, Strike's and
+  Splice's attacks waited (no cast number, no END TURN), tapping Strike lit
+  the enemy as its legal target, and END TURN came only after both taps.
+  Seven taps on the operation title unlocked dev tools with the header
+  unchanged; PREFS > DEV showed Developer mode OFF and no DEBUG section;
+  turning it on showed ^ and ^^; ^ played a turn and ^^ won the battle.
+  Telemetry posted to `docs/TELEMETRY.md`'s production URL with
+  `game_version` 0.51 (tutorial, run_start) until Developer mode went on, and
+  nothing after it (battle end, a reward pick and a 40 s wait). No console
+  errors. The export warns that `UnitSelect.tscn` and `MainMenu.tscn` share
+  the uid `ds4otxmn6jdms` (in the repo since before v0.51; not changed).
+- **Gate failures at release (not investigated):** `player telemetry` fails
+  the same five retry checks as on main fcc7009; `text fit` passes unbudgeted
+  (109 s) but times out at its 90 s budget, as on main.
 
 ## G-106. Header debug buttons exist in release builds (Kev, 2026-10-24)
 
