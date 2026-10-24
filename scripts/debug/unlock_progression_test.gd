@@ -430,11 +430,51 @@ func _check_encounter_slots(home: Node, op_order: Array, tiles: Dictionary) -> v
 	root.size = Vector2i(1080, 2400)
 	for _frame in 4:
 		await process_frame
-	# The name's holder fills the card's text column (SIZE_EXPAND_FILL), as the
-	# threats slot did before G-97.
-	var text_col: Control = (home.get("_enc_name_label") as Control).get_parent() as Control
-	_check(is_equal_approx(text_col.size.x, 514.0),
-		"the mission card lays out at the phone column width (text column %.0f px, want 514)" % text_col.size.x)
+	# DEMO v0.51 (Kev): the portrait and its text column are one group centred
+	# in the card; the column is as wide as the widest operation name (every
+	# operation, locked or not), and the names stay left-aligned in it.
+	var text_col: Control = home.get("_enc_text_col") as Control
+	var group: Control = text_col.get_parent() as Control
+	var name_ref: Label = home.get("_enc_name_label") as Label
+	var widest_name := 0.0
+	for op_variant in op_order:
+		var op_data: OperationData = _data_manager().call("get_operation", str(op_variant)) as OperationData
+		widest_name = maxf(widest_name, name_ref.get_theme_font("font").get_string_size(op_data.display_name.to_upper(),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, name_ref.get_theme_font_size("font_size")).x)
+	# The level row with CLEARED can be wider than every name; then it sets the
+	# width, or showing CLEARED would move the group.
+	var widest_row: float = (home.get("_enc_level_row") as Control).get_combined_minimum_size().x
+	for status_text in ["CLEARED", "LOCKED"]:
+		var status_ref: Label = home.get("_enc_status_label") as Label
+		var kept: String = status_ref.text
+		status_ref.text = status_text
+		widest_row = maxf(widest_row, (home.get("_enc_level_row") as Control).get_combined_minimum_size().x)
+		status_ref.text = kept
+	var room: float = float(home.call("mission_text_room"))
+	var want_col: float = minf(ceilf(maxf(widest_name, widest_row) / 2.0) * 2.0, room)
+	_check(is_equal_approx(text_col.size.x, want_col) and text_col.size.x >= widest_name,
+		"the mission text column is fixed at its widest content, capped at the phone room (%.0f px; widest name %.0f, widest level row %.0f, room %.0f)" % [text_col.size.x, widest_name, widest_row, room])
+	print("[unlock] mission column %.0f px: widest name %.0f, widest level row %.0f, room %.0f" % [text_col.size.x, widest_name, widest_row, room])
+	# The widest level row stays inside the card's frame (it may reach into the pad).
+	var row_end: float = (home.get("_enc_level_row") as Control).global_position.x + widest_row
+	var card_inner_end: float = (home.get("_enc_card") as Control).get_global_rect().end.x - float(home.get("MISSION_FRAME"))
+	_check(row_end <= card_inner_end, "the widest level row stays inside the mission card (%.0f <= %.0f)" % [row_end, card_inner_end])
+	# The mission row fits the screen's content column (the arrows stay put).
+	var mission_row: Control = (home.get("_enc_card") as Control).get_parent() as Control
+	_check(mission_row.size.x <= (mission_row.get_parent() as Control).size.x + 0.5,
+		"the mission row fits its column (%.0f <= %.0f)" % [mission_row.size.x, (mission_row.get_parent() as Control).size.x])
+	var card_rect: Rect2 = (home.get("_enc_card") as Control).get_global_rect()
+	var group_rect: Rect2 = group.get_global_rect()
+	_check(absf(card_rect.get_center().x - group_rect.get_center().x) <= 1.0,
+		"the portrait + text group is centred in the mission card (group centre %.1f, card centre %.1f)" % [group_rect.get_center().x, card_rect.get_center().x])
+	_check(name_ref.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT, "the operation name stays left-aligned in its column")
+	# One more step between the level pips and "LVL": GAP (was LEVEL_ROW_GAP).
+	var level_row: HBoxContainer = home.get("_enc_level_row") as HBoxContainer
+	var pips_box: Control = level_row.get_child(0) as Control
+	var level_box: Control = level_row.get_child(1) as Control
+	var pip_gap: float = level_box.position.x - pips_box.position.x - pips_box.size.x
+	_check(is_equal_approx(pip_gap, float(home.get("GAP"))) and float(home.get("GAP")) > float(home.get("LEVEL_ROW_GAP")),
+		"the level pips sit one GAP from LVL (%.0f px)" % pip_gap)
 	# G-97: no threats line and no reserved slot on the card.
 	for gone: String in ["_enc_tags_slot", "_enc_threats_label", "_enc_unlock_label"]:
 		_check(home.get(gone) == null, "the mission card has no %s any more (G-97)" % gone)
@@ -463,6 +503,7 @@ func _check_encounter_slots(home: Node, op_order: Array, tiles: Dictionary) -> v
 			if pass_index > 0:
 				continue
 			var locked: bool = bool(home.get("_current_op_locked"))
+			_check((home.get("_enc_level_label") as Label).text.begins_with("LVL "), "%s level reads LVL n (saw '%s')" % [op_id, (home.get("_enc_level_label") as Label).text])
 			var name_label: Label = home.get("_enc_name_label") as Label
 			var name_font: Font = name_label.get_theme_font("font")
 			var name_w: float = name_font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, name_label.get_theme_font_size("font_size")).x

@@ -142,6 +142,9 @@ var _enc_portrait_placeholder: Label
 var _enc_lock_overlay: Control
 var _enc_name_label: Label
 var _enc_level_row: HBoxContainer
+## The mission card's text column; its width is fixed by _fit_mission_column.
+var _enc_text_col: VBoxContainer
+var _enc_level_holder: Control
 var _enc_level_label: Label
 var _enc_status_label: Label
 var _threat_pips: Array[ColorRect] = []
@@ -392,9 +395,13 @@ func _build_mission_row() -> Control:
 	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_enc_card.add_child(pad)
 
+	# The portrait and its text column are one group centred in the card
+	# (Kev, DEMO v0.51). The column is as wide as the widest operation name
+	# (_fit_mission_column), so paging never moves the portrait.
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", MISSION_COLUMN_GAP)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	pad.add_child(body)
 
 	# Boss portrait: the shared portrait frame at the roster tile's width, so the
@@ -418,10 +425,10 @@ func _build_mission_row() -> Control:
 	thumb_holder.add_child(_enc_lock_overlay)
 	body.add_child(_enc_thumb_frame)
 
-	var text_col := VBoxContainer.new()
+	_enc_text_col = VBoxContainer.new()
+	var text_col: VBoxContainer = _enc_text_col
 	text_col.alignment = BoxContainer.ALIGNMENT_CENTER
 	text_col.add_theme_constant_override("separation", GAP)
-	text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(text_col)
 
@@ -439,11 +446,19 @@ func _build_mission_row() -> Control:
 	name_holder.add_child(_enc_name_label)
 	PixelUI.set_block_ink_snap(_enc_name_label)
 
+	# Pips, then one step more than LEVEL_ROW_GAP (GAP) to "LVL n"; the level
+	# and its CLEARED / LOCKED keep LEVEL_ROW_GAP.
+	# The row sits in a plain holder, so its width never widens the column: on
+	# a phone, CLEARED may reach a few px into the card's padding instead of
+	# moving the group (_fit_mission_column).
+	_enc_level_holder = Control.new()
+	_enc_level_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text_col.add_child(_enc_level_holder)
 	_enc_level_row = HBoxContainer.new()
-	_enc_level_row.add_theme_constant_override("separation", LEVEL_ROW_GAP)
+	_enc_level_row.add_theme_constant_override("separation", GAP)
 	_enc_level_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_enc_level_row.custom_minimum_size.y = _small_row_height()
-	text_col.add_child(_enc_level_row)
+	_enc_level_holder.add_child(_enc_level_row)
 	var pips := HBoxContainer.new()
 	pips.add_theme_constant_override("separation", LEVEL_PIP_GAP)
 	pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -456,14 +471,18 @@ func _build_mission_row() -> Control:
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pips.add_child(pip)
 		_threat_pips.append(pip)
+	var level_text := HBoxContainer.new()
+	level_text.add_theme_constant_override("separation", LEVEL_ROW_GAP)
+	level_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_enc_level_row.add_child(level_text)
 	_enc_level_label = _make_type_label("", PixelUI.TYPE_LABEL, PixelUI.CHROME)
 	_enc_level_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_enc_level_row.add_child(_enc_level_label)
+	level_text.add_child(_enc_level_label)
 	# CLEARED / LOCKED: plain text after the level, no outline, compact
 	# secondary text (m3x6).
 	_enc_status_label = _make_type_label("", PixelUI.TYPE_COMPACT, PixelUI.CHROME_DIM)
 	_enc_status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_enc_level_row.add_child(_enc_status_label)
+	level_text.add_child(_enc_status_label)
 	# The threats line and its reserved slot are gone (G-97, Kev 2026-10-20):
 	# threats, and a locked operation's unlock condition, are in the
 	# long-press pop-up.
@@ -524,6 +543,41 @@ func _on_nav_pressed(direction: int) -> void:
 	_refresh_deploy()
 
 
+## Sizes the mission card's text column once: as wide as its widest content
+## over all five operations, locked or not (every name, and the level row with
+## LVL 5 and CLEARED or LOCKED), rounded up to even design px, but never wider
+## than a phone-width card leaves it (mission_text_room). A fixed column keeps
+## the centred portrait + text group still between operations.
+func _fit_mission_column() -> void:
+	if _enc_text_col == null or _enc_text_col.custom_minimum_size.x > 0.0:
+		return
+	var widest_name := 0.0
+	for op_id in _operation_ids:
+		var op: OperationData = DataManager.get_operation(op_id) as OperationData
+		if op != null:
+			_enc_name_label.text = op.display_name.to_upper()
+			widest_name = maxf(widest_name, _enc_name_label.get_minimum_size().x)
+	var widest_row := 0.0
+	_enc_level_label.text = "LVL %d" % THREAT_PIP_COUNT
+	for status in ["", "CLEARED", "LOCKED"]:
+		_enc_status_label.text = status
+		widest_row = maxf(widest_row, _enc_level_row.get_combined_minimum_size().x)
+	var row_h: float = _enc_level_row.get_combined_minimum_size().y
+	_enc_level_row.custom_minimum_size = Vector2(widest_row, row_h)
+	_enc_level_holder.custom_minimum_size.y = row_h
+	var widest: float = ceilf(maxf(widest_name, widest_row) / 2.0) * 2.0
+	_enc_text_col.custom_minimum_size.x = minf(widest, mission_text_room())
+
+
+## The text column's room in the narrowest card: the 1080 design width less the
+## screen margins, both nav buttons and their gaps, the card's frame and pad,
+## the boss portrait frame and the column gap (514 design px).
+static func mission_text_room() -> float:
+	var design_w: float = float(ProjectSettings.get_setting("display/window/size/viewport_width", 1080))
+	return (design_w - 2.0 * ROOT_MARGIN_X - 2.0 * (NAV_BUTTON_SIZE.x + GAP)
+		- 2.0 * (MISSION_FRAME + MISSION_PAD) - (TILE_PORTRAIT_W + 2.0 * PANEL_BORDER) - MISSION_COLUMN_GAP)
+
+
 func _refresh_encounter() -> void:
 	if _operation_ids.is_empty():
 		return
@@ -532,6 +586,7 @@ func _refresh_encounter() -> void:
 		return
 	_current_op_locked = not SaveManager.is_operation_unlocked(_selected_operation_id)
 	var accent: Color = _encounter_accent()
+	_fit_mission_column()
 
 	var card_style: StyleBoxFlat = PixelUI.make_hard_style(PixelUI.UI_BG.lerp(accent, MISSION_TINT), accent, MISSION_FRAME)
 	card_style.set_content_margin_all(float(MISSION_FRAME))
@@ -551,7 +606,7 @@ func _refresh_encounter() -> void:
 	_enc_lock_overlay.visible = _current_op_locked
 
 	var level: int = _threat_level(_operation_index)
-	_enc_level_label.text = "LV %d" % level
+	_enc_level_label.text = "LVL %d" % level
 	for i in _threat_pips.size():
 		_threat_pips[i].color = accent if i < level else THREAT_EMPTY
 	var status: String = "LOCKED" if _current_op_locked else _operation_progress_text(_selected_operation_id)

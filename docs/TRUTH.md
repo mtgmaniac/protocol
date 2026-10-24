@@ -1,5 +1,20 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Mission card centred (Kev 2026-10-24, DEMO v0.51):** on squad select the
+boss portrait and its text column are one group centred in the mission card;
+the operation name and level row stay left-aligned in the column. The column
+has one fixed width over all five operations, locked or not: its widest
+content (the widest name is 420 design px, FACILITY SWEEP / HIVE INCURSION;
+the level row with LVL 5 and CLEARED is 519), capped at the 514 px a
+phone-width card leaves it (`home_screen.mission_text_room`), so the portrait
+never moves when paging. The level row sits in a plain holder: on a phone,
+CLEARED reaches 5 px into the card's 16 px pad instead of widening the column.
+"LV 5" reads "LVL 5", and the pips sit one GAP (16) from it instead of
+LEVEL_ROW_GAP (12); LVL and CLEARED / LOCKED keep 12. Text sizes unchanged.
+Checked in `unlock progression` (column width, centred group, LVL, the pip
+gap, the row inside the card, the mission row inside its column, nothing
+moves between operations); captures in `debug_artifacts/mission_card/`.
+
 **Manual targeting for hero abilities (Kev 2026-10-24, DECISIONS_RESOLVED
 G-105, DEMO v0.51; supersedes G-49's "a hero ability with one legal target is
 always assigned"):** a single legal target is never picked for the player
