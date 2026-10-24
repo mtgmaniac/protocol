@@ -254,7 +254,7 @@ GATES = [
     # G-49: the two Settings options, each off and on, then deliberate breaks
     # that must fail (break_gate.py: a clean pass alone proves nothing).
     ("auto-select target", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "AUTO_PICK",
-        "--script", "scripts/debug/auto_pick_test.gd", "--break-arg=--auto-pick-break=", "--breaks", "off,any_count,no_cue"],
+        "--script", "scripts/debug/auto_pick_test.gd", "--break-arg=--auto-pick-break=", "--breaks", "off,any_count,no_cue,hero_always"],
         "[AUTO_PICK_GATE] PASS", False),
     ("no animations", [sys.executable, str(ROOT / "scripts" / "checks" / "break_gate.py"), "--tag", "NO_ANIMATIONS",
         "--script", "scripts/debug/no_animations_test.gd", "--break-arg=--no-animations-break=", "--breaks", "ignored,silent_stinger"],

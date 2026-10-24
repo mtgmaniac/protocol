@@ -1,5 +1,23 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Manual targeting for hero abilities (Kev 2026-10-24, DECISIONS_RESOLVED
+G-105, DEMO v0.51; supersedes G-49's "a hero ability with one legal target is
+always assigned"):** a single legal target is never picked for the player
+unless Help > PREFS "Auto-select sole valid target" is on (default off, never
+in the tutorial). With it off, a hero ability with one legal target enters the
+normal pending flow: the hero waits, tapping it highlights the lone target as
+legal, the player taps that target, and the turn reaches READY only once every
+pending hero is assigned. With it on, the lone target is assigned at once and
+the pick note reads "Only target: <name>.", as for Reroll, Nudge, Set and
+items. Abilities that never needed a manual pick (self, all enemies, all
+allies, lowest-HP, random, Mass Revival, taunt-forced) are unchanged. The
+PREFS description reads "When an attack, ability or item has only one valid
+target, it is picked for you." A phase change no longer clears a timed pick
+note unless it enters or leaves the Nudge pick (the Firewall Hack rings and
+the Nudge prompt). The sim builds its own battles and is unaffected. Gate
+`auto-select target` adds the hero case (new break `hero_always`, the old
+rule).
+
 **Sim pins re-pinned for DEMO v0.5 (Kev 2026-10-24, BASELINE-APPROVED-BY-KEV,
 DECISIONS_RESOLVED G-104):** all four pins now hold `main` 46e2b49, the
 encounter rework (G-98) plus the archetypes and tuning (G-99 to G-103). The
@@ -1603,8 +1621,10 @@ and stored in the profile's settings (`auto_select_sole_target`,
   asks for the number (its picker carries the note). Valid = the pick would go
   through (an unfrozen hero die with a roll that the pool can pay for; a
   Firewall Hack enemy die; an item's legal unit). Two or more valid targets, or
-  none: unchanged. Never in the tutorial. Hero abilities are separate and
-  unchanged: one legal target has always been assigned on its own.
+  none: unchanged. Never in the tutorial. **Hero abilities follow the setting
+  too since DEMO v0.51 (G-105, below):** "Hero abilities are separate and
+  unchanged: one legal target has always been assigned on its own" is
+  superseded.
 - **No animations** (`PixelUI.no_animations_enabled`; it also makes
   `reduced_motion_enabled` true, so everything Reduced Motion removes is
   removed too): battle numbers stay put at full strength for their 1.5 s and
@@ -3235,7 +3255,8 @@ added to the taps the player already makes.
   all-target / no-legal-target / taunt-forced) stamp immediately when the phase
   begins, in squad order — a player who never interacts gets today's default.
   Manual-pick heroes stamp when their target tap lands (a single-legal-target
-  auto-assign stamps at phase start like an auto).
+  auto-assign, only with Auto-select sole valid target on since G-105, stamps
+  at phase start like an auto).
 - **Resequencing (the ONLY reorder mechanism):** re-tapping an assigned hero's
   card unassigns it — stamp cleared; manual abilities return to the pending
   queue and immediately re-open targeting (a retarget stays two taps), auto

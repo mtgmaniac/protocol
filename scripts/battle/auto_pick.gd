@@ -5,9 +5,12 @@
 # for the player, and a short note names what was picked. With two or more
 # valid targets, or none, nothing changes: the player picks as before.
 #
-# Never in the tutorial (the drill teaches the tap). Hero abilities are not
-# part of this: a hero ability with one legal target has always been assigned
-# on its own (battle_scene._try_auto_assign_single_manual_target).
+# Hero abilities too (Kev, DEMO v0.51; supersedes G-49's "always assigned"):
+# a hero ability with one legal target is assigned for the player only with
+# the setting on (battle_scene._try_auto_assign_single_manual_target, same
+# note). With it off the hero waits in the pending queue for a tap.
+#
+# Never in the tutorial (the drill teaches the tap).
 #
 # Rules only. ProtocolActions arms the action, asks sole_target(), and makes the
 # pick through the same handler a tap reaches. Preloaded by path, not a
@@ -19,6 +22,8 @@ const SETTING := "auto_select_sole_target"
 ##   off        the setting is ignored, nothing is ever picked
 ##   any_count  picks the first valid target even when there are several
 ##   no_cue     picks without naming the pick
+##   hero_always  a hero ability's lone target is assigned even with the
+##              setting off (the pre-v0.51 rule)
 const BREAK_ARG := "--auto-pick-break="
 
 
@@ -36,6 +41,14 @@ static func enabled(scene: Node) -> bool:
 		return false
 	var settings: Node = scene.get_node_or_null("/root/SaveManager")
 	return settings != null and bool(settings.get_setting(SETTING, false))
+
+
+## Whether a hero ability with exactly one legal target is assigned for the
+## player (battle_scene asks; the count and the pick are its own).
+static func hero_sole_target_on(scene: Node) -> bool:
+	if break_mode() == "hero_always" and not bool(scene._game_state().tutorial_mode):
+		return true
+	return enabled(scene)
 
 
 ## Every target the action armed right now could take: [{side, id, name}].

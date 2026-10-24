@@ -7,9 +7,11 @@
 #   ON   with exactly ONE valid target the pick is made at once and a note names
 #        it; with two valid targets the action still waits; never in the tutorial
 # Covers Nudge, Reroll, Set (the die is picked, the number is still the
-# player's) and an item, plus the Settings row (off by default, stored).
+# player's), an item and a hero ability facing one legal enemy (DEMO v0.51:
+# OFF it stays pending until tapped, ON it is assigned with the note), plus
+# the Settings row (off by default, stored).
 # scripts/checks/break_gate.py reruns it with each deliberate break
-# (AutoPick.BREAK_ARG: off, any_count, no_cue) and requires a FAIL.
+# (AutoPick.BREAK_ARG: off, any_count, no_cue, hero_always) and requires a FAIL.
 extends SceneTree
 
 const AutoPick := preload("res://scripts/battle/auto_pick.gd")
@@ -135,6 +137,7 @@ func _run() -> void:
 	await _check_reroll()
 	_check_set()
 	_check_item()
+	_check_hero_ability()
 	_check_tutorial()
 
 	_set_on(false)
@@ -287,6 +290,89 @@ func _check_item() -> void:
 	_expect(not bool(_protocol.in_item_phase()) and _protocol.get("_item_targeting_card") == null, "ON: no targeting card is left up")
 	_expect(_note() == "Only target: %s." % _name_of(sole), "ON: a note names the enemy that was picked (got '%s')" % _note())
 	_disarm()
+
+
+# ── Hero ability (Kev, DEMO v0.51) ────────────────────────────────────────────
+## A roll whose ability attacks one enemy for this hero (after any nudge), or 0.
+func _enemy_attack_roll(state: Dictionary) -> int:
+	var hero_id: String = str(state["id"])
+	for roll in range(1, 21):
+		_scene.hero_rolls[hero_id] = roll
+		var eff: int = int(_scene._get_effective_roll_for_state(state, hero_id))
+		var ability: Dictionary = _scene.dice_manager.get_ability_for_roll(state["unit"], eff)
+		var raw: Dictionary = ability.get("raw", {})
+		if _scene._get_manual_target_side(ability) == "enemy" and int(raw.get("dmg", 0)) > 0:
+			return roll
+	return 0
+
+
+## A fresh targeting phase on the current rolls, as the roll starts one.
+func _start_targeting() -> void:
+	_scene._relics.clear_pick_note()
+	_scene.pending_manual_target_ids.clear()
+	_scene.active_targeting_hero_id = ""
+	_scene.transition(_scene.PHASE_TARGETING)
+	_scene._prepare_hero_targets()
+	if _scene.pending_manual_target_ids.is_empty():
+		_scene.transition(_scene.PHASE_READY_TO_END)
+
+
+func _check_hero_ability() -> void:
+	var targeting: int = int(_scene.PHASE_TARGETING)
+	var sole: Dictionary = {}
+	for state in _enemies():
+		if not bool(state.get("dead", false)):
+			sole = state
+	var sole_id: String = str(sole.get("id", ""))
+	# Two heroes roll an attack on the one enemy left; the third is set aside so
+	# only those two can be pending.
+	var attackers: Array = []
+	var benched: Array = []
+	for state in _heroes():
+		state["die_freeze_turns"] = 0
+		if attackers.size() < 2 and _enemy_attack_roll(state) > 0:
+			attackers.append(state)
+		elif not bool(state.get("dead", false)):
+			state["dead"] = true
+			benched.append(state)
+	_expect(not sole.is_empty() and attackers.size() == 2, "fixture: two heroes roll an attack on the one enemy left")
+	_expect(_scene._get_taunt_enemy_id() == "", "fixture: no taunt forces the pick")
+	if sole.is_empty() or attackers.size() != 2:
+		return
+	var first_id: String = str(attackers[0]["id"])
+	var second_id: String = str(attackers[1]["id"])
+
+	_set_on(false)
+	_start_targeting()
+	for state in attackers:
+		_expect(_scene.pending_manual_target_ids.has(str(state["id"])), "OFF, one legal enemy: %s waits for a tap" % _name_of(state))
+		_expect(str(state.get("selected_target_id", "")) == "", "OFF, one legal enemy: %s holds no target" % _name_of(state))
+	_expect(_phase() == targeting, "OFF, one legal enemy: the turn is not ready")
+	_expect(_note() == "", "OFF: no note (got '%s')" % _note())
+	# The player taps the first hero: its lone target is the legal one.
+	_scene._on_hero_card_pressed(first_id)
+	_expect(str(_scene.active_targeting_hero_id) == first_id and _scene.legal_target_ids == [sole_id],
+		"OFF: tapping the hero arms it with the one enemy as its legal target")
+	_expect(str(attackers[0].get("selected_target_id", "")) == "", "OFF: arming the hero does not pick for it")
+	_scene._on_enemy_card_pressed(sole_id)
+	_expect(str(attackers[0].get("selected_target_id", "")) == sole_id, "OFF: tapping the enemy assigns it")
+	_expect(_phase() == targeting, "OFF: not ready while the second hero is still pending")
+	_scene._on_hero_card_pressed(second_id)
+	_scene._on_enemy_card_pressed(sole_id)
+	_expect(str(attackers[1].get("selected_target_id", "")) == sole_id, "OFF: the second tap assigns the second hero")
+	_expect(_phase() == int(_scene.PHASE_READY_TO_END), "OFF: ready once every pending hero is assigned")
+
+	_set_on(true)
+	_start_targeting()
+	for state in attackers:
+		_expect(not _scene.pending_manual_target_ids.has(str(state["id"])), "ON, one legal enemy: %s is not left pending" % _name_of(state))
+		_expect(str(state.get("selected_target_id", "")) == sole_id, "ON, one legal enemy: %s is assigned to it" % _name_of(state))
+	_expect(_phase() == int(_scene.PHASE_READY_TO_END), "ON: the turn is ready with nothing to tap")
+	_expect(_note() == "Only target: %s." % _name_of(sole), "ON: a note names the enemy that was picked (got '%s')" % _note())
+	_set_on(false)
+	for state in benched:
+		state["dead"] = false
+	_scene._relics.clear_pick_note()
 
 
 # ── Tutorial ──────────────────────────────────────────────────────────────────

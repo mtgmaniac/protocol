@@ -708,7 +708,7 @@ func _build_settings(host: VBoxContainer) -> void:
 		"Effects appear at once with no movement or fading. Dice still roll.").name = "NoAnimationsToggleRow"
 	_add_toggle_row(access, "Auto-select sole valid target", _setting_on(AutoPick.SETTING),
 		_on_toggle_setting.bind(AutoPick.SETTING),
-		"When an action has only one valid target, it is picked for you.").name = "AutoSelectToggleRow"
+		"When an attack, ability or item has only one valid target, it is picked for you.").name = "AutoSelectToggleRow"
 
 	var privacy: VBoxContainer = PixelUI.make_ui_section(host, "PRIVACY")
 	var save: Variant = _save_manager()

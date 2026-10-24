@@ -38,6 +38,7 @@ const OPERATION_BRIEFING_OVERLAY := preload("res://scripts/ui/operation_briefing
 # not the global class name, for fresh-checkout headless parses.
 const PROTOCOL_ACTIONS_SCRIPT := preload("res://scripts/battle/protocol_actions.gd")
 const BOSS_RELIC_ACTIONS_SCRIPT := preload("res://scripts/battle/boss_relic_actions.gd")
+const AutoPick := preload("res://scripts/battle/auto_pick.gd")
 const HERO_ACCENT := PixelUI.PLAYER_ACCENT_LIGHT   # card-view side keys (ui-unify tokens)
 const ENEMY_ACCENT := PixelUI.NEUTRAL_STEEL
 # Die-docked result tags: one uniform filled plate per die that resolved an effect. Every
@@ -3034,19 +3035,19 @@ func _queue_or_auto_assign_manual_target(hero_state: Dictionary, manual_side: St
 
 
 func _try_auto_assign_single_manual_target(hero_state: Dictionary, target_side: String, target_ids: Array) -> bool:
-	# The tutorial teaches the explicit tap-a-die → tap-the-enemy flow. It fights a single enemy,
-	# so every shot would otherwise auto-assign here: pending_manual_target_ids would be empty, the
-	# turn would jump straight to READY_TO_END, the "assigned" beat would never fire, and the
-	# coachmark would wait forever. Force manual targeting so the player actually performs it.
-	if _game_state().tutorial_mode:
-		return false
-	if target_ids.size() != 1:
+	# A lone legal target is picked for the player only with "Auto-select sole valid
+	# target" on (Kev, v0.51); otherwise the hero waits in the pending queue for a tap.
+	# AutoPick is never on in the tutorial, which teaches the tap.
+	if not AutoPick.hero_sole_target_on(self) or target_ids.size() != 1:
 		return false
 	var target_id: String = str(target_ids[0])
 	var target_state: Dictionary = _find_manual_target_state(target_side, target_id)
 	if target_state.is_empty():
 		return false
 	_set_state_target(hero_state, target_id, str(target_state["unit"].display_name))
+	var note: String = AutoPick.cue_text({"name": str(target_state["unit"].display_name)})
+	if note != "" and _relics != null:
+		_relics.show_pick_note(note, _relics.PICK_NOTE_HOLD)
 	# A completed assignment (the single legal target auto-commits).
 	_stamp_cast(hero_state)
 	pending_manual_target_ids.erase(str(hero_state["id"]))

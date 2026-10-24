@@ -52,8 +52,11 @@ func build_footer_buttons() -> void:
 func on_phase_changed(next_phase: int) -> void:
 	if next_phase != _scene.PHASE_SET_PICK:
 		_close_set_value_popup()
-	if _scene._relics != null:
-		_scene._relics.sync_hack_rings(next_phase == _scene.PHASE_NUDGE_PICK)
+	# The hack rings and the Nudge's standing prompt live only in the Nudge pick;
+	# other phase changes leave a timed pick note ("Only target: ...") to fade.
+	var nudge: int = _scene.PHASE_NUDGE_PICK
+	if _scene._relics != null and (next_phase == nudge or _scene.turn_phase == nudge):
+		_scene._relics.sync_hack_rings(next_phase == nudge)
 
 
 func reset_battle_over_state() -> void:
