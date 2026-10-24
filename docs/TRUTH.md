@@ -1,5 +1,24 @@
 # Overload Protocol — TRUTH (Canonical Reference)
 
+**Sim pins re-pinned for DEMO v0.5 (Kev 2026-10-24, BASELINE-APPROVED-BY-KEV,
+DECISIONS_RESOLVED G-104):** all four pins now hold `main` 46e2b49, the
+encounter rework (G-98) plus the archetypes and tuning (G-99 to G-103). The
+1,500-run size check against the old pins (G-74):
+
+| Clear rate, 1,500 pinned runs | First evolutions: was | now | change | Second evolutions: was | now | change |
+|---|--:|--:|--:|--:|--:|--:|
+| Facility | 31.5% | 31.2% | -0.3 | 39.0% | 33.4% | -5.6 |
+| Hive | 24.1% | 23.5% | -0.6 | 28.3% | 30.5% | +2.2 |
+| Veil | 14.7% | 12.4% | -2.3 | 21.5% | 17.6% | -3.9 |
+| Signal Purge | 21.0% | 10.9% | -10.1 | 14.5% | 10.9% | -3.6 |
+| Mantle Hunt | 13.8% | 11.1% | -2.7 | 20.2% | 15.2% | -5.0 |
+| Overall | 21.1% | 18.0% | -3.1 | 24.9% | 21.8% | -3.1 |
+
+First-evolution Signal Purge (-10.1 against the 8-point line) is the ceremony,
+signed off by Kev in the release task. The re-pinned tripwire reproduces
+exactly, and `sim size break` passes against the new pins (its stamp is
+rewritten, which clears the stale-stamp debt G-90 listed).
+
 **Stat tuning 3 (Kev 2026-10-24, DECISIONS_RESOLVED G-103):** Phaseblade 4-8 /
 9-14 damage 15 / 19; Geode Panther 12-19 damage 19. No unit changed pool.
 
